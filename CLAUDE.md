@@ -14,13 +14,13 @@
 ## Dosyalar
 - `main.py` — oyun döngüsü (olaylar → güncelleme → çizim)
 - `settings.py` — tüm ayarlar
-- `player.py` — karakter (Aşama 1'de eklenecek)
+- `player.py` — karakter (`Player` sprite'ı; ok tuşları / A-D ile hareket)
 - `level.py` — bölüm/platformlar (Aşama 3'te eklenecek)
 - `assets/` — resim ve sesler (Aşama 8'de eklenecek)
 
 ## Yol haritası
 - [x] 0. Kurulum — boş pencere açılıyor
-- [ ] 1. Karakter — kare, ok tuşlarıyla sağ-sol hareket
+- [x] 1. Karakter — kare, ok tuşlarıyla sağ-sol hareket
 - [ ] 2. Fizik — yerçekimi, boşlukla zıplama, zemin
 - [ ] 3. Platformlar — havada platformlar, üzerine çıkma
 - [ ] 4. Kamera & bölüm — ekrandan geniş harita, kamera takibi
@@ -31,4 +31,5 @@
 - [ ] 9. Ekstra — yeni bölümler, .exe çıktısı
 
 ## Sıradaki adım
-Aşama 1: `player.py` oluştur, karakteri ekrana çiz ve ok tuşlarıyla hareket ettir.
+Aşama 2: yerçekimi, zemin ve boşluk tuşuyla zıplama (`player.py` içine dikey hız ekle;
+zıplama gücü ve yerçekimi `settings.py`'de dursun).

@@ -10,3 +10,9 @@ FPS = 60  # saniyedeki kare sayısı
 BLACK = (0, 0, 0)
 WHITE = (255, 255, 255)
 SKY_BLUE = (30, 30, 50)
+
+# Karakter
+PLAYER_WIDTH = 40
+PLAYER_HEIGHT = 50
+PLAYER_COLOR = (240, 180, 40)  # turuncu-sarı
+PLAYER_SPEED = 5  # her karede kaç piksel gider
