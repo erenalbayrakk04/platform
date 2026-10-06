@@ -20,20 +20,22 @@
 - `main.py` — oyun döngüsü (olaylar → güncelleme → çizim)
 - `settings.py` — tüm ayarlar
 - `player.py` — karakter (`Player` sprite'ı; ok tuşları / A-D ile hareket, Boşluk/Yukarı/W ile
-  zıplama; yerçekimi `velocity_y` + ondalıklı `pos_y`; `update(tiles, platforms)` yatay ve dikey
-  çarpışmayı ayrı çözer; ince platforma sadece düşerken ve ayak önceden üstündeyse basar;
-  `on_ground` ayağın 1 px altını kontrol eder; `respawn()` başlangıca döndürür;
+  zıplama; yerçekimi `velocity_y` + ondalıklı `pos_y`; `update(tiles)` yatay ve dikey
+  çarpışmayı ayrı çözer; `on_ground` ayağın 1 px altını kontrol eder; `respawn()` başlangıca döndürür;
   `Player(x, y, level_width)` — bölüm kenarından dışarı çıkamaz)
-- `level.py` — `LEVEL_MAP` metin haritası (`#` katı blok, `-` ince platform (alttan geçilir),
+- `level.py` — `LEVEL_MAP` metin haritası (`#` katı blok, `-` ince platform (o da katı;
+  kullanıcı alttan içinden geçilmesini İSTEMEDİ, kafa çarpmalı),
   `.` boş, `P` başlangıç; 40 px kareler, şu an 10x46 = 400x1840 px, en alt satır tam zemin,
   karakter alttan başlayıp tepedeki `######`'e tırmanır), `Tile` ve `Platform` sprite'ları,
-  haritayı okuyan `Level` sınıfı (`tiles`, `platforms`, `width`/`height` piksel cinsinden)
+  haritayı okuyan `Level` sınıfı (`tiles` = çarpılan her şey, bloklar + ince platformlar;
+  `width`/`height` piksel cinsinden)
 - `camera.py` — `Camera(level_height)`: DİKEYDE yumuşak takip (`CAMERA_SMOOTHNESS`), karakter
   ekranın `CAMERA_PLAYER_Y` oranında (biraz altta) durur, bölüm üst/alt kenarında durur;
   `apply(rect)` bölüm konumunu ekran konumuna çevirir. Tüm çizim `main.py`'de kamera üzerinden.
 - Bölümün altından düşerse (`rect.top > level.height`) şimdilik `respawn()`; can sistemi Aşama 6'da.
 - Zıplama ~133 px (3 blok = 120 px'e çıkılabilir), yatayda ~4 blok gidilebilir; harita
-  tasarlarken basılan yüzeyler arası dikey fark en fazla 3 satır olsun.
+  tasarlarken basılan yüzeyler arası dikey fark en fazla 3 satır olsun. Platformlar katı olduğu
+  için bir üst platform tam tepede olmasın; yana kaydırılmış olsun ki zıplayıp üstüne çıkılabilsin.
 - `assets/` — resim ve sesler (Aşama 8'de eklenecek)
 
 ## Yol haritası

@@ -33,7 +33,7 @@ class Player(pygame.sprite.Sprite):
         self.pos_y = float(self.rect.bottom)
         self.on_ground = False
 
-    def update(self, tiles, platforms):
+    def update(self, tiles):
         keys = pygame.key.get_pressed()
 
         # --- Yatay hareket ---
@@ -63,7 +63,6 @@ class Player(pygame.sprite.Sprite):
 
         # Yerçekimi: her karede aşağı doğru biraz daha hızlan
         self.velocity_y = min(self.velocity_y + GRAVITY, MAX_FALL_SPEED)
-        old_bottom = self.rect.bottom
         self.pos_y += self.velocity_y
         self.rect.bottom = round(self.pos_y)
 
@@ -74,17 +73,8 @@ class Player(pygame.sprite.Sprite):
             elif self.velocity_y < 0:
                 self.rect.top = tile.rect.bottom
             self.velocity_y = 0
-
-        # İnce platform: sadece düşerken ve ayağı önceden platformun üstündeyse bas
-        if self.velocity_y > 0:
-            for platform in pygame.sprite.spritecollide(self, platforms, False):
-                if old_bottom <= platform.rect.top:
-                    self.rect.bottom = platform.rect.top
-                    self.velocity_y = 0
         self.pos_y = float(self.rect.bottom)
 
-        # Ayağının hemen altında blok ya da platform varsa yerdedir
+        # Ayağının hemen altında blok varsa yerdedir
         feet = self.rect.move(0, 1)
-        self.on_ground = any(feet.colliderect(tile.rect) for tile in tiles) or any(
-            feet.colliderect(p.rect) and self.rect.bottom == p.rect.top for p in platforms
-        )
+        self.on_ground = any(feet.colliderect(tile.rect) for tile in tiles)

@@ -27,7 +27,7 @@ TILE_SIZE = 40  # her bloğun kenar uzunluğu (piksel)
 TILE_COLOR = (120, 80, 50)  # toprak kahvesi
 TILE_TOP_COLOR = (60, 160, 70)  # üstteki çimen yeşili
 
-# İnce platformlar (haritada '-') — alttan içinden geçilir, üstüne basılır
+# İnce platformlar (haritada '-') — bloklar gibi katı, sadece daha ince
 PLATFORM_HEIGHT = 12  # kalınlığı (piksel)
 PLATFORM_COLOR = (170, 120, 70)  # tahta rengi
 

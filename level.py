@@ -5,7 +5,7 @@ from settings import TILE_SIZE, TILE_COLOR, TILE_TOP_COLOR, PLATFORM_HEIGHT, PLA
 
 # Bölüm haritası — her karakter bir kare (40x40 piksel):
 #   #  = blok (katı; içinden geçilmez)
-#   -  = ince platform (alttan zıplayınca içinden geçilir, üstüne basılır)
+#   -  = ince platform (o da katı: üstüne basılır, alttan kafa çarpar)
 #   .  = boşluk
 #   P  = karakterin başladığı yer
 # Oyun yukarı doğru ilerler: karakter en alttan başlar, en tepeye tırmanır.
@@ -72,7 +72,7 @@ class Tile(pygame.sprite.Sprite):
 
 
 class Platform(pygame.sprite.Sprite):
-    # İnce platform: karenin sadece üst kısmını kaplar
+    # İnce platform: karenin sadece üst kısmını kaplar, blok gibi katıdır
     def __init__(self, x, y):
         super().__init__()
         self.image = pygame.Surface((TILE_SIZE, PLATFORM_HEIGHT))
@@ -82,8 +82,8 @@ class Platform(pygame.sprite.Sprite):
 
 class Level:
     def __init__(self, level_map):
+        # Karakterin çarptığı her şey (bloklar ve ince platformlar)
         self.tiles = pygame.sprite.Group()
-        self.platforms = pygame.sprite.Group()
         self.player_start = (TILE_SIZE, TILE_SIZE)
         # Bölümün piksel cinsinden boyutu
         self.width = len(level_map[0]) * TILE_SIZE
@@ -97,7 +97,7 @@ class Level:
                 if cell == "#":
                     self.tiles.add(Tile(x, y))
                 elif cell == "-":
-                    self.platforms.add(Platform(x, y))
+                    self.tiles.add(Platform(x, y))
                 elif cell == "P":
                     # Karakterin ayakları bu kutunun altına gelsin
                     self.player_start = (x + TILE_SIZE // 2, y + TILE_SIZE)
