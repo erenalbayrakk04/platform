@@ -20,7 +20,7 @@ def main():
     player = Player(*level.player_start, level.width)
     all_sprites = pygame.sprite.Group(player)
 
-    camera = Camera(level.width)
+    camera = Camera(level.height)
     camera.follow(player.rect, instant=True)
     screen_rect = screen.get_rect()
 
@@ -34,9 +34,9 @@ def main():
                 running = False
 
         # 2) Güncelleme: oyun mantığı
-        all_sprites.update(level.tiles)
+        all_sprites.update(level.tiles, level.platforms)
 
-        # Çukura düştüyse başa dön (can sistemi Aşama 6'da gelecek)
+        # Bölümün altından düştüyse başa dön (can sistemi Aşama 6'da gelecek)
         if player.rect.top > level.height:
             player.respawn()
             camera.follow(player.rect, instant=True)
@@ -45,7 +45,7 @@ def main():
 
         # 3) Çizim — her şeyi kameraya göre kaydırarak çiz
         screen.fill(SKY_BLUE)
-        for sprite in [*level.tiles, *all_sprites]:
+        for sprite in [*level.tiles, *level.platforms, *all_sprites]:
             screen_pos = camera.apply(sprite.rect)
             if screen_pos.colliderect(screen_rect):  # sadece ekranda görüneni çiz
                 screen.blit(sprite.image, screen_pos)

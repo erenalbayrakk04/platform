@@ -2,6 +2,8 @@
 
 ## Proje
 - Python + pygame-ce ile 2D platform (zıplama) oyunu.
+- MOBİL oyun olacak: ekran dikey (telefon gibi, 400x720) ve bölüm YUKARI doğru ilerler
+  (Doodle Jump / Icy Tower tarzı tırmanma). Kullanıcı yana kayan haritayı istemedi.
 - Kullanıcı hiç kod yazmamış: kodu Claude yazar, kullanıcı test eder ve geri bildirim verir.
 - Kullanıcıyla Türkçe konuş, teknik terimleri basitçe açıkla.
 - Çalıştırma: `python main.py` (ESC veya pencereyi kapatmak oyundan çıkar).
@@ -18,17 +20,20 @@
 - `main.py` — oyun döngüsü (olaylar → güncelleme → çizim)
 - `settings.py` — tüm ayarlar
 - `player.py` — karakter (`Player` sprite'ı; ok tuşları / A-D ile hareket, Boşluk/Yukarı/W ile
-  zıplama; yerçekimi `velocity_y` + ondalıklı `pos_y`; `update(tiles)` yatay ve dikey çarpışmayı
-  ayrı çözer, `on_ground` ayağın 1 px altını kontrol eder; `respawn()` başlangıca döndürür;
+  zıplama; yerçekimi `velocity_y` + ondalıklı `pos_y`; `update(tiles, platforms)` yatay ve dikey
+  çarpışmayı ayrı çözer; ince platforma sadece düşerken ve ayak önceden üstündeyse basar;
+  `on_ground` ayağın 1 px altını kontrol eder; `respawn()` başlangıca döndürür;
   `Player(x, y, level_width)` — bölüm kenarından dışarı çıkamaz)
-- `level.py` — `LEVEL_MAP` metin haritası (`#` blok, `.` boş, `P` başlangıç; 40 px kareler,
-  şu an 90x14 = 3600x560 px, çukurlu), `Tile` sprite'ı ve haritayı okuyan `Level` sınıfı
-  (`width`/`height` piksel cinsinden)
-- `camera.py` — `Camera`: yatayda yumuşak takip (`CAMERA_SMOOTHNESS`), bölüm kenarında durur;
+- `level.py` — `LEVEL_MAP` metin haritası (`#` katı blok, `-` ince platform (alttan geçilir),
+  `.` boş, `P` başlangıç; 40 px kareler, şu an 10x46 = 400x1840 px, en alt satır tam zemin,
+  karakter alttan başlayıp tepedeki `######`'e tırmanır), `Tile` ve `Platform` sprite'ları,
+  haritayı okuyan `Level` sınıfı (`tiles`, `platforms`, `width`/`height` piksel cinsinden)
+- `camera.py` — `Camera(level_height)`: DİKEYDE yumuşak takip (`CAMERA_SMOOTHNESS`), karakter
+  ekranın `CAMERA_PLAYER_Y` oranında (biraz altta) durur, bölüm üst/alt kenarında durur;
   `apply(rect)` bölüm konumunu ekran konumuna çevirir. Tüm çizim `main.py`'de kamera üzerinden.
-- Çukura düşünce (`rect.top > level.height`) şimdilik sadece `respawn()`; can sistemi Aşama 6'da.
-- Zıplama ~133 px (3 blok = 120 px'e çıkılabilir); harita tasarlarken platformlar arası
-  dikey fark en fazla 3 blok olsun.
+- Bölümün altından düşerse (`rect.top > level.height`) şimdilik `respawn()`; can sistemi Aşama 6'da.
+- Zıplama ~133 px (3 blok = 120 px'e çıkılabilir), yatayda ~4 blok gidilebilir; harita
+  tasarlarken basılan yüzeyler arası dikey fark en fazla 3 satır olsun.
 - `assets/` — resim ve sesler (Aşama 8'de eklenecek)
 
 ## Yol haritası
@@ -36,13 +41,14 @@
 - [x] 1. Karakter — kare, ok tuşlarıyla sağ-sol hareket
 - [x] 2. Fizik — yerçekimi, boşlukla zıplama, zemin
 - [x] 3. Platformlar — havada platformlar, üzerine çıkma
-- [x] 4. Kamera & bölüm — ekrandan geniş harita, kamera takibi
+- [x] 4. Kamera & bölüm — dikey (yukarı doğru) uzun harita, dikey kamera takibi, ince platformlar
 - [ ] 5. Toplanabilir — altın, puan göstergesi
 - [ ] 6. Düşman & can — yürüyen düşman, can, ölme/yeniden başlama
 - [ ] 7. Bitiş — bayrak, kazandın ekranı, başlangıç menüsü
-- [ ] 8. Güzelleştirme — sprite, animasyon, ses/müzik
-- [ ] 9. Ekstra — yeni bölümler, .exe çıktısı
+- [ ] 8. Güzelleştirme — sprite, animasyon, ses/müzik, dokunmatik kontroller (ekran butonları)
+- [ ] 9. Ekstra — yeni bölümler, telefonda çalışır çıktı (ör. pygbag ile tarayıcıda)
 
 ## Sıradaki adım
-Aşama 5: haritaya `C` (altın) karakteri ekle, altınlar toplanınca kaybolsun ve puan artsın;
-ekranın köşesinde puan yazısı (kameradan bağımsız çizilir). Puan değeri `settings.py`'de.
+Aşama 5: haritaya `C` (altın) karakteri ekle (tırmanma yolu boyunca, platformların üstüne),
+altınlar toplanınca kaybolsun ve puan artsın; ekranın üst köşesinde puan yazısı (kameradan
+bağımsız çizilir). Puan değeri `settings.py`'de.

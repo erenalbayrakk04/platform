@@ -1,8 +1,8 @@
 # Oyun ayarları — bir şeyi değiştirmek istersen önce buraya bak.
 
-# Pencere
-SCREEN_WIDTH = 960
-SCREEN_HEIGHT = 560
+# Pencere — telefon gibi dikey ekran (oyun yukarı doğru ilerler)
+SCREEN_WIDTH = 400
+SCREEN_HEIGHT = 720
 TITLE = "Platform Oyunu"
 FPS = 60  # saniyedeki kare sayısı
 
@@ -27,5 +27,10 @@ TILE_SIZE = 40  # her bloğun kenar uzunluğu (piksel)
 TILE_COLOR = (120, 80, 50)  # toprak kahvesi
 TILE_TOP_COLOR = (60, 160, 70)  # üstteki çimen yeşili
 
+# İnce platformlar (haritada '-') — alttan içinden geçilir, üstüne basılır
+PLATFORM_HEIGHT = 12  # kalınlığı (piksel)
+PLATFORM_COLOR = (170, 120, 70)  # tahta rengi
+
 # Kamera
 CAMERA_SMOOTHNESS = 0.12  # 0-1 arası: 1 = karakteri anında takip eder, küçüldükçe daha yumuşak
+CAMERA_PLAYER_Y = 0.6  # karakter ekranın yukarıdan ne kadar aşağısında dursun (0.6 = biraz alt; yukarısı daha çok görünür)
