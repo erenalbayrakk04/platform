@@ -14,14 +14,15 @@
 ## Dosyalar
 - `main.py` — oyun döngüsü (olaylar → güncelleme → çizim)
 - `settings.py` — tüm ayarlar
-- `player.py` — karakter (`Player` sprite'ı; ok tuşları / A-D ile hareket)
+- `player.py` — karakter (`Player` sprite'ı; ok tuşları / A-D ile hareket, Boşluk/Yukarı/W ile
+  zıplama; yerçekimi `velocity_y` + ondalıklı `pos_y` ile; zemin şimdilik sabit `GROUND_HEIGHT`)
 - `level.py` — bölüm/platformlar (Aşama 3'te eklenecek)
 - `assets/` — resim ve sesler (Aşama 8'de eklenecek)
 
 ## Yol haritası
 - [x] 0. Kurulum — boş pencere açılıyor
 - [x] 1. Karakter — kare, ok tuşlarıyla sağ-sol hareket
-- [ ] 2. Fizik — yerçekimi, boşlukla zıplama, zemin
+- [x] 2. Fizik — yerçekimi, boşlukla zıplama, zemin
 - [ ] 3. Platformlar — havada platformlar, üzerine çıkma
 - [ ] 4. Kamera & bölüm — ekrandan geniş harita, kamera takibi
 - [ ] 5. Toplanabilir — altın, puan göstergesi
@@ -31,5 +32,5 @@
 - [ ] 9. Ekstra — yeni bölümler, .exe çıktısı
 
 ## Sıradaki adım
-Aşama 2: yerçekimi, zemin ve boşluk tuşuyla zıplama (`player.py` içine dikey hız ekle;
-zıplama gücü ve yerçekimi `settings.py`'de dursun).
+Aşama 3: `level.py` oluştur, havada platformlar ekle. `player.py`'deki sabit zemin kontrolünü
+platform çarpışmasıyla değiştir (zemin de bir platform olsun; yatay ve dikey çarpışmayı ayrı çöz).

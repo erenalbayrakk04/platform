@@ -3,7 +3,15 @@ import sys
 
 import pygame
 
-from settings import SCREEN_WIDTH, SCREEN_HEIGHT, TITLE, FPS, SKY_BLUE
+from settings import (
+    SCREEN_WIDTH,
+    SCREEN_HEIGHT,
+    TITLE,
+    FPS,
+    SKY_BLUE,
+    GROUND_HEIGHT,
+    GROUND_COLOR,
+)
 from player import Player
 
 
@@ -13,9 +21,12 @@ def main():
     pygame.display.set_caption(TITLE)
     clock = pygame.time.Clock()
 
-    # Karakteri ekranın ortasına, alt kısma yakın yerleştir
-    player = Player(SCREEN_WIDTH // 2, SCREEN_HEIGHT - 60)
+    # Karakteri ekranın ortasında, havada başlat — yerçekimiyle zemine düşecek
+    player = Player(SCREEN_WIDTH // 2, 150)
     all_sprites = pygame.sprite.Group(player)
+
+    # Ekranın altındaki zemin
+    ground = pygame.Rect(0, SCREEN_HEIGHT - GROUND_HEIGHT, SCREEN_WIDTH, GROUND_HEIGHT)
 
     running = True
     while running:
@@ -31,6 +42,7 @@ def main():
 
         # 3) Çizim
         screen.fill(SKY_BLUE)
+        pygame.draw.rect(screen, GROUND_COLOR, ground)
         all_sprites.draw(screen)
         pygame.display.flip()
 
