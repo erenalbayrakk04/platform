@@ -15,15 +15,19 @@
 - `main.py` — oyun döngüsü (olaylar → güncelleme → çizim)
 - `settings.py` — tüm ayarlar
 - `player.py` — karakter (`Player` sprite'ı; ok tuşları / A-D ile hareket, Boşluk/Yukarı/W ile
-  zıplama; yerçekimi `velocity_y` + ondalıklı `pos_y` ile; zemin şimdilik sabit `GROUND_HEIGHT`)
-- `level.py` — bölüm/platformlar (Aşama 3'te eklenecek)
+  zıplama; yerçekimi `velocity_y` + ondalıklı `pos_y`; `update(tiles)` yatay ve dikey çarpışmayı
+  ayrı çözer, `on_ground` ayağın 1 px altını kontrol eder)
+- `level.py` — `LEVEL_MAP` metin haritası (`#` blok, `.` boş, `P` başlangıç; 40 px kareler),
+  `Tile` sprite'ı ve haritayı okuyan `Level` sınıfı
+- Zıplama ~133 px (3 blok = 120 px'e çıkılabilir); harita tasarlarken platformlar arası
+  dikey fark en fazla 3 blok olsun.
 - `assets/` — resim ve sesler (Aşama 8'de eklenecek)
 
 ## Yol haritası
 - [x] 0. Kurulum — boş pencere açılıyor
 - [x] 1. Karakter — kare, ok tuşlarıyla sağ-sol hareket
 - [x] 2. Fizik — yerçekimi, boşlukla zıplama, zemin
-- [ ] 3. Platformlar — havada platformlar, üzerine çıkma
+- [x] 3. Platformlar — havada platformlar, üzerine çıkma
 - [ ] 4. Kamera & bölüm — ekrandan geniş harita, kamera takibi
 - [ ] 5. Toplanabilir — altın, puan göstergesi
 - [ ] 6. Düşman & can — yürüyen düşman, can, ölme/yeniden başlama
@@ -32,5 +36,5 @@
 - [ ] 9. Ekstra — yeni bölümler, .exe çıktısı
 
 ## Sıradaki adım
-Aşama 3: `level.py` oluştur, havada platformlar ekle. `player.py`'deki sabit zemin kontrolünü
-platform çarpışmasıyla değiştir (zemin de bir platform olsun; yatay ve dikey çarpışmayı ayrı çöz).
+Aşama 4: `LEVEL_MAP`'i ekrandan genişlet (ör. 80+ sütun), kamera karakteri yatayda takip etsin.
+`player.py`'deki `SCREEN_WIDTH` sınırını bölüm genişliğiyle değiştir. Çizimde kamera ofseti kullan.

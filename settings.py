@@ -2,7 +2,7 @@
 
 # Pencere
 SCREEN_WIDTH = 960
-SCREEN_HEIGHT = 540
+SCREEN_HEIGHT = 560
 TITLE = "Platform Oyunu"
 FPS = 60  # saniyedeki kare sayısı
 
@@ -22,6 +22,7 @@ GRAVITY = 0.8  # her karede düşme hızına eklenen miktar (büyürse daha hız
 JUMP_POWER = 15  # zıplama gücü (büyürse daha yükseğe zıplar)
 MAX_FALL_SPEED = 18  # karakter bundan daha hızlı düşemez
 
-# Zemin
-GROUND_HEIGHT = 60  # ekranın altındaki zeminin kalınlığı
-GROUND_COLOR = (60, 160, 70)  # yeşil
+# Bloklar (zemin ve platformlar) — haritası level.py içinde
+TILE_SIZE = 40  # her bloğun kenar uzunluğu (piksel)
+TILE_COLOR = (120, 80, 50)  # toprak kahvesi
+TILE_TOP_COLOR = (60, 160, 70)  # üstteki çimen yeşili

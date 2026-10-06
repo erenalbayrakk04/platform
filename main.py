@@ -3,16 +3,9 @@ import sys
 
 import pygame
 
-from settings import (
-    SCREEN_WIDTH,
-    SCREEN_HEIGHT,
-    TITLE,
-    FPS,
-    SKY_BLUE,
-    GROUND_HEIGHT,
-    GROUND_COLOR,
-)
+from settings import SCREEN_WIDTH, SCREEN_HEIGHT, TITLE, FPS, SKY_BLUE
 from player import Player
+from level import Level, LEVEL_MAP
 
 
 def main():
@@ -21,12 +14,10 @@ def main():
     pygame.display.set_caption(TITLE)
     clock = pygame.time.Clock()
 
-    # Karakteri ekranın ortasında, havada başlat — yerçekimiyle zemine düşecek
-    player = Player(SCREEN_WIDTH // 2, 150)
+    # Bölümü haritadan kur, karakteri haritadaki P noktasına koy
+    level = Level(LEVEL_MAP)
+    player = Player(*level.player_start)
     all_sprites = pygame.sprite.Group(player)
-
-    # Ekranın altındaki zemin
-    ground = pygame.Rect(0, SCREEN_HEIGHT - GROUND_HEIGHT, SCREEN_WIDTH, GROUND_HEIGHT)
 
     running = True
     while running:
@@ -38,11 +29,11 @@ def main():
                 running = False
 
         # 2) Güncelleme: oyun mantığı
-        all_sprites.update()
+        all_sprites.update(level.tiles)
 
         # 3) Çizim
         screen.fill(SKY_BLUE)
-        pygame.draw.rect(screen, GROUND_COLOR, ground)
+        level.tiles.draw(screen)
         all_sprites.draw(screen)
         pygame.display.flip()
 
