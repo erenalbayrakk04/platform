@@ -22,7 +22,13 @@ GRAVITY = 0.8  # her karede düşme hızına eklenen miktar (büyürse daha hız
 JUMP_POWER = 15  # zıplama gücü (büyürse daha yükseğe zıplar)
 MAX_FALL_SPEED = 18  # karakter bundan daha hızlı düşemez
 
-# Bloklar (zemin ve platformlar) — haritası level.py içinde
+# Sonsuz bölüm — harita parçaları chunks.py içinde
+LEVEL_SEED = None  # None = her oyunda farklı harita; bir sayı (ör. 42) = hep aynı harita
+GENERATE_AHEAD = SCREEN_HEIGHT  # ekranın bu kadar yukarısına kadar parçalar hazır olsun (piksel)
+REMOVE_BELOW = SCREEN_HEIGHT  # ekranın bu kadar altında kalan parçalar silinir (piksel)
+DIFFICULTY_STEP = 1200  # her bu kadar piksel (30 kare) tırmanınca daha zor parçalar da gelir
+
+# Bloklar (zemin ve platformlar)
 TILE_SIZE = 40  # her bloğun kenar uzunluğu (piksel)
 TILE_COLOR = (120, 80, 50)  # toprak kahvesi
 TILE_TOP_COLOR = (60, 160, 70)  # üstteki çimen yeşili

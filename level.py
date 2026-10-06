@@ -1,64 +1,20 @@
-# Bölüm haritası ve bloklar.
+# Sonsuz bölüm: harita parçalarını (chunks.py) üst üste dizer, geride kalanları siler.
+import random
+
 import pygame
 
-from settings import TILE_SIZE, TILE_COLOR, TILE_TOP_COLOR, PLATFORM_HEIGHT, PLATFORM_COLOR
-
-# Bölüm haritası — her karakter bir kare (40x40 piksel):
-#   #  = blok (katı; içinden geçilmez)
-#   -  = ince platform (o da katı: üstüne basılır, alttan kafa çarpar)
-#   .  = boşluk
-#   P  = karakterin başladığı yer
-# Oyun yukarı doğru ilerler: karakter en alttan başlar, en tepeye tırmanır.
-# Her satır aynı uzunlukta olmalı (10 karakter = ekran genişliği).
-# Basılabilen yüzeyler arası yükseklik farkı en fazla 3 satır olsun (karakter ancak o kadar zıplar).
-LEVEL_MAP = [
-    "..........",
-    "..........",
-    "..######..",
-    "..........",
-    "..........",
-    "........--",
-    "..........",
-    "..........",
-    "....----..",
-    "..........",
-    "..........",
-    "-----.....",
-    "..........",
-    "......##..",
-    "..........",
-    "..........",
-    "..----....",
-    "..........",
-    "..........",
-    "......----",
-    "..........",
-    "..........",
-    "#..---....",
-    "..........",
-    "..........",
-    "......---.",
-    "..........",
-    "..##......",
-    "..........",
-    "..........",
-    "------....",
-    "..........",
-    "..........",
-    ".....-----",
-    "..........",
-    "..........",
-    "---.......",
-    "..........",
-    "..........",
-    ".....###..",
-    "..........",
-    "..........",
-    "-----.....",
-    "..........",
-    ".P........",
-    "##########",
-]
+from settings import (
+    TILE_SIZE,
+    TILE_COLOR,
+    TILE_TOP_COLOR,
+    PLATFORM_HEIGHT,
+    PLATFORM_COLOR,
+    LEVEL_SEED,
+    GENERATE_AHEAD,
+    REMOVE_BELOW,
+    DIFFICULTY_STEP,
+)
+from chunks import START_CHUNK, CHUNKS
 
 
 class Tile(pygame.sprite.Sprite):
@@ -81,23 +37,56 @@ class Platform(pygame.sprite.Sprite):
 
 
 class Level:
-    def __init__(self, level_map):
+    # Koordinatlar: en alttaki zeminin altı y = 0; yukarı çıktıkça y eksiye iner.
+    def __init__(self, seed=LEVEL_SEED):
+        # Aynı seed (sayı) hep aynı haritayı üretir; None ise her oyun farklı
+        self.random = random.Random(seed)
         # Karakterin çarptığı her şey (bloklar ve ince platformlar)
         self.tiles = pygame.sprite.Group()
-        self.player_start = (TILE_SIZE, TILE_SIZE)
-        # Bölümün piksel cinsinden boyutu
-        self.width = len(level_map[0]) * TILE_SIZE
-        self.height = len(level_map) * TILE_SIZE
+        self.width = len(START_CHUNK["rows"][0]) * TILE_SIZE
+        self.player_start = (TILE_SIZE, 0)
+        # Şu an bellekteki parçalar, aşağıdan yukarıya: (üst y, alt y, sprite listesi)
+        self.chunks = []
+        self.top = 0  # en üstteki parçanın tepesi
+        self.bottom = 0  # en alttaki parçanın altı — bunun altına düşen kaybeder
+        self.exit_side = None  # en üstteki parçanın çıkışı hangi tarafta
+        self.add_chunk(START_CHUNK)
 
-        # Haritayı satır satır, karakter karakter oku
-        for row_index, row in enumerate(level_map):
+    def add_chunk(self, chunk):
+        # Parçayı şu anki tepenin hemen üstüne yerleştir
+        rows = chunk["rows"]
+        top = self.top - len(rows) * TILE_SIZE
+        sprites = []
+        for row_index, row in enumerate(rows):
             for col_index, cell in enumerate(row):
                 x = col_index * TILE_SIZE
-                y = row_index * TILE_SIZE
+                y = top + row_index * TILE_SIZE
                 if cell == "#":
-                    self.tiles.add(Tile(x, y))
+                    sprites.append(Tile(x, y))
                 elif cell == "-":
-                    self.tiles.add(Platform(x, y))
+                    sprites.append(Platform(x, y))
                 elif cell == "P":
                     # Karakterin ayakları bu kutunun altına gelsin
                     self.player_start = (x + TILE_SIZE // 2, y + TILE_SIZE)
+        self.tiles.add(sprites)
+        self.chunks.append((top, self.top, sprites))
+        self.top = top
+        self.exit_side = chunk["exit"]
+
+    def pick_chunk(self):
+        # Girişi, alttaki parçanın çıkışının karşı tarafında olan parçalardan rastgele seç
+        entry = "R" if self.exit_side == "L" else "L"
+        # Yükseldikçe daha zor parçalar da seçilebilir
+        max_difficulty = 1 + int(-self.top // DIFFICULTY_STEP)
+        options = [c for c in CHUNKS if c["entry"] == entry and c["difficulty"] <= max_difficulty]
+        return self.random.choice(options)
+
+    def update(self, view_top, view_bottom):
+        # Ekranın yukarısı için yeterince parça hazır olsun
+        while self.top > view_top - GENERATE_AHEAD:
+            self.add_chunk(self.pick_chunk())
+        # Ekranın çok altında kalan parçaları unut (bellekten sil)
+        while len(self.chunks) > 1 and self.chunks[0][0] > view_bottom + REMOVE_BELOW:
+            _, _, sprites = self.chunks.pop(0)
+            self.tiles.remove(sprites)
+        self.bottom = self.chunks[0][1]
