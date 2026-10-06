@@ -7,8 +7,10 @@
 - Çalıştırma: `python main.py` (ESC veya pencereyi kapatmak oyundan çıkar).
 
 ## Çalışma kuralları
-- Her aşama sonunda oyun çalışır durumda olmalı; kullanıcı denedikten sonra git commit at,
-  ardından `git push` ile GitHub'a gönder (depo: https://github.com/erenalbayrakk04/platform, dal `main`).
+- Her aşama sonunda oyun çalışır durumda olmalı.
+- Kullanıcının isteği: HER eklemeden/değişiklikten sonra (aşamanın bitmesini bekleme) git commit at
+  ve hemen `git push` ile GitHub'a gönder. Kullanıcıya ayrıca sorma; bu kalıcı izin.
+  Depo: https://github.com/erenalbayrakk04/platform, dal `main`. Commit mesajları Türkçe ve kısa.
 - Ayarlanabilir sayılar (hız, zıplama gücü, renkler) `settings.py` içinde dursun.
 - Önce oyun çalışsın, sonra güzelleşsin: resim/ses 8. aşamaya kadar yok, renkli kareler kullan.
 
