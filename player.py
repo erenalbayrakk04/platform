@@ -2,7 +2,6 @@
 import pygame
 
 from settings import (
-    SCREEN_WIDTH,
     PLAYER_WIDTH,
     PLAYER_HEIGHT,
     PLAYER_COLOR,
@@ -14,14 +13,20 @@ from settings import (
 
 
 class Player(pygame.sprite.Sprite):
-    def __init__(self, x, y):
+    def __init__(self, x, y, level_width):
         super().__init__()
         # Şimdilik karakter düz renkli bir kare; resmi Aşama 8'de ekleyeceğiz.
         self.image = pygame.Surface((PLAYER_WIDTH, PLAYER_HEIGHT))
         self.image.fill(PLAYER_COLOR)
-        # rect = karakterin ekrandaki konumu ve boyutu
-        self.rect = self.image.get_rect(midbottom=(x, y))
+        # rect = karakterin bölümdeki konumu ve boyutu
+        self.rect = self.image.get_rect()
+        self.start_pos = (x, y)
+        self.level_width = level_width
+        self.respawn()
 
+    def respawn(self):
+        # Karakteri başlangıç noktasına geri koy
+        self.rect.midbottom = self.start_pos
         # Dikey hareket: eksi = yukarı, artı = aşağı
         self.velocity_y = 0.0
         # Konumu ondalıklı tutuyoruz ki küçük hızlar kaybolmasın
@@ -47,9 +52,9 @@ class Player(pygame.sprite.Sprite):
             elif dx < 0:
                 self.rect.left = tile.rect.right
 
-        # Ekranın dışına çıkmasın
+        # Bölümün dışına çıkmasın
         self.rect.left = max(self.rect.left, 0)
-        self.rect.right = min(self.rect.right, SCREEN_WIDTH)
+        self.rect.right = min(self.rect.right, self.level_width)
 
         # --- Dikey hareket ---
         # Zıplama: Boşluk, yukarı ok veya W — sadece yerdeyken

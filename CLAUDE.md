@@ -19,9 +19,14 @@
 - `settings.py` — tüm ayarlar
 - `player.py` — karakter (`Player` sprite'ı; ok tuşları / A-D ile hareket, Boşluk/Yukarı/W ile
   zıplama; yerçekimi `velocity_y` + ondalıklı `pos_y`; `update(tiles)` yatay ve dikey çarpışmayı
-  ayrı çözer, `on_ground` ayağın 1 px altını kontrol eder)
-- `level.py` — `LEVEL_MAP` metin haritası (`#` blok, `.` boş, `P` başlangıç; 40 px kareler),
-  `Tile` sprite'ı ve haritayı okuyan `Level` sınıfı
+  ayrı çözer, `on_ground` ayağın 1 px altını kontrol eder; `respawn()` başlangıca döndürür;
+  `Player(x, y, level_width)` — bölüm kenarından dışarı çıkamaz)
+- `level.py` — `LEVEL_MAP` metin haritası (`#` blok, `.` boş, `P` başlangıç; 40 px kareler,
+  şu an 90x14 = 3600x560 px, çukurlu), `Tile` sprite'ı ve haritayı okuyan `Level` sınıfı
+  (`width`/`height` piksel cinsinden)
+- `camera.py` — `Camera`: yatayda yumuşak takip (`CAMERA_SMOOTHNESS`), bölüm kenarında durur;
+  `apply(rect)` bölüm konumunu ekran konumuna çevirir. Tüm çizim `main.py`'de kamera üzerinden.
+- Çukura düşünce (`rect.top > level.height`) şimdilik sadece `respawn()`; can sistemi Aşama 6'da.
 - Zıplama ~133 px (3 blok = 120 px'e çıkılabilir); harita tasarlarken platformlar arası
   dikey fark en fazla 3 blok olsun.
 - `assets/` — resim ve sesler (Aşama 8'de eklenecek)
@@ -31,7 +36,7 @@
 - [x] 1. Karakter — kare, ok tuşlarıyla sağ-sol hareket
 - [x] 2. Fizik — yerçekimi, boşlukla zıplama, zemin
 - [x] 3. Platformlar — havada platformlar, üzerine çıkma
-- [ ] 4. Kamera & bölüm — ekrandan geniş harita, kamera takibi
+- [x] 4. Kamera & bölüm — ekrandan geniş harita, kamera takibi
 - [ ] 5. Toplanabilir — altın, puan göstergesi
 - [ ] 6. Düşman & can — yürüyen düşman, can, ölme/yeniden başlama
 - [ ] 7. Bitiş — bayrak, kazandın ekranı, başlangıç menüsü
@@ -39,5 +44,5 @@
 - [ ] 9. Ekstra — yeni bölümler, .exe çıktısı
 
 ## Sıradaki adım
-Aşama 4: `LEVEL_MAP`'i ekrandan genişlet (ör. 80+ sütun), kamera karakteri yatayda takip etsin.
-`player.py`'deki `SCREEN_WIDTH` sınırını bölüm genişliğiyle değiştir. Çizimde kamera ofseti kullan.
+Aşama 5: haritaya `C` (altın) karakteri ekle, altınlar toplanınca kaybolsun ve puan artsın;
+ekranın köşesinde puan yazısı (kameradan bağımsız çizilir). Puan değeri `settings.py`'de.

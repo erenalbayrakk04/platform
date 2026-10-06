@@ -26,3 +26,6 @@ MAX_FALL_SPEED = 18  # karakter bundan daha hızlı düşemez
 TILE_SIZE = 40  # her bloğun kenar uzunluğu (piksel)
 TILE_COLOR = (120, 80, 50)  # toprak kahvesi
 TILE_TOP_COLOR = (60, 160, 70)  # üstteki çimen yeşili
+
+# Kamera
+CAMERA_SMOOTHNESS = 0.12  # 0-1 arası: 1 = karakteri anında takip eder, küçüldükçe daha yumuşak
