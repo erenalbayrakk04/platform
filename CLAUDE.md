@@ -54,7 +54,7 @@
   (`draw_rect` ile çizim kayar, `rect` sabit), sonra tiles'tan çıkar → "break"; `CRUMBLE_RESPAWN` kare sonra
   geri gelir, son `GHOST_TIME` karede `ghost` = silik çizilir; `unsafe = True`) sprite'ları (her `C` için `pick_item()`: `PICKUP_CHANCES`
   ihtimalleriyle altın yerine `Pickup(x, y, kind)` olur → `level.pickups`; kind "heart": `player.heal()` +1 can,
-  can doluysa `score.add_bonus(HEART_POINTS)`; kind "magnet"/... güçlendirme → `player.power_up(kind)`;
+  can doluysa `score.add_bonus(HEART_POINTS)`; kind "magnet"/"shield" güçlendirme → `player.power_up(kind)`;
   `Coin.attract(target)` mıknatısla `MAGNET_RADIUS` içindeyse `MAGNET_PULL` hızla uçar) ve `Level(seed)`: y=0 zeminin altı, yukarı çıktıkça
   y EKSİ. `add_chunk`, `pick_chunk` (giriş = önceki çıkışın tersi, zorluk ≤ 1 + yükseklik //
   `DIFFICULTY_STEP`), `update(view_top, view_bottom)` (`GENERATE_AHEAD` kadar yukarıyı doldurur,
@@ -88,8 +88,10 @@
   ekranda arkada görünür). ESC her yerde oyundan çıkar.
   `new_game()` yeni rastgele bölüm + karakter + kamera + puan kurar; altınlar
   `spritecollide(player, level.coins, True)` ile toplanır. Düşmana değince `player.old_bottom <= enemy.old_top`
-  ise düşman ölür (`STOMP_BOUNCE`), değilse dokunulmaz değilken `hurt()`. `level.bottom`'ın altına
-  düşerse `hurt()` + `respawn()`.
+  ise düşman ölür (`STOMP_BOUNCE`); kalkan (`player.powers["shield"]`) varken değdiği düşman zıplamadan ölür;
+  değilse dokunulmaz değilken `hurt()`. `level.bottom`'ın altına düşerse (kalkan olsa da) `hurt()` +
+  `respawn()`. Mıknatıs varken her karede `coin.attract(player.rect.center)`. Kalkan sürerken `draw_world`
+  karakterin etrafına `art.shield_bubble` çizer. Düşmanın `color`'ı ölünce saçılan parçacıkların rengi.
 - `check_chunks.py` — çıkılabilirlik testi: `python check_chunks.py` (~20 sn, çok çekirdekli).
   Gerçek `Player` fiziğiyle (sahte `Controls`) BFS: her parçanın girişinden (başlangıçta P) tepesine
   ve her geçerli birleşmede (alt parçanın üst 4 satırı + üst parçanın alt 5 satırı) girişe
@@ -104,7 +106,7 @@
   için bir üst platform tam tepede olmasın; yana kaydırılmış olsun ki zıplayıp üstüne çıkılabilsin.
 - `art.py` — piksel sanatı: harf haritası + palet → `render(rows, palette, size)` (her harf
   `PIXEL_SCALE` px, çizim alta-ortaya yaslı), `shade`/`tint` ile tonlar; `player_frames()`,
-  `enemy_frames()` ({1: sağ, -1: sol} çiftleri), `coin_frames()` (dönme), `tile_image()`,
+  `enemy_frames()`, `flyer_frames()`, `crumble_frames()`, `magnet_image()`, `shield_image()`, `shield_bubble(r)` ({1: sağ, -1: sol} çiftleri), `coin_frames()` (dönme), `tile_image()`,
   `platform_image()`, `heart_images()`, `Background` (`SKY_THEMES` gökleri, her `SKY_CHANGE_HEIGHT` px tırmanışta sıradakine
   `SKY_BLEND_HEIGHT` boyunca saydamlıkla geçer, döngüsel; + `STAR_PARALLAX` ile kayan yıldızlar).
 - `sound.py` — `pre_init()` (pygame.init'ten önce; 22050 Hz mono 16 bit), `Sounds()`: efektler
@@ -132,9 +134,10 @@
 
 ## Sıradaki adım
 Aşama 9 devam. Yapılanlar: yeni parçalar, yükseldikçe değişen gök, can toplama (kalp), yay,
-hareketli platform, kırılan platform, uçan düşman, mıknatıs. Kalan seçenek (kullanıcıya sor):
+hareketli platform, kırılan platform, uçan düşman (yarasa), mıknatıs ve kalkan güçlendirmeleri.
+Sıradaki (kullanıcı böyle istedi: önce fikirler, sonra web):
 - Telefonda/tarayıcıda çalışır çıktı: pygbag ile web sürümü (main döngüsü `async` + her karede
   `await asyncio.sleep(0)` olmalı; `highscore.txt` tarayıcıda çalışmaz → localStorage gerekebilir;
   ses biçimi tarayıcıda farklı olabilir — `Sounds` bunu zaten sessizce idare eder; check_chunks
   multiprocessing kullanıyor, web paketine girmemeli). GitHub Pages'te yayın.
-- Başka fikirler: kırılan platform, uçan düşman, mıknatıs/kalkan gibi güçlendirmeler.
+- Sonra belki: başka güçlendirmeler (ör. jetpack), başka düşman türleri.

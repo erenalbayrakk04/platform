@@ -12,13 +12,14 @@ from settings import (
     ANIMATION_SPEED,
     SPRING_POWER,
     MAGNET_TIME,
+    SHIELD_TIME,
 )
 from art import player_frames
 
 
 class Player(pygame.sprite.Sprite):
     # Güçlendirmeler kaç kare sürer
-    POWER_TIME = {"magnet": MAGNET_TIME}
+    POWER_TIME = {"magnet": MAGNET_TIME, "shield": SHIELD_TIME}
 
     def __init__(self, x, y, level_width):
         super().__init__()

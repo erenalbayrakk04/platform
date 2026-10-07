@@ -9,6 +9,7 @@ from settings import (
     COIN_SPIN_SPEED,
     HEART_CHANCE,
     MAGNET_CHANCE,
+    SHIELD_CHANCE,
     MAGNET_RADIUS,
     MAGNET_PULL,
     SPRING_SQUASH_TIME,
@@ -25,7 +26,7 @@ from enemy import Enemy, FlyingEnemy
 import art
 
 # Altın karesine nadiren altın yerine bunlar gelir: (tür, ihtimal)
-PICKUP_CHANCES = (("heart", HEART_CHANCE), ("magnet", MAGNET_CHANCE))
+PICKUP_CHANCES = (("heart", HEART_CHANCE), ("magnet", MAGNET_CHANCE), ("shield", SHIELD_CHANCE))
 
 # Resimler bir kere hazırlanır, aynı türdeki her parça aynı resmi kullanır (art.py)
 IMAGES = {}
@@ -39,6 +40,7 @@ def image(name):
             coin=art.coin_frames(),
             heart=art.heart_images()["full"],
             magnet=art.magnet_image(),
+            shield=art.shield_image(),
             spring=art.spring_frames(),
             crumble=art.crumble_frames(),
         )
@@ -173,7 +175,7 @@ class Coin(pygame.sprite.Sprite):
 
 class Pickup(pygame.sprite.Sprite):
     # Altın yerine nadiren çıkan toplanabilir (PICKUP_CHANCES): kind = "heart" (1 can) veya
-    # bir güçlendirme ("magnet"). Ne işe yaradığına main.py bakar
+    # bir güçlendirme ("magnet", "shield"). Ne işe yaradığına main.py bakar
     def __init__(self, x, y, kind):
         super().__init__()
         self.kind = kind

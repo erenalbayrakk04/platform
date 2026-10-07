@@ -5,6 +5,8 @@ import math
 import pygame
 
 from settings import (
+    ENEMY_COLOR,
+    FLYER_COLOR,
     ENEMY_SPEED,
     ANIMATION_SPEED,
     FLYER_SPEED,
@@ -54,6 +56,7 @@ class Patrol(pygame.sprite.Sprite):
 class Enemy(Patrol):
     # Yürüyen düşman: platformun kenarları arasında yürür
     speed = ENEMY_SPEED
+    color = ENEMY_COLOR  # ölünce saçılan parçacıkların rengi
 
     def __init__(self, center_x, bottom, left, right):
         if not FRAMES:
@@ -70,6 +73,7 @@ class Enemy(Patrol):
 class FlyingEnemy(Patrol):
     # Uçan düşman (yarasa): havada uçar, bir yandan hafifçe aşağı-yukarı süzülür
     speed = FLYER_SPEED
+    color = FLYER_COLOR
 
     def __init__(self, center_x, center_y, left, right):
         if not FLYER_FRAMES:

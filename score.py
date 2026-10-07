@@ -4,7 +4,7 @@ import os
 
 import pygame
 
-from art import heart_images, magnet_image
+from art import heart_images, magnet_image, shield_image
 from settings import (
     TILE_SIZE,
     COIN_POINTS,
@@ -116,13 +116,13 @@ def draw_powers(screen, player):
     # Kalplerin altında süren güçlendirmeler: simge + altında kalan süre çubuğu (sağdan sola dizilir).
     # Bitmesine az kalınca simge yanıp söner
     if not POWER_ICONS:
-        POWER_ICONS.update(magnet=magnet_image())
+        POWER_ICONS.update(magnet=magnet_image(), shield=shield_image())
     right = SCREEN_WIDTH - 12
     for kind, left in player.powers.items():
         if not left:
             continue
         icon = POWER_ICONS[kind]
-        rect = icon.get_rect(topright=(right, 48))
+        rect = icon.get_rect(bottomright=(right, 80))  # simgeler alta hizalı, çubuklar aynı hizada
         if left > POWERUP_WARN_TIME or (left // 8) % 2 == 0:
             screen.blit(icon, rect)
         bar = pygame.Rect(rect.left, rect.bottom + 4, rect.width, 4)

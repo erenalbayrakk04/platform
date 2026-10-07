@@ -30,6 +30,7 @@ from settings import (
     CRUMBLE_COLOR,
     LIFE_EMPTY_COLOR,
     MAGNET_COLOR,
+    SHIELD_COLOR,
     SCREEN_WIDTH,
     SCREEN_HEIGHT,
     SKY_THEMES,
@@ -330,6 +331,39 @@ def magnet_image():
         "h": tint(MAGNET_COLOR, 0.5),
     }
     return render(MAGNET_ROWS, palette)
+
+
+SHIELD_ROWS = [
+    ".KKKKK.",
+    "KhhSSSK",
+    "KhSSSSK",
+    "KSSWSSK",
+    "KSSSSSK",
+    ".KSSSK.",
+    "..KSK..",
+    "...K...",
+]
+
+
+def shield_image():
+    palette = {
+        "K": shade(SHIELD_COLOR, 0.35),
+        "S": SHIELD_COLOR,
+        "h": tint(SHIELD_COLOR, 0.5),
+        "W": WHITE,
+    }
+    return render(SHIELD_ROWS, palette)
+
+
+def shield_bubble(radius):
+    # Kalkan sürerken karakterin etrafındaki yarı saydam baloncuk
+    image = pygame.Surface((radius * 2, radius * 2), pygame.SRCALPHA)
+    center = (radius, radius)
+    pygame.draw.circle(image, (*SHIELD_COLOR, 50), center, radius)
+    pygame.draw.circle(image, (*SHIELD_COLOR, 170), center, radius, 3)
+    # Sol üstte küçük bir parlama
+    pygame.draw.circle(image, (*WHITE, 150), (radius * 2 // 3, radius * 2 // 3), PIXEL_SCALE)
+    return image
 
 
 def sky_image(top_color, bottom_color):

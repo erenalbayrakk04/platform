@@ -85,6 +85,9 @@ MAGNET_TIME = 600  # mıknatıs kaç kare sürer (60 kare = 1 saniye)
 MAGNET_RADIUS = 180  # bu kadar yakındaki altınlar karaktere doğru uçar (piksel)
 MAGNET_PULL = 8  # çekilen altın her karede kaç piksel yaklaşır
 MAGNET_COLOR = (230, 60, 70)  # kırmızı mıknatıs
+SHIELD_CHANCE = 0.03  # bir altının kalkana dönüşme ihtimali
+SHIELD_TIME = 600  # kalkan kaç kare sürer — bu sürede düşmanlar zarar veremez, değdiğin düşman ölür
+SHIELD_COLOR = (90, 200, 255)  # mavi kalkan ve karakterin etrafındaki baloncuk
 
 # Puan
 ENEMY_POINTS = 10  # üstüne basılıp yenilen her düşman kaç puan

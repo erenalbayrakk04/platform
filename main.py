@@ -12,25 +12,28 @@ from settings import (
     GAME_OVER_DELAY,
     MUTE_KEY,
     COIN_COLOR,
-    ENEMY_COLOR,
     PLAYER_COLOR,
     LIFE_COLOR,
     HEART_POINTS,
     CRUMBLE_COLOR,
     MAGNET_COLOR,
+    SHIELD_COLOR,
+    POWERUP_WARN_TIME,
 )
 from player import Player
 from level import Level
 from camera import Camera
 from score import Score, draw_lives, draw_powers, load_high_score, save_high_score
 from screens import draw_menu, draw_game_over
-from art import Background
+from art import Background, shield_bubble
 from controls import TouchButtons, read_controls
 from effects import burst
 import sound
 
 # Toplanınca saçılan parçacıkların rengi
-PICKUP_COLORS = {"heart": LIFE_COLOR, "magnet": MAGNET_COLOR}
+PICKUP_COLORS = {"heart": LIFE_COLOR, "magnet": MAGNET_COLOR, "shield": SHIELD_COLOR}
+# Kalkan sürerken karakterin etrafındaki baloncuk
+SHIELD_BUBBLE = []
 
 # Menüde ve kaybettin ekranında oyunu başlatan tuşlar (fare tıklaması da çalışır)
 START_KEYS = (pygame.K_SPACE, pygame.K_RETURN, pygame.K_KP_ENTER)
@@ -93,15 +96,18 @@ def update_game(level, player, camera, score, controls, sounds):
         burst(level.effects, item.rect.center, PICKUP_COLORS[item.kind])
     score.update(player)
 
-    # Düşmanlar yürüsün; karakter değdiyse: yukarıdan düştüyse düşman ölür, değilse can gider
+    # Düşmanlar yürüsün; karakter değdiyse: yukarıdan düştüyse veya kalkanı varsa düşman ölür,
+    # değilse can gider
     level.enemies.update()
     for enemy in pygame.sprite.spritecollide(player, level.enemies, False):
-        if player.old_bottom <= enemy.old_top:  # önceki karede tamamen düşmanın üstündeydi
+        stomped = player.old_bottom <= enemy.old_top  # önceki karede tamamen düşmanın üstündeydi
+        if stomped or player.powers["shield"]:
             enemy.kill()
             score.add_enemy()
-            player.bounce(STOMP_BOUNCE)
+            if stomped:
+                player.bounce(STOMP_BOUNCE)
             sounds.play("stomp")
-            burst(level.effects, enemy.rect.center, ENEMY_COLOR)
+            burst(level.effects, enemy.rect.center, enemy.color)
         elif not player.invincible:
             player.hurt()
             sounds.play("hurt")
@@ -138,6 +144,13 @@ def draw_world(screen, background, level, player, camera):
         screen_pos = camera.apply(getattr(sprite, "draw_rect", sprite.rect))
         if screen_pos.colliderect(screen_rect):  # sadece ekranda görüneni çiz
             screen.blit(sprite.image, screen_pos)
+    # Kalkan: karakterin etrafında baloncuk; bitmesine az kalınca yanıp söner
+    shield = player.powers["shield"]
+    if shield and (shield > POWERUP_WARN_TIME or (shield // 8) % 2 == 0):
+        if not SHIELD_BUBBLE:
+            SHIELD_BUBBLE.append(shield_bubble(player.rect.height // 2 + 8))
+        bubble = SHIELD_BUBBLE[0]
+        screen.blit(bubble, bubble.get_rect(center=camera.apply(player.rect).center))
 
 
 def main():
