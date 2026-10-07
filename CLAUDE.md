@@ -143,14 +143,14 @@
 - [x] 6. Düşman & can — yürüyen düşman, can, ölme/yeniden başlama
 - [x] 7. Oyun sonu — bayrak YOK (sonsuz): kaybettin ekranı + en yüksek skor, başlangıç menüsü
 - [x] 8. Güzelleştirme — sprite, animasyon, ses/müzik, dokunmatik kontroller (ekran butonları)
-- [ ] 9. Ekstra — yeni parçalar, telefonda çalışır çıktı (ör. pygbag ile tarayıcıda)
+- [ ] 9. Ekstra — yeni parçalar, telefonda çalışır çıktı (pygbag ile tarayıcıda — YAPILDI, yayında)
 
 ## Sıradaki adım
 Aşama 9 devam. Yapılanlar: yeni parçalar, yükseldikçe değişen gök, can toplama (kalp), yay,
 hareketli platform, kırılan platform, uçan düşman (yarasa), mıknatıs ve kalkan güçlendirmeleri.
 Web sürümü hazır ve tarayıcıda denendi (menü, klavye, çoklu dokunma, ses, localStorage rekor çalışıyor).
-Yayın: kullanıcı GitHub Pages seçti (depoyu herkese açık yapacak). `.github/workflows/web.yml` her push'ta:
-check_chunks.py → pygbag derleme → Pages'e yükleme. Adres: https://erenalbayrakk04.github.io/platform/
-Kullanıcının GitHub'da yapacağı: depoyu Public yapmak + Settings → Pages → Source = "GitHub Actions".
+YAYINDA: https://erenalbayrakk04.github.io/platform/ (depo herkese açık, Pages Source = GitHub Actions).
+`.github/workflows/web.yml` her push'ta: check_chunks.py → pygbag derleme → Pages'e yükleme (~4 dk);
+yani her commit+push oyunu internette de günceller. Parça testi geçmezse yayına çıkmaz.
 Açık depoda çalışma durumu girişsiz bakılabilir: https://api.github.com/repos/erenalbayrakk04/platform/actions/runs
 - Sonra belki: başka güçlendirmeler (ör. jetpack), başka düşman türleri.
