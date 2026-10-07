@@ -37,6 +37,19 @@ TILE_TOP_COLOR = (60, 160, 70)  # üstteki çimen yeşili
 PLATFORM_HEIGHT = 12  # kalınlığı (piksel)
 PLATFORM_COLOR = (170, 120, 70)  # tahta rengi
 
+# Altınlar (haritada 'C')
+COIN_SIZE = 20  # çapı (piksel)
+COIN_COLOR = (255, 210, 40)  # altın sarısı
+COIN_EDGE_COLOR = (200, 140, 20)  # kenarındaki koyu halka
+
+# Puan
+COIN_POINTS = 5  # her altın kaç puan
+HEIGHT_POINTS = 1  # tırmanılan her blok (40 piksel) kaç puan — sadece üstüne basılan en yüksek yer sayılır
+SCORE_COLOR = WHITE
+SCORE_SHADOW_COLOR = BLACK  # yazının arkasındaki gölge (her zeminde okunsun)
+SCORE_FONT_SIZE = 40  # büyük puan yazısı
+SCORE_SMALL_FONT_SIZE = 24  # altındaki yükseklik / altın yazısı
+
 # Kamera
 CAMERA_SMOOTHNESS = 0.12  # 0-1 arası: 1 = karakteri anında takip eder, küçüldükçe daha yumuşak
 CAMERA_PLAYER_Y = 0.6  # karakter ekranın yukarıdan ne kadar aşağısında dursun (0.6 = biraz alt; yukarısı daha çok görünür)

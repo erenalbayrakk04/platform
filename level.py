@@ -9,6 +9,9 @@ from settings import (
     TILE_TOP_COLOR,
     PLATFORM_HEIGHT,
     PLATFORM_COLOR,
+    COIN_SIZE,
+    COIN_COLOR,
+    COIN_EDGE_COLOR,
     LEVEL_SEED,
     GENERATE_AHEAD,
     REMOVE_BELOW,
@@ -36,6 +39,19 @@ class Platform(pygame.sprite.Sprite):
         self.rect = self.image.get_rect(topleft=(x, y))
 
 
+class Coin(pygame.sprite.Sprite):
+    # Altın: katı değil, karakter içinden geçince toplanır
+    def __init__(self, x, y):
+        super().__init__()
+        # SRCALPHA = saydam arka plan, sadece daire görünsün
+        self.image = pygame.Surface((COIN_SIZE, COIN_SIZE), pygame.SRCALPHA)
+        radius = COIN_SIZE // 2
+        pygame.draw.circle(self.image, COIN_EDGE_COLOR, (radius, radius), radius)
+        pygame.draw.circle(self.image, COIN_COLOR, (radius, radius), radius - 3)
+        # Karenin ortasına koy
+        self.rect = self.image.get_rect(center=(x + TILE_SIZE // 2, y + TILE_SIZE // 2))
+
+
 class Level:
     # Koordinatlar: en alttaki zeminin altı y = 0; yukarı çıktıkça y eksiye iner.
     def __init__(self, seed=LEVEL_SEED):
@@ -43,6 +59,8 @@ class Level:
         self.random = random.Random(seed)
         # Karakterin çarptığı her şey (bloklar ve ince platformlar)
         self.tiles = pygame.sprite.Group()
+        # Toplanabilir altınlar
+        self.coins = pygame.sprite.Group()
         self.width = len(START_CHUNK["rows"][0]) * TILE_SIZE
         self.player_start = (TILE_SIZE, 0)
         # Şu an bellekteki parçalar, aşağıdan yukarıya: (üst y, alt y, sprite listesi)
@@ -65,10 +83,14 @@ class Level:
                     sprites.append(Tile(x, y))
                 elif cell == "-":
                     sprites.append(Platform(x, y))
+                elif cell == "C":
+                    coin = Coin(x, y)
+                    sprites.append(coin)
+                    self.coins.add(coin)
                 elif cell == "P":
                     # Karakterin ayakları bu kutunun altına gelsin
                     self.player_start = (x + TILE_SIZE // 2, y + TILE_SIZE)
-        self.tiles.add(sprites)
+        self.tiles.add([s for s in sprites if not isinstance(s, Coin)])
         self.chunks.append((top, self.top, sprites))
         self.top = top
         self.exit_side = chunk["exit"]
@@ -89,4 +111,5 @@ class Level:
         while len(self.chunks) > 1 and self.chunks[0][0] > view_bottom + REMOVE_BELOW:
             _, _, sprites = self.chunks.pop(0)
             self.tiles.remove(sprites)
+            self.coins.remove(sprites)  # toplanmamış altınlar da gitsin
         self.bottom = self.chunks[0][1]
