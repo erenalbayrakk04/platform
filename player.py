@@ -57,6 +57,22 @@ class Player(pygame.sprite.Sprite):
         self.lives += 1
         return True
 
+    def standing_on(self, sprite):
+        # Bu sprite'ın tam üstünde mi duruyor?
+        return (
+            self.on_ground
+            and self.rect.bottom == sprite.rect.top
+            and self.rect.right > sprite.rect.left
+            and self.rect.left < sprite.rect.right
+        )
+
+    def carry(self, dx, tiles):
+        # Hareketli platformla birlikte yana kay; duvara veya bölüm kenarına çarpacaksa kayma
+        self.rect.x += dx
+        blocked = any(self.rect.colliderect(tile.rect) for tile in tiles)
+        if blocked or self.rect.left < 0 or self.rect.right > self.level_width:
+            self.rect.x -= dx
+
     def check_springs(self, springs):
         # Bir yayın üstünde duruyorsa veya üstüne düştüyse çok yükseğe fırla; fırlatan yayı döndür
         if self.velocity_y < 0:
@@ -126,8 +142,10 @@ class Player(pygame.sprite.Sprite):
 
         # Ayağının hemen altında blok varsa yerdedir
         feet = self.rect.move(0, 1)
-        self.on_ground = any(feet.colliderect(tile.rect) for tile in tiles)
-        if self.on_ground:
+        ground = [tile for tile in tiles if feet.colliderect(tile.rect)]
+        self.on_ground = bool(ground)
+        # Hareketli platform güvenli yer sayılmaz (yeniden doğunca orada olmayabilir)
+        if ground and not any(getattr(tile, "moving", False) for tile in ground):
             self.safe_pos = self.rect.midbottom
 
         self.animate(dx)

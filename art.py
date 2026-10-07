@@ -25,6 +25,7 @@ from settings import (
     ENEMY_EYE_COLOR,
     LIFE_COLOR,
     SPRING_COLOR,
+    MOVING_PLATFORM_COLOR,
     LIFE_EMPTY_COLOR,
     SCREEN_WIDTH,
     SCREEN_HEIGHT,
@@ -217,6 +218,20 @@ def platform_image():
         "k": shade(PLATFORM_COLOR, 0.5),
     }
     return render(PLATFORM_ROWS, palette, (TILE_SIZE, PLATFORM_HEIGHT))
+
+
+# --- Hareketli platform: perçinli mavi metal, kaç kare genişse o kadar tekrar edilir ---
+MOVING_PLATFORM_ROWS = ["hhhhhhhhhh", "WkWWWWWWkW", "kkkkkkkkkk"]
+
+
+def moving_platform_image(cells):
+    palette = {
+        "h": tint(MOVING_PLATFORM_COLOR, 0.4),
+        "W": MOVING_PLATFORM_COLOR,
+        "k": shade(MOVING_PLATFORM_COLOR, 0.5),
+    }
+    rows = [row * cells for row in MOVING_PLATFORM_ROWS]
+    return render(rows, palette, (TILE_SIZE * cells, PLATFORM_HEIGHT))
 
 
 # --- Kalp (can göstergesi) ---

@@ -46,6 +46,13 @@ def new_game():
 
 def update_game(level, player, camera, score, controls, sounds):
     # Oyun oynanırken her karede yapılanlar
+    # Hareketli platformlar ilerler; üstlerinde duran karakteri de taşırlar
+    for mover in level.movers:
+        riding = player.standing_on(mover)
+        dx = mover.move()
+        if riding and dx:
+            player.carry(dx, level.tiles)
+
     player.update(level.tiles, controls)
     if player.jumped:
         sounds.play("jump")

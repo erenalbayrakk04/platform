@@ -41,6 +41,10 @@ COIN_SIZE = 20  # çapı (piksel)
 COIN_COLOR = (255, 210, 40)  # altın sarısı
 COIN_EDGE_COLOR = (200, 140, 20)  # kenarındaki koyu halka
 
+# Hareketli platformlar (haritada 'M') — kendi satırında sağa-sola gidip gelir, üstündekini taşır
+MOVING_PLATFORM_SPEED = 2  # her karede kaç piksel gider
+MOVING_PLATFORM_COLOR = (100, 150, 220)  # mavi metal
+
 # Yaylar (haritada 'S') — üstüne basınca çok yükseğe fırlatır
 SPRING_POWER = 24  # fırlatma gücü (zıplama 15; 24 ≈ 9 blok yükseğe)
 SPRING_COLOR = (80, 220, 120)  # yayın üst plakası (yeşil)

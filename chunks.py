@@ -5,6 +5,7 @@
 #   -  = ince platform (o da katı)
 #   .  = boşluk
 #   C  = altın (toplanınca puan verir; bir platformun hemen üstüne koy ki alınabilsin)
+#   M  = hareketli platform (yan yana M'ler tek platform; satırında duvara/kenara kadar gidip gelir)
 #   S  = yay (bir platformun hemen üstüne koy; üstüne basınca ~9 blok yükseğe fırlatır)
 #   E  = düşman (bir platformun hemen üstüne koy; o platformda sağa-sola yürür,
 #        platform en az 3 kare geniş olmalı)
@@ -18,6 +19,9 @@
 #   - En üst satır ÇIKIŞ: hepsi çıkış tarafında, aynı kural.
 #   - Altın (C), yay (S) ve düşman (E) giriş, çıkış ve en alt satıra konmaz; altlarında katı bir şey olmalı.
 #   - Yaylı parçalarda "en fazla 3 satır" kuralı yay için geçerli değil (yay ~8 satır çıkarır).
+#   - Hareketli platform: satırda tek grup; gittiği yolun hemen üstü ve altı boş olmalı
+#     (iki üstünde '#' olmasın) ki üstünde giderken kafa çarpmasın, alttakini ezmesin.
+#     Altın/yay/düşman hareketli platformun üstüne konmaz.
 #   - Oyun bir parçanın çıkışı soldaysa üstüne girişi sağda olan bir parça koyar (ya da tersi).
 #     Böylece birleşme yerinde platformlar üst üste binmez ve aralarında sadece 2 satır olur.
 #   - Parçanın içinde: basılan yüzeyler arası en fazla 3 satır, bir üstteki platform
@@ -442,6 +446,45 @@ MIRRORED_CHUNKS = [
             "..........",
         ],
     },
+    # Orta: hareketli platformla sağa geçip yukarı zıpla (platformsuz çıkılamaz)
+    {
+        "entry": "L", "exit": "R", "difficulty": 2,
+        "rows": [
+            ".....----.",
+            "..C.......",
+            ".---......",
+            "..........",
+            "......C...",
+            "......--..",
+            "..........",
+            "C.........",
+            "-MM.......",
+            "..........",
+            "..........",
+            "..---.....",
+            "..........",
+        ],
+    },
+    # Zor: tek karelik hareketli platform bütün satırı boydan boya geçer
+    {
+        "entry": "L", "exit": "L", "difficulty": 3,
+        "rows": [
+            "....-.....",
+            "..........",
+            ".......C..",
+            ".......-..",
+            "..........",
+            "..........",
+            "M.........",
+            "..........",
+            "..C.......",
+            "..-.......",
+            "..........",
+            "..........",
+            "....-.....",
+            "..........",
+        ],
+    },
 ]
 CHUNKS += MIRRORED_CHUNKS + [mirror(chunk) for chunk in MIRRORED_CHUNKS]
 
@@ -467,6 +510,23 @@ def platform_run(rows, row, col):
     return left, right
 
 
+def moving_platforms(rows):
+    # Her satırdaki M grubu bir hareketli platform:
+    # (satır, ilk sütun, genişlik, gidebildiği en sol sütun, en sağ sütun)
+    found = []
+    for r, row in enumerate(rows):
+        if "M" not in row:
+            continue
+        left, width = row.index("M"), row.count("M")
+        span_left, span_right = left, left + width - 1
+        while span_left > 0 and row[span_left - 1] not in SOLID:
+            span_left -= 1
+        while span_right < WIDTH - 1 and row[span_right + 1] not in SOLID:
+            span_right += 1
+        found.append((r, left, width, span_left, span_right))
+    return found
+
+
 def check_side_row(row, side, allowed):
     # Satırdaki her şey o tarafta olsun ve ortaya yakın sütun dolu olsun
     for col, cell in enumerate(row):
@@ -479,7 +539,7 @@ def check_side_row(row, side, allowed):
 def check_chunk(chunk, is_start=False):
     # Parça kurallara uymuyorsa oyun açılırken hata ver (yanlış parça fark edilmeden kalmasın)
     rows = chunk["rows"]
-    allowed = "#-.CES" + ("P" if is_start else "")
+    allowed = "#-.CESM" + ("P" if is_start else "")
     problem = None
     if any(len(row) != WIDTH for row in rows):
         problem = "her satır 10 karakter olmalı"
@@ -502,6 +562,17 @@ def check_chunk(chunk, is_start=False):
                 left, right = platform_run(rows, r, c)
                 if right - left + 1 < ENEMY_MIN_PLATFORM:
                     problem = f"{r}. satırdaki düşmanın platformu {ENEMY_MIN_PLATFORM} kareden kısa"
+    # Hareketli platformlar: tek parça, gidecek yeri olsun, yolunun üstü/altı boş olsun
+    for r, left, width, span_left, span_right in moving_platforms(rows) if not problem else []:
+        span = range(span_left, span_right + 1)
+        if rows[r][left : left + width] != "M" * width:
+            problem = f"{r}. satırdaki M'ler yan yana olmalı (satırda tek hareketli platform)"
+        elif span_right - span_left + 1 <= width:
+            problem = f"{r}. satırdaki hareketli platformun gidecek yeri yok"
+        elif any(rows[r + d][c] in SOLID + "S" for d in (-1, 1) for c in span):
+            problem = f"{r}. satırdaki hareketli platformun yolunun hemen üstü ve altı boş olmalı"
+        elif r >= 2 and any(rows[r - 2][c] == "#" for c in span):
+            problem = f"{r}. satırdaki hareketli platformun iki üstünde blok var (kafa çarpar)"
     if problem:
         raise ValueError(f"Hatalı parça ({problem}):\n" + "\n".join(rows))
 

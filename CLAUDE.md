@@ -32,17 +32,19 @@
   (`#` katı blok, `-` ince platform — o da katı; kullanıcı alttan içinden geçilmesini İSTEMEDİ, kafa
   çarpmalı; `.` boş; `C` altın — bir platformun hemen üstündeki kareye konur, giriş/çıkış/en alt
   satırda olamaz; `S` yay — aynı kural, `SPRING_POWER` ile ~9 blok fırlatır (yaylı parçalarda
-  3 satır kuralı yok); `E` düşman — aynı kural + altındaki platform en az `ENEMY_MIN_PLATFORM` (3) kare;
+  3 satır kuralı yok); `M` hareketli platform — satırda tek grup, `moving_platforms(rows)` →
+  (satır, sol, genişlik, yol solu, yol sağı); yolun hemen üstü/altı boş, iki üstünde `#` yok; `E` düşman — aynı kural + altındaki platform en az `ENEMY_MIN_PLATFORM` (3) kare;
   `platform_run(rows, r, c)` düşmanın yürüyeceği sütun aralığını verir). `mirror(chunk)` sağ-sol
   aynası; `MIRRORED_CHUNKS` içindeki parçalar oyuna hem kendisi hem aynası olarak girer (yeni parçaları
-  buraya ekle → iki giriş tarafı otomatik). Toplam 28 parça; 2 yaylı tasarım (+aynaları). Birleşme kuralı: en alt satır boş, sondan ikinci satır giriş (sadece `-`, giriş
+  buraya ekle → iki giriş tarafı otomatik). Toplam 32 parça; 2 yaylı, 2 hareketli platformlu tasarım (+aynaları). Birleşme kuralı: en alt satır boş, sondan ikinci satır giriş (sadece `-`, giriş
   tarafında; sol = sütun 0-4 ve 4 dolu, sağ = 5-9 ve 5 dolu), en üst satır çıkış (aynı kural). Çıkışı
   sol olanın üstüne girişi sağ olan gelir → birleşmede 2 satır fark, üst üste binme yok.
   `check_chunk` yanlış parçada oyun açılırken hata verir. Yeni parça eklerken her iki giriş
   tarafı için her zorlukta parça olsun.
 - `enemy.py` — `Enemy(center_x, bottom, left, right)`: `left`-`right` piksel arasında `ENEMY_SPEED`
   ile gidip gelir (ondalıklı `pos_x`), tile'larla çarpışma yok (sınırlar parçadan hesaplanır).
-- `level.py` — `Tile`, `Platform`, `Coin`, `Heart`, `Spring` sprite'ları (`level.springs`; `Spring.squash()` basık resim) (her `C` `HEART_CHANCE` ihtimalle
+- `level.py` — `Tile`, `Platform`, `Coin`, `Heart`, `Spring` (`level.springs`; `Spring.squash()` basık resim), `MovingPlatform` (`level.movers` VE
+  `level.tiles`; `move()` kaydığı pikseli döndürür; `moving = True`) sprite'ları (her `C` `HEART_CHANCE` ihtimalle
   `Heart` olur → `level.hearts`; alınca `player.heal()` +1 can, can doluysa `score.add_bonus(HEART_POINTS)`) ve `Level(seed)`: y=0 zeminin altı, yukarı çıktıkça
   y EKSİ. `add_chunk`, `pick_chunk` (giriş = önceki çıkışın tersi, zorluk ≤ 1 + yükseklik //
   `DIFFICULTY_STEP`), `update(view_top, view_bottom)` (`GENERATE_AHEAD` kadar yukarıyı doldurur,
@@ -60,8 +62,10 @@
 - Can sistemi `Player`'da: `lives`, `invincible` (kalan kare; `visible` ile yanıp söner), `hurt()`
   (can −1, dokunulmazlık, küçük sıçrama), `bounce(power)`, `check_springs(springs)` (ayak şeridi yaya
   değiyor ve yükselmiyorsa `SPRING_POWER` ile fırlar; main ve check_chunks ikisi de player.update'ten
-  sonra çağırır), `heal()`, `old_bottom` (önceki karenin ayak hizası),
-  `safe_pos` (en son yerde durduğu yer — `respawn()` oraya koyar).
+  sonra çağırır), `heal()`, `standing_on(sprite)`, `carry(dx, tiles)`
+  (main.py her karede önce platformları oynatır, üstünde duranı taşır; duvara çarparsa taşımaz),
+  `old_bottom` (önceki karenin ayak hizası),
+  `safe_pos` (en son yerde durduğu yer, hareketli platform hariç — `respawn()` oraya koyar).
 - `camera.py` — `Camera()`: DİKEYDE yumuşak takip (`CAMERA_SMOOTHNESS`), karakter ekranın
   `CAMERA_PLAYER_Y` oranında durur; yukarısı sınırsız, aşağıda `level.bottom`'da durur;
   `follow(rect, level_bottom)`, `top`/`bottom`, `apply(rect)`. Tüm çizim `main.py`'de kamera üzerinden.
@@ -76,7 +80,10 @@
 - `check_chunks.py` — çıkılabilirlik testi: `python check_chunks.py` (~20 sn, çok çekirdekli).
   Gerçek `Player` fiziğiyle (sahte `Controls`) BFS: her parçanın girişinden (başlangıçta P) tepesine
   ve her geçerli birleşmede (alt parçanın üst 4 satırı + üst parçanın alt 5 satırı) girişe
-  ulaşılabiliyor mu. Düşmanları hesaba katmaz. Yeni parça eklenince veya zıplama/hız ayarı
+  ulaşılabiliyor mu. Düşmanları hesaba katmaz. Yayları gerçek fizikle dener; hareketli
+  platformu iki uç durumla modeller (üstündeysen öbür uca taşınırsın, değilsen beklersin).
+  Yeni yay/platform parçasında "o olmadan çıkılamıyor mu" diye de bak (yoksa süs olur):
+  karakter 3 satır yukarıya ~3 kare yana zıplayabiliyor, tahmin edilenden uzak. Yeni parça eklenince veya zıplama/hız ayarı
   değişince MUTLAKA çalıştır. (Konsol cp1254: çıktıda "→" gibi karakter kullanma.)
 - Zıplama ~133 px (3 blok = 120 px'e çıkılabilir), yatayda ~4 blok gidilebilir; parça
   tasarlarken basılan yüzeyler arası dikey fark en fazla 3 satır olsun. Platformlar katı olduğu
@@ -110,8 +117,10 @@
 - [ ] 9. Ekstra — yeni parçalar, telefonda çalışır çıktı (ör. pygbag ile tarayıcıda)
 
 ## Sıradaki adım
-Aşama 9 devam — yeni parçalar eklendi (Aşama 9'un ilk kısmı). Kalan seçenekler (kullanıcıya sor):
+Aşama 9 devam. Yapılanlar: yeni parçalar, yükseldikçe değişen gök, can toplama (kalp), yay,
+hareketli platform. Kalan seçenek (kullanıcıya sor):
 - Telefonda/tarayıcıda çalışır çıktı: pygbag ile web sürümü (main döngüsü `async` + her karede
   `await asyncio.sleep(0)` olmalı; `highscore.txt` tarayıcıda çalışmaz → localStorage gerekebilir;
-  ses biçimi tarayıcıda farklı olabilir — `Sounds` bunu zaten sessizce idare eder). GitHub Pages'te yayın.
-- Yeni oyun öğeleri: hareketli platform, yay/trambolin, can toplama, yükseldikçe değişen gök rengi.
+  ses biçimi tarayıcıda farklı olabilir — `Sounds` bunu zaten sessizce idare eder; check_chunks
+  multiprocessing kullanıyor, web paketine girmemeli). GitHub Pages'te yayın.
+- Başka fikirler: kırılan platform, uçan düşman, mıknatıs/kalkan gibi güçlendirmeler.

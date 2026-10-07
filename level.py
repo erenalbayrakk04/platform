@@ -9,12 +9,13 @@ from settings import (
     COIN_SPIN_SPEED,
     HEART_CHANCE,
     SPRING_SQUASH_TIME,
+    MOVING_PLATFORM_SPEED,
     LEVEL_SEED,
     GENERATE_AHEAD,
     REMOVE_BELOW,
     DIFFICULTY_STEP,
 )
-from chunks import START_CHUNK, CHUNKS, platform_run
+from chunks import START_CHUNK, CHUNKS, platform_run, moving_platforms
 from enemy import Enemy
 import art
 
@@ -47,6 +48,37 @@ class Platform(pygame.sprite.Sprite):
         super().__init__()
         self.image = image("platform")
         self.rect = self.image.get_rect(topleft=(x, y))
+
+
+class MovingPlatform(pygame.sprite.Sprite):
+    # Hareketli platform: left-right piksel arasında gidip gelir; katıdır (level.tiles içinde).
+    # Üstünde duran karakteri main.py taşır (Player.carry)
+    moving = True  # Player bunu görünce burayı "güvenli yer" saymaz
+
+    def __init__(self, x, y, cells, left, right):
+        super().__init__()
+        key = ("mover", cells)
+        if key not in IMAGES:
+            IMAGES[key] = art.moving_platform_image(cells)
+        self.image = IMAGES[key]
+        self.rect = self.image.get_rect(topleft=(x, y))
+        self.left = left
+        self.right = right
+        self.direction = 1  # 1 = sağa, -1 = sola
+        self.pos_x = float(x)
+
+    def move(self):
+        # Bir adım ilerle, ucuna gelince dön; kaç piksel kaydığını döndür
+        old_x = self.rect.x
+        self.pos_x += MOVING_PLATFORM_SPEED * self.direction
+        if self.pos_x + self.rect.width >= self.right:
+            self.pos_x = self.right - self.rect.width
+            self.direction = -1
+        elif self.pos_x <= self.left:
+            self.pos_x = self.left
+            self.direction = 1
+        self.rect.x = round(self.pos_x)
+        return self.rect.x - old_x
 
 
 class Coin(pygame.sprite.Sprite):
@@ -112,6 +144,8 @@ class Level:
         self.hearts = pygame.sprite.Group()
         # Yaylar
         self.springs = pygame.sprite.Group()
+        # Hareketli platformlar (ayrıca tiles içinde de varlar, çünkü katılar)
+        self.movers = pygame.sprite.Group()
         # Platformlarda yürüyen düşmanlar
         self.enemies = pygame.sprite.Group()
         self.width = len(START_CHUNK["rows"][0]) * TILE_SIZE
@@ -161,7 +195,17 @@ class Level:
                 elif cell == "P":
                     # Karakterin ayakları bu kutunun altına gelsin
                     self.player_start = (x + TILE_SIZE // 2, y + TILE_SIZE)
-        self.tiles.add([s for s in sprites if isinstance(s, (Tile, Platform))])
+        for r, left, width, span_left, span_right in moving_platforms(rows):
+            mover = MovingPlatform(
+                left * TILE_SIZE,
+                top + r * TILE_SIZE,
+                width,
+                span_left * TILE_SIZE,
+                (span_right + 1) * TILE_SIZE,
+            )
+            sprites.append(mover)
+            self.movers.add(mover)
+        self.tiles.add([s for s in sprites if isinstance(s, (Tile, Platform, MovingPlatform))])
         self.chunks.append((top, self.top, sprites))
         self.top = top
         self.exit_side = chunk["exit"]
@@ -185,5 +229,6 @@ class Level:
             self.coins.remove(sprites)  # toplanmamış altınlar, kalpler ve düşmanlar da gitsin
             self.hearts.remove(sprites)
             self.springs.remove(sprites)
+            self.movers.remove(sprites)
             self.enemies.remove(sprites)
         self.bottom = self.chunks[0][1]

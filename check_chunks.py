@@ -3,6 +3,9 @@
 # Yeni parça ekledikten veya zıplama/hız ayarlarını değiştirdikten sonra çalıştır:
 #   python check_chunks.py
 # Not: düşmanlar hesaba katılmaz (üstlerine basılabilir veya beklenip geçilebilir).
+# Hareketli platformlar iki durumla düşünülür: yolunun sol ucunda veya sağ ucunda. Üstünde duran
+# karakter onunla öbür uca gider; üstünde değilse platformun öbür uca gitmesini bekleyebilir.
+import itertools
 import os
 import sys
 import time
@@ -14,9 +17,9 @@ os.environ.setdefault("PYGAME_HIDE_SUPPORT_PROMPT", "1")
 
 import pygame
 
-from chunks import START_CHUNK, CHUNKS, WIDTH, SOLID
+from chunks import START_CHUNK, CHUNKS, WIDTH, SOLID, moving_platforms
 from controls import Controls
-from level import Tile, Platform, Spring
+from level import Tile, Platform, Spring, MovingPlatform
 from player import Player
 from settings import TILE_SIZE
 
@@ -31,18 +34,26 @@ MAX_FRAMES = 150
 
 
 def build(rows):
-    # Harf satırlarından çarpılabilir bloklar ve yaylar (en üst satır y = 0)
-    tiles = pygame.sprite.Group()
+    # Harf satırlarından sabit bloklar, yaylar ve hareketli platformların iki ucu (en üst satır y = 0)
+    tiles = []
     springs = pygame.sprite.Group()
     for r, row in enumerate(rows):
         for c, cell in enumerate(row):
             if cell == "#":
-                tiles.add(Tile(c * TILE_SIZE, r * TILE_SIZE))
+                tiles.append(Tile(c * TILE_SIZE, r * TILE_SIZE))
             elif cell == "-":
-                tiles.add(Platform(c * TILE_SIZE, r * TILE_SIZE))
+                tiles.append(Platform(c * TILE_SIZE, r * TILE_SIZE))
             elif cell == "S":
                 springs.add(Spring(c * TILE_SIZE, r * TILE_SIZE))
-    return tiles, springs
+    movers = []
+    for r, left, width, span_left, span_right in moving_platforms(rows):
+        ends = (span_left, span_right + 1 - width)  # sol uçtaki ve sağ uçtaki ilk sütun
+        movers.append([MovingPlatform(c * TILE_SIZE, r * TILE_SIZE, width, 0, 0) for c in ends])
+    # Her durum (hangi platform hangi uçta) için ayrı bir çarpışma grubu
+    groups = {}
+    for phase in itertools.product((0, 1), repeat=len(movers)):
+        groups[phase] = pygame.sprite.Group(tiles, [pair[p] for pair, p in zip(movers, phase)])
+    return groups, springs, movers
 
 
 def simulate(player, tiles, springs, x, bottom, action, limit):
@@ -61,22 +72,46 @@ def simulate(player, tiles, springs, x, bottom, action, limit):
     return None
 
 
+def mover_moves(player, groups, movers, x, bottom, phase):
+    # Hareketli platformlarla yapılabilecekler: üstündeyse binip öbür uca git, değilse bekle
+    body = player.rect.copy()
+    body.x, body.bottom = x, body.bottom - player.rect.bottom + bottom
+    for i, pair in enumerate(movers):
+        here, there = pair[phase[i]], pair[1 - phase[i]]
+        other = phase[:i] + (1 - phase[i],) + phase[i + 1 :]
+        on_it = bottom == here.rect.top and body.right > here.rect.left and body.left < here.rect.right
+        if on_it:
+            moved = body.move(there.rect.x - here.rect.x, 0)
+            walls = [t for t in groups[other] if t is not there]
+            inside = 0 <= moved.left and moved.right <= WIDTH * TILE_SIZE
+            if inside and not any(moved.colliderect(t.rect) for t in walls):
+                yield moved.x, bottom, other
+        elif not body.colliderect(there.rect):
+            yield x, bottom, other
+
+
 def reachable(rows, starts, goal_bottom):
     # Başlangıç noktalarından (x, ayak hizası) hedef yüksekliğe basılabiliyor mu? (genişlik öncelikli arama)
-    tiles, springs = build(rows)
+    groups, springs, movers = build(rows)
     player = Player(0, 0, WIDTH * TILE_SIZE)
     limit = len(rows) * TILE_SIZE + 100
-    seen = set(starts)
-    queue = deque(starts)
+    # Durum: (x, ayak hizası, hareketli platformların hangi uçta olduğu)
+    seen = {(x, bottom, phase) for x, bottom in starts for phase in groups}
+    queue = deque(seen)
     while queue:
-        x, bottom = queue.popleft()
+        x, bottom, phase = queue.popleft()
         if bottom == goal_bottom:
             return True
-        for action in ACTIONS:
-            result = simulate(player, tiles, springs, x, bottom, action, limit)
-            if result and result not in seen:
-                seen.add(result)
-                queue.append(result)
+        results = [
+            (*landed, phase)
+            for action in ACTIONS
+            if (landed := simulate(player, groups[phase], springs, x, bottom, action, limit))
+        ]
+        results += mover_moves(player, groups, movers, x, bottom, phase)
+        for state in results:
+            if state not in seen:
+                seen.add(state)
+                queue.append(state)
     return False
 
 
