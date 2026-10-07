@@ -29,6 +29,7 @@ from settings import (
     MOVING_PLATFORM_COLOR,
     CRUMBLE_COLOR,
     LIFE_EMPTY_COLOR,
+    MAGNET_COLOR,
     SCREEN_WIDTH,
     SCREEN_HEIGHT,
     SKY_THEMES,
@@ -306,6 +307,29 @@ def heart_image(color):
 
 def heart_images():
     return {"full": heart_image(LIFE_COLOR), "empty": heart_image(LIFE_EMPTY_COLOR)}
+
+
+# --- Güçlendirmeler ---
+MAGNET_ROWS = [
+    "WW...WW",
+    "ww...ww",
+    "Rh...hR",
+    "RR...RR",
+    "RRr.rRR",
+    ".RRRRr.",
+    "..rrr..",
+]
+
+
+def magnet_image():
+    palette = {
+        "W": (230, 230, 240),  # gümüş uçlar
+        "w": (160, 160, 180),
+        "R": MAGNET_COLOR,
+        "r": shade(MAGNET_COLOR, 0.65),
+        "h": tint(MAGNET_COLOR, 0.5),
+    }
+    return render(MAGNET_ROWS, palette)
 
 
 def sky_image(top_color, bottom_color):

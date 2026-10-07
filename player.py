@@ -11,11 +11,15 @@ from settings import (
     HURT_BOUNCE,
     ANIMATION_SPEED,
     SPRING_POWER,
+    MAGNET_TIME,
 )
 from art import player_frames
 
 
 class Player(pygame.sprite.Sprite):
+    # Güçlendirmeler kaç kare sürer
+    POWER_TIME = {"magnet": MAGNET_TIME}
+
     def __init__(self, x, y, level_width):
         super().__init__()
         # Resimler (art.py): "idle" duruyor, "walk1"/"walk2" yürüyor, "jump" havada; her biri sağa/sola
@@ -30,6 +34,9 @@ class Player(pygame.sprite.Sprite):
         self.level_width = level_width
         self.lives = PLAYER_LIVES
         self.invincible = 0  # dokunulmazlığın bitmesine kaç kare kaldı (0 = dokunulabilir)
+        # Güçlendirmelerin bitmesine kaç kare kaldı (0 = yok); expired = bu karede bitenler (ses için)
+        self.powers = dict.fromkeys(self.POWER_TIME, 0)
+        self.expired = []
         self.respawn()
 
     def respawn(self):
@@ -56,6 +63,14 @@ class Player(pygame.sprite.Sprite):
             return False
         self.lives += 1
         return True
+
+    def power_up(self, kind):
+        # Güçlendirme başlar; zaten sürüyorsa süresi baştan başlar
+        self.powers[kind] = self.POWER_TIME[kind]
+
+    def power_fraction(self, kind):
+        # Güçlendirmenin ne kadarı kaldı (1 = yeni alındı, 0 = bitti)
+        return self.powers[kind] / self.POWER_TIME[kind]
 
     def standing_on(self, sprite):
         # Bu sprite'ın tam üstünde mi duruyor?
@@ -100,6 +115,12 @@ class Player(pygame.sprite.Sprite):
         self.old_bottom = self.rect.bottom
         if self.invincible > 0:
             self.invincible -= 1
+        self.expired = []
+        for kind, left in self.powers.items():
+            if left > 0:
+                self.powers[kind] = left - 1
+                if left == 1:
+                    self.expired.append(kind)
 
         # --- Yatay hareket ---
         dx = 0

@@ -78,6 +78,14 @@ LIFE_COLOR = (230, 50, 70)  # sağ üstteki dolu kalpler
 LIFE_EMPTY_COLOR = (80, 80, 100)  # kaybedilen can
 HEART_CHANCE = 0.05  # haritadaki her altının kalbe dönüşme ihtimali (0.05 = %5); kalp 1 can verir
 
+# Güçlendirmeler — kalp gibi altınların yerine nadiren çıkar; alınca bir süre işe yarar
+POWERUP_WARN_TIME = 120  # bitmesine bu kadar kare kala sağ üstteki simgesi yanıp söner
+MAGNET_CHANCE = 0.03  # bir altının mıknatısa dönüşme ihtimali (0.03 = %3)
+MAGNET_TIME = 600  # mıknatıs kaç kare sürer (60 kare = 1 saniye)
+MAGNET_RADIUS = 180  # bu kadar yakındaki altınlar karaktere doğru uçar (piksel)
+MAGNET_PULL = 8  # çekilen altın her karede kaç piksel yaklaşır
+MAGNET_COLOR = (230, 60, 70)  # kırmızı mıknatıs
+
 # Puan
 ENEMY_POINTS = 10  # üstüne basılıp yenilen her düşman kaç puan
 HEART_POINTS = 20  # canın doluyken kalp toplarsan kaç puan

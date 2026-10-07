@@ -17,16 +17,20 @@ from settings import (
     LIFE_COLOR,
     HEART_POINTS,
     CRUMBLE_COLOR,
+    MAGNET_COLOR,
 )
 from player import Player
 from level import Level
 from camera import Camera
-from score import Score, draw_lives, load_high_score, save_high_score
+from score import Score, draw_lives, draw_powers, load_high_score, save_high_score
 from screens import draw_menu, draw_game_over
 from art import Background
 from controls import TouchButtons, read_controls
 from effects import burst
 import sound
+
+# Toplanınca saçılan parçacıkların rengi
+PICKUP_COLORS = {"heart": LIFE_COLOR, "magnet": MAGNET_COLOR}
 
 # Menüde ve kaybettin ekranında oyunu başlatan tuşlar (fare tıklaması da çalışır)
 START_KEYS = (pygame.K_SPACE, pygame.K_RETURN, pygame.K_KP_ENTER)
@@ -64,18 +68,29 @@ def update_game(level, player, camera, score, controls, sounds):
             burst(level.effects, crumbler.rect.center, CRUMBLE_COLOR)
     if player.check_springs(level.springs):
         sounds.play("spring")
+    if player.expired:
+        sounds.play("powerdown")
+
+    # Mıknatıs: yakındaki altınlar karaktere doğru uçar
+    if player.powers["magnet"]:
+        for coin in level.coins:
+            coin.attract(player.rect.center)
 
     # Değdiği altınları topla (True = toplanan altın haritadan silinir)
     for coin in pygame.sprite.spritecollide(player, level.coins, True):
         score.add_coin()
         sounds.play("coin")
         burst(level.effects, coin.rect.center, COIN_COLOR)
-    # Kalp: bir can verir; can zaten doluysa puan
-    for heart in pygame.sprite.spritecollide(player, level.hearts, True):
-        if not player.heal():
-            score.add_bonus(HEART_POINTS)
-        sounds.play("life")
-        burst(level.effects, heart.rect.center, LIFE_COLOR)
+    # Kalp bir can verir (can zaten doluysa puan); güçlendirme bir süre işe yarar
+    for item in pygame.sprite.spritecollide(player, level.pickups, True):
+        if item.kind == "heart":
+            if not player.heal():
+                score.add_bonus(HEART_POINTS)
+            sounds.play("life")
+        else:
+            player.power_up(item.kind)
+            sounds.play("powerup")
+        burst(level.effects, item.rect.center, PICKUP_COLORS[item.kind])
     score.update(player)
 
     # Düşmanlar yürüsün; karakter değdiyse: yukarıdan düştüyse düşman ölür, değilse can gider
@@ -100,7 +115,7 @@ def update_game(level, player, camera, score, controls, sounds):
 
     # Animasyonlar: altınlar döner, parçacıklar uçar
     level.coins.update()
-    level.hearts.update()
+    level.pickups.update()
     level.springs.update()
     level.effects.update()
 
@@ -115,7 +130,7 @@ def draw_world(screen, background, level, player, camera):
     screen_rect = screen.get_rect()
     # Kırık platformlar geri gelmeden az önce silik görünür
     ghosts = [crumbler for crumbler in level.crumblers if crumbler.ghost]
-    sprites = [*level.tiles, *ghosts, *level.springs, *level.coins, *level.hearts, *level.enemies, *level.effects]
+    sprites = [*level.tiles, *ghosts, *level.springs, *level.coins, *level.pickups, *level.enemies, *level.effects]
     if player.visible:  # dokunulmazken yanıp söner
         sprites.append(player)
     for sprite in sprites:
@@ -199,6 +214,7 @@ def main():
             # Puan ve canlar kameradan bağımsız: hep ekranın üst köşelerinde
             score.draw(screen)
             draw_lives(screen, player.lives)
+            draw_powers(screen, player)
             if state == "playing":
                 touch.draw(screen)
             if state == "game_over":

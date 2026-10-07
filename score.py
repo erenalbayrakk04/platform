@@ -4,7 +4,7 @@ import os
 
 import pygame
 
-from art import heart_images
+from art import heart_images, magnet_image
 from settings import (
     TILE_SIZE,
     COIN_POINTS,
@@ -17,6 +17,7 @@ from settings import (
     SCREEN_WIDTH,
     PLAYER_LIVES,
     HIGHSCORE_FILE,
+    POWERUP_WARN_TIME,
 )
 
 
@@ -106,3 +107,26 @@ def draw_lives(screen, lives):
     for i in range(PLAYER_LIVES):
         image = HEART_IMAGES["full" if i < lives else "empty"]
         screen.blit(image, (SCREEN_WIDTH - 12 - (PLAYER_LIVES - i) * width, 14))
+
+
+POWER_ICONS = {}
+
+
+def draw_powers(screen, player):
+    # Kalplerin altında süren güçlendirmeler: simge + altında kalan süre çubuğu (sağdan sola dizilir).
+    # Bitmesine az kalınca simge yanıp söner
+    if not POWER_ICONS:
+        POWER_ICONS.update(magnet=magnet_image())
+    right = SCREEN_WIDTH - 12
+    for kind, left in player.powers.items():
+        if not left:
+            continue
+        icon = POWER_ICONS[kind]
+        rect = icon.get_rect(topright=(right, 48))
+        if left > POWERUP_WARN_TIME or (left // 8) % 2 == 0:
+            screen.blit(icon, rect)
+        bar = pygame.Rect(rect.left, rect.bottom + 4, rect.width, 4)
+        screen.fill(SCORE_SHADOW_COLOR, bar)  # boş çubuk
+        bar.width = round(bar.width * player.power_fraction(kind))
+        screen.fill(SCORE_COLOR, bar)
+        right = rect.left - 10

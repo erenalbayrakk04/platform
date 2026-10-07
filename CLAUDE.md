@@ -48,12 +48,14 @@
   `old_top` = önceki karedeki üst kenar); `Enemy(center_x, bottom, left, right)` yürür (`ENEMY_SPEED`),
   `FlyingEnemy(center_x, center_y, left, right)` yarasa: `FLYER_SPEED` ile uçar, `FLYER_BOB` kadar süzülür.
   İkisi de `level.enemies`'te; tile'larla çarpışma yok (sınırlar parçadan hesaplanır).
-- `level.py` — `Tile`, `Platform`, `Coin`, `Heart`, `Spring` (`level.springs`; `Spring.squash()` basık resim), `MovingPlatform` (`level.movers` VE
+- `level.py` — `Tile`, `Platform`, `Coin`, `Pickup`, `Spring` (`level.springs`; `Spring.squash()` basık resim), `MovingPlatform` (`level.movers` VE
   `level.tiles`; `move()` kaydığı pikseli döndürür; `unsafe = True`), `CrumblingPlatform` (`level.crumblers`;
   sağlamken `level.tiles`'ta da; `step(player, tiles)` her karede: basılınca `CRUMBLE_DELAY` kare titrer
   (`draw_rect` ile çizim kayar, `rect` sabit), sonra tiles'tan çıkar → "break"; `CRUMBLE_RESPAWN` kare sonra
-  geri gelir, son `GHOST_TIME` karede `ghost` = silik çizilir; `unsafe = True`) sprite'ları (her `C` `HEART_CHANCE` ihtimalle
-  `Heart` olur → `level.hearts`; alınca `player.heal()` +1 can, can doluysa `score.add_bonus(HEART_POINTS)`) ve `Level(seed)`: y=0 zeminin altı, yukarı çıktıkça
+  geri gelir, son `GHOST_TIME` karede `ghost` = silik çizilir; `unsafe = True`) sprite'ları (her `C` için `pick_item()`: `PICKUP_CHANCES`
+  ihtimalleriyle altın yerine `Pickup(x, y, kind)` olur → `level.pickups`; kind "heart": `player.heal()` +1 can,
+  can doluysa `score.add_bonus(HEART_POINTS)`; kind "magnet"/... güçlendirme → `player.power_up(kind)`;
+  `Coin.attract(target)` mıknatısla `MAGNET_RADIUS` içindeyse `MAGNET_PULL` hızla uçar) ve `Level(seed)`: y=0 zeminin altı, yukarı çıktıkça
   y EKSİ. `add_chunk`, `pick_chunk` (giriş = önceki çıkışın tersi, zorluk ≤ 1 + yükseklik //
   `DIFFICULTY_STEP`), `update(view_top, view_bottom)` (`GENERATE_AHEAD` kadar yukarıyı doldurur,
   `REMOVE_BELOW`'dan aşağıdaki parçaları siler). `tiles` = çarpılan her şey, `coins` = altınlar,
@@ -62,7 +64,8 @@
 - `score.py` — `Score(start_y)`: `height` = üstüne basılan en yüksek yer (blok, sadece `on_ground`
   iken sayılır, düşünce azalmaz), `coins`, `enemies`, `total` = height × `HEIGHT_POINTS` + coins × `COIN_POINTS`
   + enemies × `ENEMY_POINTS`; `draw(screen)` sol üstte gölgeli yazı (kameradan bağımsız);
-  `draw_lives(screen, lives)` sağ üstte kalpler (kaybedilen can gri); `draw_text(screen, font, text,
+  `draw_lives(screen, lives)` sağ üstte kalpler (kaybedilen can gri); `draw_powers(screen, player)` kalplerin
+  altında süren güçlendirmelerin simgesi + süre çubuğu (son `POWERUP_WARN_TIME` karede yanıp söner); `draw_text(screen, font, text,
   color, center=/topleft=...)` gölgeli yazı (her yerde bu kullanılır); `load_high_score()` /
   `save_high_score(v)` → `highscore.txt` (oyun klasöründe, git dışı; bozuk/yoksa 0, yazılamazsa sessiz).
 - `screens.py` — `draw_menu(screen, high_score)` ve `draw_game_over(screen, score, high_score,
@@ -70,7 +73,8 @@
 - Can sistemi `Player`'da: `lives`, `invincible` (kalan kare; `visible` ile yanıp söner), `hurt()`
   (can −1, dokunulmazlık, küçük sıçrama), `bounce(power)`, `check_springs(springs)` (ayak şeridi yaya
   değiyor ve yükselmiyorsa `SPRING_POWER` ile fırlar; main ve check_chunks ikisi de player.update'ten
-  sonra çağırır), `heal()`, `standing_on(sprite)`, `carry(dx, tiles)`
+  sonra çağırır), `heal()`, güçlendirmeler: `powers` {tür: kalan kare} (`POWER_TIME`), `power_up(kind)`,
+  `power_fraction(kind)`, `expired` (bu karede bitenler → "powerdown" sesi), `standing_on(sprite)`, `carry(dx, tiles)`
   (main.py her karede önce platformları oynatır, üstünde duranı taşır; duvara çarparsa taşımaz),
   `old_bottom` (önceki karenin ayak hizası),
   `safe_pos` (en son yerde durduğu yer, `unsafe` olanlar — hareketli/kırılan platform — hariç — `respawn()` oraya koyar).
@@ -104,7 +108,7 @@
   `platform_image()`, `heart_images()`, `Background` (`SKY_THEMES` gökleri, her `SKY_CHANGE_HEIGHT` px tırmanışta sıradakine
   `SKY_BLEND_HEIGHT` boyunca saydamlıkla geçer, döngüsel; + `STAR_PARALLAX` ile kayan yıldızlar).
 - `sound.py` — `pre_init()` (pygame.init'ten önce; 22050 Hz mono 16 bit), `Sounds()`: efektler
-  (jump, coin, stomp, hurt, start, game_over) ve 8 ölçülük döngü müzik (`MELODY`/`BASS` nota
+  (jump, coin, stomp, hurt, start, game_over, life, spring, crumble, powerup, powerdown) ve 8 ölçülük döngü müzik (`MELODY`/`BASS` nota
   numaraları) `array` ile üretilir (numpy YOK); `play(name)`, `start_music/stop_music`, `toggle_mute`
   (M). Mixer yoksa/biçim farklıysa `enabled=False`, her şey sessizce çalışır. Stereo da desteklenir.
 - `controls.py` — `Controls(left, right, jump)`; `TouchButtons`: sol altta ←→, sağ altta zıpla,
@@ -128,7 +132,7 @@
 
 ## Sıradaki adım
 Aşama 9 devam. Yapılanlar: yeni parçalar, yükseldikçe değişen gök, can toplama (kalp), yay,
-hareketli platform, kırılan platform, uçan düşman. Kalan seçenek (kullanıcıya sor):
+hareketli platform, kırılan platform, uçan düşman, mıknatıs. Kalan seçenek (kullanıcıya sor):
 - Telefonda/tarayıcıda çalışır çıktı: pygbag ile web sürümü (main döngüsü `async` + her karede
   `await asyncio.sleep(0)` olmalı; `highscore.txt` tarayıcıda çalışmaz → localStorage gerekebilir;
   ses biçimi tarayıcıda farklı olabilir — `Sounds` bunu zaten sessizce idare eder; check_chunks

@@ -8,6 +8,9 @@ from settings import (
     TILE_SIZE,
     COIN_SPIN_SPEED,
     HEART_CHANCE,
+    MAGNET_CHANCE,
+    MAGNET_RADIUS,
+    MAGNET_PULL,
     SPRING_SQUASH_TIME,
     CRUMBLE_DELAY,
     CRUMBLE_RESPAWN,
@@ -21,6 +24,9 @@ from chunks import START_CHUNK, CHUNKS, platform_run, moving_platforms, free_spa
 from enemy import Enemy, FlyingEnemy
 import art
 
+# Altın karesine nadiren altın yerine bunlar gelir: (tür, ihtimal)
+PICKUP_CHANCES = (("heart", HEART_CHANCE), ("magnet", MAGNET_CHANCE))
+
 # Resimler bir kere hazırlanır, aynı türdeki her parça aynı resmi kullanır (art.py)
 IMAGES = {}
 
@@ -32,6 +38,7 @@ def image(name):
             platform=art.platform_image(),
             coin=art.coin_frames(),
             heart=art.heart_images()["full"],
+            magnet=art.magnet_image(),
             spring=art.spring_frames(),
             crumble=art.crumble_frames(),
         )
@@ -145,6 +152,18 @@ class Coin(pygame.sprite.Sprite):
         self.rect = self.image.get_rect(center=(x + TILE_SIZE // 2, y + TILE_SIZE // 2))
         # Hepsi aynı anda dönmesin diye her altın farklı bir yerden başlar
         self.spin = (x + y) // 7
+        self.pos = pygame.Vector2(self.rect.center)  # mıknatısla uçarken ondalıklı konum
+        self.pulled = False  # mıknatıs çekmeye başladı mı
+
+    def attract(self, target):
+        # Mıknatıs: yeterince yakınsa (bir kere çekilmeye başladıysa artık hep) hedefe doğru uç
+        offset = pygame.Vector2(target) - self.pos
+        if self.pulled or offset.length() < MAGNET_RADIUS:
+            self.pulled = True
+            if offset.length() > MAGNET_PULL:
+                offset.scale_to_length(MAGNET_PULL)
+            self.pos += offset
+            self.rect.center = (round(self.pos.x), round(self.pos.y))
 
     def update(self):
         # Dönme animasyonu: resimler sırayla değişir
@@ -152,11 +171,13 @@ class Coin(pygame.sprite.Sprite):
         self.image = self.frames[(self.spin // COIN_SPIN_SPEED) % len(self.frames)]
 
 
-class Heart(pygame.sprite.Sprite):
-    # Toplanabilir kalp: 1 can verir. Altın yerine nadiren çıkar (HEART_CHANCE)
-    def __init__(self, x, y):
+class Pickup(pygame.sprite.Sprite):
+    # Altın yerine nadiren çıkan toplanabilir (PICKUP_CHANCES): kind = "heart" (1 can) veya
+    # bir güçlendirme ("magnet"). Ne işe yaradığına main.py bakar
+    def __init__(self, x, y, kind):
         super().__init__()
-        self.image = image("heart")
+        self.kind = kind
+        self.image = image(kind)
         self.rect = self.image.get_rect(center=(x + TILE_SIZE // 2, y + TILE_SIZE // 2))
         self.base_y = self.rect.y
         self.time = 0
@@ -194,8 +215,8 @@ class Level:
         self.tiles = pygame.sprite.Group()
         # Toplanabilir altınlar
         self.coins = pygame.sprite.Group()
-        # Toplanabilir kalpler (can)
-        self.hearts = pygame.sprite.Group()
+        # Kalpler ve güçlendirmeler (Pickup)
+        self.pickups = pygame.sprite.Group()
         # Yaylar
         self.springs = pygame.sprite.Group()
         # Hareketli platformlar (ayrıca tiles içinde de varlar, çünkü katılar)
@@ -231,11 +252,12 @@ class Level:
                     sprites.append(crumbler)
                     self.crumblers.add(crumbler)
                 elif cell == "C":
-                    # Altın, nadiren de kalp
-                    if self.random.random() < HEART_CHANCE:
-                        heart = Heart(x, y)
-                        sprites.append(heart)
-                        self.hearts.add(heart)
+                    # Altın; nadiren de kalp veya güçlendirme
+                    kind = self.pick_item()
+                    if kind != "coin":
+                        item = Pickup(x, y, kind)
+                        sprites.append(item)
+                        self.pickups.add(item)
                     else:
                         coin = Coin(x, y)
                         sprites.append(coin)
@@ -278,6 +300,15 @@ class Level:
         self.top = top
         self.exit_side = chunk["exit"]
 
+    def pick_item(self):
+        # Altın karesine ne gelecek: çoğunlukla "coin", nadiren PICKUP_CHANCES'tan biri
+        roll = self.random.random()
+        for kind, chance in PICKUP_CHANCES:
+            if roll < chance:
+                return kind
+            roll -= chance
+        return "coin"
+
     def pick_chunk(self):
         # Girişi, alttaki parçanın çıkışının karşı tarafında olan parçalardan rastgele seç
         entry = "R" if self.exit_side == "L" else "L"
@@ -295,7 +326,7 @@ class Level:
             _, _, sprites = self.chunks.pop(0)
             self.tiles.remove(sprites)
             self.coins.remove(sprites)  # toplanmamış altınlar, kalpler ve düşmanlar da gitsin
-            self.hearts.remove(sprites)
+            self.pickups.remove(sprites)
             self.springs.remove(sprites)
             self.movers.remove(sprites)
             self.crumblers.remove(sprites)
