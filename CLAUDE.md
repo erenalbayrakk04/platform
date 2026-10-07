@@ -106,7 +106,8 @@
   için bir üst platform tam tepede olmasın; yana kaydırılmış olsun ki zıplayıp üstüne çıkılabilsin.
 - `art.py` — piksel sanatı: harf haritası + palet → `render(rows, palette, size)` (her harf
   `PIXEL_SCALE` px, çizim alta-ortaya yaslı), `shade`/`tint` ile tonlar; `player_frames()`,
-  `enemy_frames()`, `flyer_frames()`, `crumble_frames()`, `magnet_image()`, `shield_image()`, `shield_bubble(r)` ({1: sağ, -1: sol} çiftleri), `coin_frames()` (dönme), `tile_image()`,
+  `enemy_frames()` ({1: sağ, -1: sol} çiftleri), `flyer_frames()` (kanat çırpma), `crumble_frames()`
+  (sağlam, çatlak, silik), `magnet_image()`, `shield_image()`, `shield_bubble(r)`, `coin_frames()` (dönme), `tile_image()`,
   `platform_image()`, `heart_images()`, `Background` (`SKY_THEMES` gökleri, her `SKY_CHANGE_HEIGHT` px tırmanışta sıradakine
   `SKY_BLEND_HEIGHT` boyunca saydamlıkla geçer, döngüsel; + `STAR_PARALLAX` ile kayan yıldızlar).
 - `sound.py` — `pre_init()` (pygame.init'ten önce; 22050 Hz mono 16 bit), `Sounds()`: efektler
