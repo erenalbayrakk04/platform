@@ -81,7 +81,7 @@ def update_game(level, player, camera, score, controls, sounds):
     # Düşmanlar yürüsün; karakter değdiyse: yukarıdan düştüyse düşman ölür, değilse can gider
     level.enemies.update()
     for enemy in pygame.sprite.spritecollide(player, level.enemies, False):
-        if player.old_bottom <= enemy.rect.top:  # önceki karede tamamen düşmanın üstündeydi
+        if player.old_bottom <= enemy.old_top:  # önceki karede tamamen düşmanın üstündeydi
             enemy.kill()
             score.add_enemy()
             player.bounce(STOMP_BOUNCE)

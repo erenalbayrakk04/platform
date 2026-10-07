@@ -17,8 +17,8 @@ from settings import (
     REMOVE_BELOW,
     DIFFICULTY_STEP,
 )
-from chunks import START_CHUNK, CHUNKS, platform_run, moving_platforms
-from enemy import Enemy
+from chunks import START_CHUNK, CHUNKS, platform_run, moving_platforms, free_span
+from enemy import Enemy, FlyingEnemy
 import art
 
 # Resimler bir kere hazırlanır, aynı türdeki her parça aynı resmi kullanır (art.py)
@@ -202,7 +202,7 @@ class Level:
         self.movers = pygame.sprite.Group()
         # Kırılan platformlar (sağlamken tiles içinde de varlar; kırıkken sadece burada)
         self.crumblers = pygame.sprite.Group()
-        # Platformlarda yürüyen düşmanlar
+        # Düşmanlar: platformlarda yürüyenler ve uçanlar
         self.enemies = pygame.sprite.Group()
         self.width = len(START_CHUNK["rows"][0]) * TILE_SIZE
         self.player_start = (TILE_SIZE, 0)
@@ -252,6 +252,14 @@ class Level:
                     )
                     sprites.append(enemy)
                     self.enemies.add(enemy)
+                elif cell == "F":
+                    # Satırında duvara veya kenara kadar uçsun
+                    left, right = free_span(row, col_index, col_index)
+                    flyer = FlyingEnemy(
+                        x + TILE_SIZE // 2, y + TILE_SIZE // 2, left * TILE_SIZE, (right + 1) * TILE_SIZE
+                    )
+                    sprites.append(flyer)
+                    self.enemies.add(flyer)
                 elif cell == "P":
                     # Karakterin ayakları bu kutunun altına gelsin
                     self.player_start = (x + TILE_SIZE // 2, y + TILE_SIZE)

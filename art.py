@@ -23,6 +23,7 @@ from settings import (
     ENEMY_HEIGHT,
     ENEMY_COLOR,
     ENEMY_EYE_COLOR,
+    FLYER_COLOR,
     LIFE_COLOR,
     SPRING_COLOR,
     MOVING_PLATFORM_COLOR,
@@ -142,6 +143,40 @@ def enemy_frames():
     }
     size = (ENEMY_WIDTH, ENEMY_HEIGHT)
     return [facing_pair(render(rows, palette, size)) for rows in ENEMY_ROWS]
+
+
+# --- Uçan düşman (yarasa, önden): kanatlar yukarıda ve aşağıda ---
+FLYER_ROWS = [
+    [
+        "w........w",
+        "ww.K..K.ww",
+        "wwwKKKKwww",
+        "wwKBBBBKww",
+        ".KBYBBYBK.",
+        "..KBhBBK..",
+        "...KKKK...",
+    ],
+    [
+        "..........",
+        "...K..K...",
+        "...KKKK...",
+        "..KBBBBK..",
+        "wKBYBBYBKw",
+        "wwKBhBBKww",
+        "ww.KKKK.ww",
+    ],
+]
+
+
+def flyer_frames():
+    palette = {
+        "K": shade(FLYER_COLOR, 0.3),
+        "B": FLYER_COLOR,
+        "h": tint(FLYER_COLOR, 0.4),
+        "w": shade(FLYER_COLOR, 0.6),
+        "Y": (255, 230, 90),  # parlayan gözler
+    }
+    return [render(rows, palette) for rows in FLYER_ROWS]
 
 
 # --- Altın: dönüyormuş gibi daralıp genişler ---

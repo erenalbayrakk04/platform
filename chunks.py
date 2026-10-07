@@ -10,6 +10,8 @@
 #   S  = yay (bir platformun hemen üstüne koy; üstüne basınca ~9 blok yükseğe fırlatır)
 #   E  = düşman (bir platformun hemen üstüne koy; o platformda sağa-sola yürür,
 #        platform en az 3 kare geniş olmalı)
+#   F  = uçan düşman (havada, kendi satırında duvara/kenara kadar sağa-sola uçar; bir platformun
+#        hemen üstündeki satıra koyarsan tam karakterin boyunda geçer). Satırda tek F, M ile aynı satırda olmaz.
 #   P  = karakterin başladığı yer (sadece başlangıç parçasında)
 #
 # Parçaların birbirine bağlanma kuralları (check_chunk bunları kontrol eder):
@@ -542,6 +544,63 @@ MIRRORED_CHUNKS = [
             "..........",
         ],
     },
+    # Kolay: geniş platformların üstünde bir yarasa uçuyor
+    {
+        "entry": "L", "exit": "R", "difficulty": 1,
+        "rows": [
+            ".....-----",
+            "..........",
+            "..C.......",
+            "-----.....",
+            "..........",
+            "......F...",
+            ".....-----",
+            "..........",
+            "..........",
+            ".----.....",
+            "..........",
+        ],
+    },
+    # Orta: iki yarasa, her platforma inerken zamanlama gerekir
+    {
+        "entry": "L", "exit": "L", "difficulty": 2,
+        "rows": [
+            "..---.....",
+            "..........",
+            "......C...",
+            ".....---..",
+            "..........",
+            "..F.......",
+            ".---......",
+            "..........",
+            "......F...",
+            ".....--...",
+            "..........",
+            "..........",
+            "..---.....",
+            "..........",
+        ],
+    },
+    # Zor: tek karelik platformlar, yarasalar tam inilecek yerden geçiyor
+    {
+        "entry": "L", "exit": "R", "difficulty": 3,
+        "rows": [
+            ".....-....",
+            "..........",
+            "..F.......",
+            "..-.......",
+            "..........",
+            "......C...",
+            "......-...",
+            "..........",
+            "...F......",
+            "..-.......",
+            "..........",
+            "..........",
+            "....-.....",
+            "..........",
+        ],
+    },
 ]
 CHUNKS += MIRRORED_CHUNKS + [mirror(chunk) for chunk in MIRRORED_CHUNKS]
 
@@ -552,6 +611,7 @@ SIDE_EDGE = {"L": 4, "R": 5}
 SOLID = "#-K"  # karakterin çarptığı kareler
 STEADY = "#-"  # bunların üstüne yay ve düşman konabilir (kırılmazlar)
 ENEMY_MIN_PLATFORM = 3  # düşmanın yürüdüğü platform en az kaç kare olmalı
+FLYER_MIN_PATH = 3  # uçan düşmanın yolu en az kaç kare olmalı
 
 
 def platform_run(rows, row, col):
@@ -568,6 +628,15 @@ def platform_run(rows, row, col):
     return left, right
 
 
+def free_span(row, left, right):
+    # left-right sütunlarını, satırda katı bir kareye veya kenara gelene kadar iki yana genişlet
+    while left > 0 and row[left - 1] not in SOLID:
+        left -= 1
+    while right < WIDTH - 1 and row[right + 1] not in SOLID:
+        right += 1
+    return left, right
+
+
 def moving_platforms(rows):
     # Her satırdaki M grubu bir hareketli platform:
     # (satır, ilk sütun, genişlik, gidebildiği en sol sütun, en sağ sütun)
@@ -576,12 +645,7 @@ def moving_platforms(rows):
         if "M" not in row:
             continue
         left, width = row.index("M"), row.count("M")
-        span_left, span_right = left, left + width - 1
-        while span_left > 0 and row[span_left - 1] not in SOLID:
-            span_left -= 1
-        while span_right < WIDTH - 1 and row[span_right + 1] not in SOLID:
-            span_right += 1
-        found.append((r, left, width, span_left, span_right))
+        found.append((r, left, width, *free_span(row, left, left + width - 1)))
     return found
 
 
@@ -597,7 +661,7 @@ def check_side_row(row, side, allowed):
 def check_chunk(chunk, is_start=False):
     # Parça kurallara uymuyorsa oyun açılırken hata ver (yanlış parça fark edilmeden kalmasın)
     rows = chunk["rows"]
-    allowed = "#-.CESMK" + ("P" if is_start else "")
+    allowed = "#-.CESMKF" + ("P" if is_start else "")
     problem = None
     if any(len(row) != WIDTH for row in rows):
         problem = "her satır 10 karakter olmalı"
@@ -622,6 +686,15 @@ def check_chunk(chunk, is_start=False):
                 left, right = platform_run(rows, r, c)
                 if right - left + 1 < ENEMY_MIN_PLATFORM:
                     problem = f"{r}. satırdaki düşmanın platformu {ENEMY_MIN_PLATFORM} kareden kısa"
+    # Uçan düşman: satırda bir tane, hareketli platformla aynı satırda değil, yolu yeterince uzun
+    for r, row in enumerate(rows):
+        if problem or "F" not in row:
+            continue
+        left, right = free_span(row, row.index("F"), row.index("F"))
+        if row.count("F") > 1 or "M" in row:
+            problem = f"{r}. satırda birden fazla uçan düşman veya hareketli platform var"
+        elif right - left + 1 < FLYER_MIN_PATH:
+            problem = f"{r}. satırdaki uçan düşmanın yolu {FLYER_MIN_PATH} kareden kısa"
     # Hareketli platformlar: tek parça, gidecek yeri olsun, yolunun üstü/altı boş olsun
     for r, left, width, span_left, span_right in moving_platforms(rows) if not problem else []:
         span = range(span_left, span_right + 1)

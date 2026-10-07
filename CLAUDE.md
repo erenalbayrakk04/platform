@@ -35,15 +35,19 @@
   satırda olamaz; `S` yay — aynı kural, `SPRING_POWER` ile ~9 blok fırlatır (yaylı parçalarda
   3 satır kuralı yok); `M` hareketli platform — satırda tek grup, `moving_platforms(rows)` →
   (satır, sol, genişlik, yol solu, yol sağı); yolun hemen üstü/altı boş, iki üstünde `#` yok; `E` düşman — aynı kural + altındaki platform en az `ENEMY_MIN_PLATFORM` (3) kare;
-  `platform_run(rows, r, c)` düşmanın yürüyeceği sütun aralığını verir). `mirror(chunk)` sağ-sol
+  `platform_run(rows, r, c)` düşmanın yürüyeceği sütun aralığını verir; `F` uçan düşman — satırında
+  `free_span(row, left, right)` ile katı kareye/kenara kadar uçar, satırda tek F, M ile aynı satırda olmaz,
+  yol en az `FLYER_MIN_PATH` kare; en iyisi bir platformun hemen üstündeki satır). `mirror(chunk)` sağ-sol
   aynası; `MIRRORED_CHUNKS` içindeki parçalar oyuna hem kendisi hem aynası olarak girer (yeni parçaları
-  buraya ekle → iki giriş tarafı otomatik). Toplam 38 parça; 2 yaylı, 2 hareketli platformlu, 3 kırılan platformlu tasarım (+aynaları). Birleşme kuralı: en alt satır boş, sondan ikinci satır giriş (sadece `-`, giriş
+  buraya ekle → iki giriş tarafı otomatik). Toplam 44 parça; 2 yaylı, 2 hareketli platformlu, 3 kırılan platformlu, 3 yarasalı tasarım (+aynaları). Birleşme kuralı: en alt satır boş, sondan ikinci satır giriş (sadece `-`, giriş
   tarafında; sol = sütun 0-4 ve 4 dolu, sağ = 5-9 ve 5 dolu), en üst satır çıkış (aynı kural). Çıkışı
   sol olanın üstüne girişi sağ olan gelir → birleşmede 2 satır fark, üst üste binme yok.
   `check_chunk` yanlış parçada oyun açılırken hata verir. Yeni parça eklerken her iki giriş
   tarafı için her zorlukta parça olsun.
-- `enemy.py` — `Enemy(center_x, bottom, left, right)`: `left`-`right` piksel arasında `ENEMY_SPEED`
-  ile gidip gelir (ondalıklı `pos_x`), tile'larla çarpışma yok (sınırlar parçadan hesaplanır).
+- `enemy.py` — ortak `Patrol` (`patrol()`: `left`-`right` piksel arasında gidip gelir, ondalıklı `pos_x`,
+  `old_top` = önceki karedeki üst kenar); `Enemy(center_x, bottom, left, right)` yürür (`ENEMY_SPEED`),
+  `FlyingEnemy(center_x, center_y, left, right)` yarasa: `FLYER_SPEED` ile uçar, `FLYER_BOB` kadar süzülür.
+  İkisi de `level.enemies`'te; tile'larla çarpışma yok (sınırlar parçadan hesaplanır).
 - `level.py` — `Tile`, `Platform`, `Coin`, `Heart`, `Spring` (`level.springs`; `Spring.squash()` basık resim), `MovingPlatform` (`level.movers` VE
   `level.tiles`; `move()` kaydığı pikseli döndürür; `unsafe = True`), `CrumblingPlatform` (`level.crumblers`;
   sağlamken `level.tiles`'ta da; `step(player, tiles)` her karede: basılınca `CRUMBLE_DELAY` kare titrer
@@ -79,7 +83,7 @@
   `new_game()` + "playing". `update_game(...)` oyun mantığı, `draw_world(...)` dünyayı çizer (her
   ekranda arkada görünür). ESC her yerde oyundan çıkar.
   `new_game()` yeni rastgele bölüm + karakter + kamera + puan kurar; altınlar
-  `spritecollide(player, level.coins, True)` ile toplanır. Düşmana değince `old_bottom <= enemy.top`
+  `spritecollide(player, level.coins, True)` ile toplanır. Düşmana değince `player.old_bottom <= enemy.old_top`
   ise düşman ölür (`STOMP_BOUNCE`), değilse dokunulmaz değilken `hurt()`. `level.bottom`'ın altına
   düşerse `hurt()` + `respawn()`.
 - `check_chunks.py` — çıkılabilirlik testi: `python check_chunks.py` (~20 sn, çok çekirdekli).
@@ -124,7 +128,7 @@
 
 ## Sıradaki adım
 Aşama 9 devam. Yapılanlar: yeni parçalar, yükseldikçe değişen gök, can toplama (kalp), yay,
-hareketli platform, kırılan platform. Kalan seçenek (kullanıcıya sor):
+hareketli platform, kırılan platform, uçan düşman. Kalan seçenek (kullanıcıya sor):
 - Telefonda/tarayıcıda çalışır çıktı: pygbag ile web sürümü (main döngüsü `async` + her karede
   `await asyncio.sleep(0)` olmalı; `highscore.txt` tarayıcıda çalışmaz → localStorage gerekebilir;
   ses biçimi tarayıcıda farklı olabilir — `Sounds` bunu zaten sessizce idare eder; check_chunks

@@ -63,6 +63,13 @@ ENEMY_EYE_COLOR = WHITE
 ENEMY_SPEED = 1.5  # her karede kaç piksel yürür
 STOMP_BOUNCE = 10  # düşmanın üstüne basınca karakter ne kadar sıçrar
 
+# Uçan düşmanlar (haritada 'F') — havada kendi satırında sağa-sola uçar; üstüne basılınca ölür
+FLYER_COLOR = (150, 90, 220)  # mor yarasa
+FLYER_SPEED = 1.2  # her karede kaç piksel uçar
+FLYER_BOB = 6  # uçarken kaç piksel aşağı-yukarı süzülür
+FLYER_BOB_SPEED = 15  # süzülmenin yavaşlığı (büyürse daha yavaş)
+FLYER_FLAP_SPEED = 6  # kanat çırpma: her resim kaç kare ekranda kalır
+
 # Can
 PLAYER_LIVES = 3  # oyun kaç canla başlar
 INVINCIBLE_TIME = 90  # can kaybedince kaç kare dokunulmaz kalır (60 kare = 1 saniye), bu sürede yanıp söner
