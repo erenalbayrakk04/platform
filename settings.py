@@ -1,4 +1,8 @@
 # Oyun ayarları — bir şeyi değiştirmek istersen önce buraya bak.
+import sys
+
+# Tarayıcıda mı çalışıyor (pygbag ile yapılan web sürümü)? Otomatik anlaşılır, değiştirme.
+WEB = sys.platform == "emscripten"
 
 # Pencere — telefon gibi dikey ekran (oyun yukarı doğru ilerler)
 SCREEN_WIDTH = 400
@@ -99,6 +103,7 @@ SCORE_SHADOW_COLOR = BLACK  # yazının arkasındaki gölge (her zeminde okunsun
 SCORE_FONT_SIZE = 40  # büyük puan yazısı
 SCORE_SMALL_FONT_SIZE = 24  # altındaki yükseklik / altın yazısı
 HIGHSCORE_FILE = "highscore.txt"  # en yüksek skorun saklandığı dosya (oyun klasöründe)
+HIGHSCORE_KEY = "platform-oyunu-rekor"  # web sürümünde rekorun tarayıcı hafızasındaki adı
 
 # Menü ve "Kaybettin" ekranı
 OVERLAY_ALPHA = 170  # oyunun üstüne serilen karanlık perdenin koyuluğu (0 = yok, 255 = simsiyah)

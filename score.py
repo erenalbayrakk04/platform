@@ -17,6 +17,8 @@ from settings import (
     SCREEN_WIDTH,
     PLAYER_LIVES,
     HIGHSCORE_FILE,
+    HIGHSCORE_KEY,
+    WEB,
     POWERUP_WARN_TIME,
 )
 
@@ -79,20 +81,33 @@ def high_score_path():
     return os.path.join(os.path.dirname(os.path.abspath(__file__)), HIGHSCORE_FILE)
 
 
+# Tarayıcıda dosyaya yazılan şey sayfa kapanınca kaybolur; orada rekor tarayıcının kendi
+# hafızasında (localStorage) saklanır. pygbag, tarayıcıya platform.window ile eriştirir.
+
+
 def load_high_score():
-    # Dosya yoksa veya bozuksa en yüksek skor 0
+    # Kayıt yoksa veya bozuksa en yüksek skor 0
     try:
+        if WEB:
+            from platform import window
+
+            return int(window.localStorage.getItem(HIGHSCORE_KEY) or 0)
         with open(high_score_path(), encoding="utf-8") as f:
             return int(f.read().strip())
-    except (OSError, ValueError):
+    except Exception:
         return 0
 
 
 def save_high_score(value):
     try:
+        if WEB:
+            from platform import window
+
+            window.localStorage.setItem(HIGHSCORE_KEY, str(value))
+            return
         with open(high_score_path(), "w", encoding="utf-8") as f:
             f.write(str(value))
-    except OSError:
+    except Exception:
         pass  # kaydedilemese de oyun çalışmaya devam etsin
 
 

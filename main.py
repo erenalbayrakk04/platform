@@ -1,4 +1,6 @@
 # Oyunu başlatan dosya. Çalıştırmak için terminalde: python main.py
+# Web sürümü de bu dosyadan yapılır (pygbag); bu yüzden oyun döngüsü "async" çalışır.
+import asyncio
 import sys
 
 import pygame
@@ -19,6 +21,7 @@ from settings import (
     MAGNET_COLOR,
     SHIELD_COLOR,
     POWERUP_WARN_TIME,
+    WEB,
 )
 from player import Player
 from level import Level
@@ -153,7 +156,7 @@ def draw_world(screen, background, level, player, camera):
         screen.blit(bubble, bubble.get_rect(center=camera.apply(player.rect).center))
 
 
-def main():
+async def main():
     sound.pre_init()  # ses ayarı pygame.init()'ten önce yapılmalı
     pygame.init()
     screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))
@@ -180,8 +183,8 @@ def main():
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 running = False
-            elif event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE:
-                running = False
+            elif event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE and not WEB:
+                running = False  # tarayıcıda çıkış yok (sayfa kapatılır)
             elif event.type == pygame.KEYDOWN and event.key == mute_key:
                 sounds.toggle_mute()
             elif event.type == pygame.KEYDOWN and event.key in START_KEYS:
@@ -235,10 +238,11 @@ def main():
         pygame.display.flip()
 
         clock.tick(FPS)
+        await asyncio.sleep(0)  # tarayıcıya sıra ver — web sürümü bunsuz donar
 
     pygame.quit()
     sys.exit()
 
 
 if __name__ == "__main__":
-    main()
+    asyncio.run(main())
