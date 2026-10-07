@@ -26,6 +26,7 @@ from settings import (
     LIFE_COLOR,
     SPRING_COLOR,
     MOVING_PLATFORM_COLOR,
+    CRUMBLE_COLOR,
     LIFE_EMPTY_COLOR,
     SCREEN_WIDTH,
     SCREEN_HEIGHT,
@@ -218,6 +219,25 @@ def platform_image():
         "k": shade(PLATFORM_COLOR, 0.5),
     }
     return render(PLATFORM_ROWS, palette, (TILE_SIZE, PLATFORM_HEIGHT))
+
+
+# --- Kırılan platform: çatlak taş; ikinci resim kırılmak üzereyken (çatlaklar büyür), üçüncüsü silik ---
+CRUMBLE_ROWS = [
+    ["hhhhhhhhhh", "WWkWWWWkWW", "kkWkkkkWkk"],
+    ["hhkhhhhkhh", "WkkWWWkkWW", "kkWkk.kWk."],
+]
+
+
+def crumble_frames():
+    palette = {
+        "h": tint(CRUMBLE_COLOR, 0.35),
+        "W": CRUMBLE_COLOR,
+        "k": shade(CRUMBLE_COLOR, 0.45),
+    }
+    whole, cracked = (render(rows, palette, (TILE_SIZE, PLATFORM_HEIGHT)) for rows in CRUMBLE_ROWS)
+    ghost = whole.copy()  # geri gelmeden az önce görünen silik hali
+    ghost.set_alpha(70)
+    return [whole, cracked, ghost]
 
 
 # --- Hareketli platform: perçinli mavi metal, kaç kare genişse o kadar tekrar edilir ---

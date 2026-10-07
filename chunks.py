@@ -3,6 +3,7 @@
 # Her parça küçük bir harita; işaretler level.py'deki gibi:
 #   #  = blok (katı)
 #   -  = ince platform (o da katı)
+#   K  = kırılan platform (ince; üstüne basınca yarım saniye sonra kırılır, birkaç saniye sonra geri gelir)
 #   .  = boşluk
 #   C  = altın (toplanınca puan verir; bir platformun hemen üstüne koy ki alınabilsin)
 #   M  = hareketli platform (yan yana M'ler tek platform; satırında duvara/kenara kadar gidip gelir)
@@ -18,6 +19,8 @@
 #     Sol taraf = 0-4. sütunlar ve 4. sütun dolu olmalı; sağ taraf = 5-9. sütunlar ve 5. sütun dolu olmalı.
 #   - En üst satır ÇIKIŞ: hepsi çıkış tarafında, aynı kural.
 #   - Altın (C), yay (S) ve düşman (E) giriş, çıkış ve en alt satıra konmaz; altlarında katı bir şey olmalı.
+#     Yay ve düşman kırılan platformun (K) üstüne konmaz; altın konabilir.
+#   - Kırılan platform (K) giriş ve çıkış satırında olmaz.
 #   - Yaylı parçalarda "en fazla 3 satır" kuralı yay için geçerli değil (yay ~8 satır çıkarır).
 #   - Hareketli platform: satırda tek grup; gittiği yolun hemen üstü ve altı boş olmalı
 #     (iki üstünde '#' olmasın) ki üstünde giderken kafa çarpmasın, alttakini ezmesin.
@@ -485,6 +488,60 @@ MIRRORED_CHUNKS = [
             "..........",
         ],
     },
+    # Kolay: geniş ama kırılan platform — üstünde oyalanma
+    {
+        "entry": "L", "exit": "R", "difficulty": 1,
+        "rows": [
+            ".....----.",
+            "..........",
+            "..C.......",
+            ".KKKK.....",
+            "..........",
+            "..........",
+            ".....---..",
+            "..........",
+            "..........",
+            "..---.....",
+            "..........",
+        ],
+    },
+    # Orta: kırılan basamaklarla zikzak
+    {
+        "entry": "L", "exit": "L", "difficulty": 2,
+        "rows": [
+            "..---.....",
+            "..........",
+            "......C...",
+            ".....KK...",
+            "..........",
+            "..C.......",
+            ".KK.......",
+            "..........",
+            "..........",
+            "...--.....",
+            "..........",
+        ],
+    },
+    # Zor: tek karelik kırılan taşlar, durmadan zıpla
+    {
+        "entry": "L", "exit": "R", "difficulty": 3,
+        "rows": [
+            ".....-....",
+            "..........",
+            "..C.......",
+            "..K.......",
+            "..........",
+            "......C...",
+            "......K...",
+            "..........",
+            "..........",
+            "..K.......",
+            "..........",
+            "..........",
+            "....-.....",
+            "..........",
+        ],
+    },
 ]
 CHUNKS += MIRRORED_CHUNKS + [mirror(chunk) for chunk in MIRRORED_CHUNKS]
 
@@ -492,7 +549,8 @@ WIDTH = 10
 # Her taraf için hangi sütunlar ona ait ve hangi sütun mutlaka dolu olmalı
 SIDE_COLUMNS = {"L": range(0, 5), "R": range(5, 10)}
 SIDE_EDGE = {"L": 4, "R": 5}
-SOLID = "#-"
+SOLID = "#-K"  # karakterin çarptığı kareler
+STEADY = "#-"  # bunların üstüne yay ve düşman konabilir (kırılmazlar)
 ENEMY_MIN_PLATFORM = 3  # düşmanın yürüdüğü platform en az kaç kare olmalı
 
 
@@ -500,7 +558,7 @@ def platform_run(rows, row, col):
     # (row, col) karesinin altındaki platformun soldan ve sağdan ilk/son sütunu.
     # Platform, altı katı ve kendisi boş olan yan yana karelerdir (duvara gelince biter).
     def walkable(c):
-        return rows[row + 1][c] in SOLID and rows[row][c] not in SOLID
+        return rows[row + 1][c] in STEADY and rows[row][c] not in SOLID
 
     left = right = col
     while left > 0 and walkable(left - 1):
@@ -539,7 +597,7 @@ def check_side_row(row, side, allowed):
 def check_chunk(chunk, is_start=False):
     # Parça kurallara uymuyorsa oyun açılırken hata ver (yanlış parça fark edilmeden kalmasın)
     rows = chunk["rows"]
-    allowed = "#-.CESM" + ("P" if is_start else "")
+    allowed = "#-.CESMK" + ("P" if is_start else "")
     problem = None
     if any(len(row) != WIDTH for row in rows):
         problem = "her satır 10 karakter olmalı"
@@ -558,6 +616,8 @@ def check_chunk(chunk, is_start=False):
                 continue
             if r + 1 >= len(rows) or rows[r + 1][c] not in SOLID:
                 problem = f"{r}. satır {c}. sütundaki '{cell}' havada (altı katı değil)"
+            elif cell in "ES" and rows[r + 1][c] not in STEADY:
+                problem = f"{r}. satır {c}. sütundaki '{cell}' kırılan platformun üstünde"
             elif cell == "E":
                 left, right = platform_run(rows, r, c)
                 if right - left + 1 < ENEMY_MIN_PLATFORM:

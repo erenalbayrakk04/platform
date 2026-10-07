@@ -112,6 +112,9 @@ class Sounds:
         for midi in (72, 76, 79, 84):
             start += t(freq(midi), freq(midi), 0.08, volume=0.4)
         spring = t(150, 750, 0.3, "triangle", 0.9)
+        crumble = [
+            a + b for a, b in zip(t(0, 0, 0.25, "noise", 0.5), t(180, 60, 0.25, "triangle", 0.5))
+        ]
         life = []
         for midi in (72, 76, 79, 84, 88):
             life += t(freq(midi), freq(midi), 0.06, "pulse", 0.4)
@@ -127,6 +130,7 @@ class Sounds:
             "game_over": game_over,
             "life": life,
             "spring": spring,
+            "crumble": crumble,
         }
         self.effects = {name: self.to_sound(s, SOUND_VOLUME) for name, s in sounds.items()}
 

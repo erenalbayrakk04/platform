@@ -16,6 +16,7 @@ from settings import (
     PLAYER_COLOR,
     LIFE_COLOR,
     HEART_POINTS,
+    CRUMBLE_COLOR,
 )
 from player import Player
 from level import Level
@@ -56,6 +57,11 @@ def update_game(level, player, camera, score, controls, sounds):
     player.update(level.tiles, controls)
     if player.jumped:
         sounds.play("jump")
+    # Kırılan platformlar: üstüne basılınca titrer, sonra kırılıp düşer, bir süre sonra geri gelir
+    for crumbler in level.crumblers:
+        if crumbler.step(player, level.tiles) == "break":
+            sounds.play("crumble")
+            burst(level.effects, crumbler.rect.center, CRUMBLE_COLOR)
     if player.check_springs(level.springs):
         sounds.play("spring")
 
@@ -107,11 +113,14 @@ def draw_world(screen, background, level, player, camera):
     # Önce gökyüzü, sonra her şeyi kameraya göre kaydırarak çiz
     background.draw(screen, camera.top)
     screen_rect = screen.get_rect()
-    sprites = [*level.tiles, *level.springs, *level.coins, *level.hearts, *level.enemies, *level.effects]
+    # Kırık platformlar geri gelmeden az önce silik görünür
+    ghosts = [crumbler for crumbler in level.crumblers if crumbler.ghost]
+    sprites = [*level.tiles, *ghosts, *level.springs, *level.coins, *level.hearts, *level.enemies, *level.effects]
     if player.visible:  # dokunulmazken yanıp söner
         sprites.append(player)
     for sprite in sprites:
-        screen_pos = camera.apply(sprite.rect)
+        # draw_rect: çizim yeri çarpışma kutusundan farklı olabilir (ör. titreyen platform)
+        screen_pos = camera.apply(getattr(sprite, "draw_rect", sprite.rect))
         if screen_pos.colliderect(screen_rect):  # sadece ekranda görüneni çiz
             screen.blit(sprite.image, screen_pos)
 

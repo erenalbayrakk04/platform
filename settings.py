@@ -45,6 +45,11 @@ COIN_EDGE_COLOR = (200, 140, 20)  # kenarındaki koyu halka
 MOVING_PLATFORM_SPEED = 2  # her karede kaç piksel gider
 MOVING_PLATFORM_COLOR = (100, 150, 220)  # mavi metal
 
+# Kırılan platformlar (haritada 'K') — üstüne basınca titrer, kırılıp düşer, sonra geri gelir
+CRUMBLE_DELAY = 30  # üstüne basınca kaç kare sonra kırılır (60 kare = 1 saniye)
+CRUMBLE_RESPAWN = 180  # kırıldıktan kaç kare sonra yerine geri gelir
+CRUMBLE_COLOR = (150, 140, 130)  # çatlak taş rengi
+
 # Yaylar (haritada 'S') — üstüne basınca çok yükseğe fırlatır
 SPRING_POWER = 24  # fırlatma gücü (zıplama 15; 24 ≈ 9 blok yükseğe)
 SPRING_COLOR = (80, 220, 120)  # yayın üst plakası (yeşil)

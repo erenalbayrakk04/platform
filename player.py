@@ -144,8 +144,8 @@ class Player(pygame.sprite.Sprite):
         feet = self.rect.move(0, 1)
         ground = [tile for tile in tiles if feet.colliderect(tile.rect)]
         self.on_ground = bool(ground)
-        # Hareketli platform güvenli yer sayılmaz (yeniden doğunca orada olmayabilir)
-        if ground and not any(getattr(tile, "moving", False) for tile in ground):
+        # Hareketli ve kırılan platform güvenli yer sayılmaz (yeniden doğunca orada olmayabilir)
+        if ground and not any(getattr(tile, "unsafe", False) for tile in ground):
             self.safe_pos = self.rect.midbottom
 
         self.animate(dx)

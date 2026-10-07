@@ -5,6 +5,7 @@
 # Not: düşmanlar hesaba katılmaz (üstlerine basılabilir veya beklenip geçilebilir).
 # Hareketli platformlar iki durumla düşünülür: yolunun sol ucunda veya sağ ucunda. Üstünde duran
 # karakter onunla öbür uca gider; üstünde değilse platformun öbür uca gitmesini bekleyebilir.
+# Kırılan platformun üstünde beklenemez ve yürünemez: karakter oraya inince hemen zıplamak zorunda.
 import itertools
 import os
 import sys
@@ -19,7 +20,7 @@ import pygame
 
 from chunks import START_CHUNK, CHUNKS, WIDTH, SOLID, moving_platforms
 from controls import Controls
-from level import Tile, Platform, Spring, MovingPlatform
+from level import Tile, Platform, Spring, MovingPlatform, CrumblingPlatform
 from player import Player
 from settings import TILE_SIZE
 
@@ -30,6 +31,7 @@ for d1 in (-1, 0, 1):
     for d2 in (-1, 0, 1):
         for t1 in SWITCH_FRAMES if d1 != d2 else (999,):
             ACTIONS.append((True, d1, t1, d2))
+JUMP_ACTIONS = [action for action in ACTIONS if action[0]]  # kırılan platformun üstünden yapılabilenler
 MAX_FRAMES = 150
 
 
@@ -43,6 +45,8 @@ def build(rows):
                 tiles.append(Tile(c * TILE_SIZE, r * TILE_SIZE))
             elif cell == "-":
                 tiles.append(Platform(c * TILE_SIZE, r * TILE_SIZE))
+            elif cell == "K":
+                tiles.append(CrumblingPlatform(c * TILE_SIZE, r * TILE_SIZE))
             elif cell == "S":
                 springs.add(Spring(c * TILE_SIZE, r * TILE_SIZE))
     movers = []
@@ -102,12 +106,17 @@ def reachable(rows, starts, goal_bottom):
         x, bottom, phase = queue.popleft()
         if bottom == goal_bottom:
             return True
+        # Sadece kırılan platformun üstündeyse: beklemek ve yürümek yok, hemen zıpla
+        feet = pygame.Rect(x, bottom, player.rect.width, 1)
+        ground = [t for t in groups[phase] if feet.colliderect(t.rect)]
+        crumbling = ground and all(isinstance(t, CrumblingPlatform) for t in ground)
         results = [
             (*landed, phase)
-            for action in ACTIONS
+            for action in (JUMP_ACTIONS if crumbling else ACTIONS)
             if (landed := simulate(player, groups[phase], springs, x, bottom, action, limit))
         ]
-        results += mover_moves(player, groups, movers, x, bottom, phase)
+        if not crumbling:
+            results += mover_moves(player, groups, movers, x, bottom, phase)
         for state in results:
             if state not in seen:
                 seen.add(state)

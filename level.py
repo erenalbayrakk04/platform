@@ -9,6 +9,8 @@ from settings import (
     COIN_SPIN_SPEED,
     HEART_CHANCE,
     SPRING_SQUASH_TIME,
+    CRUMBLE_DELAY,
+    CRUMBLE_RESPAWN,
     MOVING_PLATFORM_SPEED,
     LEVEL_SEED,
     GENERATE_AHEAD,
@@ -31,6 +33,7 @@ def image(name):
             coin=art.coin_frames(),
             heart=art.heart_images()["full"],
             spring=art.spring_frames(),
+            crumble=art.crumble_frames(),
         )
     return IMAGES[name]
 
@@ -53,7 +56,7 @@ class Platform(pygame.sprite.Sprite):
 class MovingPlatform(pygame.sprite.Sprite):
     # Hareketli platform: left-right piksel arasında gidip gelir; katıdır (level.tiles içinde).
     # Üstünde duran karakteri main.py taşır (Player.carry)
-    moving = True  # Player bunu görünce burayı "güvenli yer" saymaz
+    unsafe = True  # Player bunu görünce burayı "güvenli yer" saymaz
 
     def __init__(self, x, y, cells, left, right):
         super().__init__()
@@ -79,6 +82,57 @@ class MovingPlatform(pygame.sprite.Sprite):
             self.direction = 1
         self.rect.x = round(self.pos_x)
         return self.rect.x - old_x
+
+
+class CrumblingPlatform(pygame.sprite.Sprite):
+    # Kırılan platform: üstüne basılınca CRUMBLE_DELAY kare titrer, sonra kırılır (level.tiles'tan
+    # çıkar, içinden düşülür). CRUMBLE_RESPAWN kare sonra yerine geri gelir.
+    unsafe = True  # Player burayı "güvenli yer" saymaz (yeniden doğunca kırık olabilir)
+    GHOST_TIME = 60  # geri gelmeden son kaç karede silik görünür (nereye geleceği belli olsun)
+
+    def __init__(self, x, y):
+        super().__init__()
+        self.frames = image("crumble")
+        self.image = self.frames[0]
+        self.rect = self.image.get_rect(topleft=(x, y))
+        self.shaking = 0  # kırılmasına kaç kare kaldı (0 = kimse basmadı)
+        self.broken = 0  # geri gelmesine kaç kare kaldı (0 = yerinde)
+
+    @property
+    def ghost(self):
+        return 0 < self.broken <= self.GHOST_TIME
+
+    @property
+    def draw_rect(self):
+        # Titrerken resim sağa-sola oynar; çarpışma kutusu (rect) yerinde kalır
+        if self.shaking:
+            return self.rect.move(2 if (self.shaking // 3) % 2 else -2, 0)
+        return self.rect
+
+    def step(self, player, tiles):
+        # Her karede bir kere çağrılır. Kırıldığı karede "break", geri geldiği karede "back" döner
+        if self.broken:
+            self.broken -= 1
+            if self.ghost:
+                self.image = self.frames[2]
+            if self.broken == 0:
+                if self.rect.colliderect(player.rect):
+                    self.broken = 1  # karakter tam buradaysa içine gömülmesin, biraz daha bekle
+                    return None
+                self.image = self.frames[0]
+                tiles.add(self)
+                return "back"
+            return None
+        if not self.shaking and player.standing_on(self):
+            self.shaking = CRUMBLE_DELAY
+            self.image = self.frames[1]  # çatlaklar büyür
+        if self.shaking:
+            self.shaking -= 1
+            if self.shaking == 0:
+                self.broken = CRUMBLE_RESPAWN
+                tiles.remove(self)
+                return "break"
+        return None
 
 
 class Coin(pygame.sprite.Sprite):
@@ -146,6 +200,8 @@ class Level:
         self.springs = pygame.sprite.Group()
         # Hareketli platformlar (ayrıca tiles içinde de varlar, çünkü katılar)
         self.movers = pygame.sprite.Group()
+        # Kırılan platformlar (sağlamken tiles içinde de varlar; kırıkken sadece burada)
+        self.crumblers = pygame.sprite.Group()
         # Platformlarda yürüyen düşmanlar
         self.enemies = pygame.sprite.Group()
         self.width = len(START_CHUNK["rows"][0]) * TILE_SIZE
@@ -170,6 +226,10 @@ class Level:
                     sprites.append(Tile(x, y))
                 elif cell == "-":
                     sprites.append(Platform(x, y))
+                elif cell == "K":
+                    crumbler = CrumblingPlatform(x, y)
+                    sprites.append(crumbler)
+                    self.crumblers.add(crumbler)
                 elif cell == "C":
                     # Altın, nadiren de kalp
                     if self.random.random() < HEART_CHANCE:
@@ -205,7 +265,7 @@ class Level:
             )
             sprites.append(mover)
             self.movers.add(mover)
-        self.tiles.add([s for s in sprites if isinstance(s, (Tile, Platform, MovingPlatform))])
+        self.tiles.add([s for s in sprites if isinstance(s, (Tile, Platform, MovingPlatform, CrumblingPlatform))])
         self.chunks.append((top, self.top, sprites))
         self.top = top
         self.exit_side = chunk["exit"]
@@ -230,5 +290,6 @@ class Level:
             self.hearts.remove(sprites)
             self.springs.remove(sprites)
             self.movers.remove(sprites)
+            self.crumblers.remove(sprites)
             self.enemies.remove(sprites)
         self.bottom = self.chunks[0][1]
