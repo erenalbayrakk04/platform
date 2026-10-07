@@ -27,8 +27,9 @@ from settings import (
     LIFE_EMPTY_COLOR,
     SCREEN_WIDTH,
     SCREEN_HEIGHT,
-    SKY_TOP_COLOR,
-    SKY_BOTTOM_COLOR,
+    SKY_THEMES,
+    SKY_CHANGE_HEIGHT,
+    SKY_BLEND_HEIGHT,
     STAR_COUNT,
     STAR_PARALLAX,
 )
@@ -218,15 +219,21 @@ def heart_images():
     return {"full": heart_image(LIFE_COLOR), "empty": heart_image(LIFE_EMPTY_COLOR)}
 
 
-# --- Arka plan: renk geçişli gökyüzü + yavaş kayan yıldızlar ---
+def sky_image(top_color, bottom_color):
+    # Üstten alta yumuşak renk geçişi
+    sky = pygame.Surface((SCREEN_WIDTH, SCREEN_HEIGHT))
+    for y in range(SCREEN_HEIGHT):
+        t = y / (SCREEN_HEIGHT - 1)
+        color = [round(a + (b - a) * t) for a, b in zip(top_color, bottom_color)]
+        pygame.draw.line(sky, color, (0, y), (SCREEN_WIDTH, y))
+    return sky
+
+
+# --- Arka plan: yükseldikçe rengi değişen gökyüzü + yavaş kayan yıldızlar ---
 class Background:
     def __init__(self):
-        # Üstten alta yumuşak renk geçişi (bir kere hazırlanır)
-        self.sky = pygame.Surface((SCREEN_WIDTH, SCREEN_HEIGHT))
-        for y in range(SCREEN_HEIGHT):
-            t = y / (SCREEN_HEIGHT - 1)
-            color = [round(a + (b - a) * t) for a, b in zip(SKY_TOP_COLOR, SKY_BOTTOM_COLOR)]
-            pygame.draw.line(self.sky, color, (0, y), (SCREEN_WIDTH, y))
+        # Her renk teması için gökyüzü bir kere hazırlanır
+        self.skies = [sky_image(top, bottom) for top, bottom in SKY_THEMES]
         # Yıldızlar: hep aynı yerlerde olsun diye sabit sayıyla rastgele
         rng = random.Random(7)
         self.stars = [
@@ -240,7 +247,17 @@ class Background:
         ]
 
     def draw(self, screen, camera_top):
-        screen.blit(self.sky, (0, 0))
+        # Ne kadar yükseldik → hangi gökyüzü; geçiş bölgesinde sıradaki gökyüzü yavaşça belirir
+        height = max(0, -camera_top)
+        index = int(height // SKY_CHANGE_HEIGHT)
+        into = height % SKY_CHANGE_HEIGHT
+        blend = (into - (SKY_CHANGE_HEIGHT - SKY_BLEND_HEIGHT)) / SKY_BLEND_HEIGHT
+        screen.blit(self.skies[index % len(self.skies)], (0, 0))
+        if blend > 0:
+            next_sky = self.skies[(index + 1) % len(self.skies)]
+            next_sky.set_alpha(round(blend * 255))  # 0 = görünmez, 255 = tam
+            screen.blit(next_sky, (0, 0))
+            next_sky.set_alpha(None)
         # Kamera yukarı çıktıkça yıldızlar daha yavaş aşağı kayar; ekrandan çıkan üstten geri gelir
         shift = -camera_top * STAR_PARALLAX
         for x, y, size, color in self.stars:

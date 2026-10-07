@@ -81,8 +81,16 @@ GAME_OVER_DELAY = 60  # kaybettin ekranında tuşların kaç kare sonra çalış
 PIXEL_SCALE = 4  # piksel sanatındaki her kare ekranda kaç piksel (büyürse daha "kaba" görünür)
 ANIMATION_SPEED = 8  # yürüme ve düşman animasyonunda her resim kaç kare ekranda kalır
 COIN_SPIN_SPEED = 7  # altının dönme animasyonu: her resim kaç kare (küçüldükçe hızlı döner)
-SKY_TOP_COLOR = (12, 12, 32)  # gökyüzü: ekranın üstü
-SKY_BOTTOM_COLOR = (50, 34, 84)  # gökyüzü: ekranın altı (arada yumuşak geçiş)
+# Gökyüzü renkleri: (ekranın üstü, ekranın altı). Yükseldikçe sıradakine geçer, sonuncudan sonra başa döner
+SKY_THEMES = [
+    ((12, 12, 32), (50, 34, 84)),  # mor gece
+    ((6, 18, 40), (20, 70, 100)),  # derin mavi
+    ((8, 24, 28), (30, 100, 80)),  # kuzey ışıkları yeşili
+    ((30, 8, 30), (120, 40, 60)),  # gün batımı kızılı
+    ((2, 2, 8), (20, 20, 40)),  # uzay karanlığı
+]
+SKY_CHANGE_HEIGHT = 2400  # her bu kadar piksel (60 blok) tırmanınca gökyüzü sıradaki renge geçer
+SKY_BLEND_HEIGHT = 600  # renk geçişi bu kadar piksel boyunca yavaş yavaş olur
 STAR_COUNT = 70  # arka plandaki yıldız sayısı
 STAR_PARALLAX = 0.25  # yıldızlar haritaya göre ne kadar yavaş kaysın (0 = hiç, 1 = harita kadar) — derinlik hissi
 PARTICLE_COUNT = 10  # altın alınca / düşman ölünce saçılan parça sayısı
