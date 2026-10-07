@@ -27,6 +27,7 @@ class Score:
         self.height = 0  # üstüne basılan en yüksek yer (blok sayısı)
         self.coins = 0  # toplanan altın sayısı
         self.enemies = 0  # üstüne basılıp yenilen düşman sayısı
+        self.bonus = 0  # diğer puanlar (ör. canın doluyken alınan kalp)
         # None = pygame'in kendi yazı tipi
         self.font = pygame.font.Font(None, SCORE_FONT_SIZE)
         self.small_font = pygame.font.Font(None, SCORE_SMALL_FONT_SIZE)
@@ -37,6 +38,7 @@ class Score:
             self.height * HEIGHT_POINTS
             + self.coins * COIN_POINTS
             + self.enemies * ENEMY_POINTS
+            + self.bonus
         )
 
     def update(self, player):
@@ -51,6 +53,9 @@ class Score:
 
     def add_enemy(self):
         self.enemies += 1
+
+    def add_bonus(self, points):
+        self.bonus += points
 
     def draw(self, screen):
         draw_text(screen, self.font, f"Puan: {self.total}", topleft=(12, 10))

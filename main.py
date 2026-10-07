@@ -14,6 +14,8 @@ from settings import (
     COIN_COLOR,
     ENEMY_COLOR,
     PLAYER_COLOR,
+    LIFE_COLOR,
+    HEART_POINTS,
 )
 from player import Player
 from level import Level
@@ -53,6 +55,12 @@ def update_game(level, player, camera, score, controls, sounds):
         score.add_coin()
         sounds.play("coin")
         burst(level.effects, coin.rect.center, COIN_COLOR)
+    # Kalp: bir can verir; can zaten doluysa puan
+    for heart in pygame.sprite.spritecollide(player, level.hearts, True):
+        if not player.heal():
+            score.add_bonus(HEART_POINTS)
+        sounds.play("life")
+        burst(level.effects, heart.rect.center, LIFE_COLOR)
     score.update(player)
 
     # Düşmanlar yürüsün; karakter değdiyse: yukarıdan düştüyse düşman ölür, değilse can gider
@@ -77,6 +85,7 @@ def update_game(level, player, camera, score, controls, sounds):
 
     # Animasyonlar: altınlar döner, parçacıklar uçar
     level.coins.update()
+    level.hearts.update()
     level.effects.update()
 
     camera.follow(player.rect, level.bottom)
@@ -88,7 +97,7 @@ def draw_world(screen, background, level, player, camera):
     # Önce gökyüzü, sonra her şeyi kameraya göre kaydırarak çiz
     background.draw(screen, camera.top)
     screen_rect = screen.get_rect()
-    sprites = [*level.tiles, *level.coins, *level.enemies, *level.effects]
+    sprites = [*level.tiles, *level.coins, *level.hearts, *level.enemies, *level.effects]
     if player.visible:  # dokunulmazken yanıp söner
         sprites.append(player)
     for sprite in sprites:

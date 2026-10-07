@@ -49,6 +49,13 @@ class Player(pygame.sprite.Sprite):
         self.invincible = INVINCIBLE_TIME
         self.velocity_y = -HURT_BOUNCE
 
+    def heal(self):
+        # Bir can kazan (en fazla PLAYER_LIVES). Can zaten doluysa False döner
+        if self.lives >= PLAYER_LIVES:
+            return False
+        self.lives += 1
+        return True
+
     def bounce(self, power):
         # Yukarı sıçra (ör. düşmanın üstüne basınca)
         self.velocity_y = -power

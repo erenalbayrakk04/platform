@@ -1,4 +1,5 @@
 # Sonsuz bölüm: harita parçalarını (chunks.py) üst üste dizer, geride kalanları siler.
+import math
 import random
 
 import pygame
@@ -6,6 +7,7 @@ import pygame
 from settings import (
     TILE_SIZE,
     COIN_SPIN_SPEED,
+    HEART_CHANCE,
     LEVEL_SEED,
     GENERATE_AHEAD,
     REMOVE_BELOW,
@@ -21,7 +23,12 @@ IMAGES = {}
 
 def image(name):
     if name not in IMAGES:
-        IMAGES.update(tile=art.tile_image(), platform=art.platform_image(), coin=art.coin_frames())
+        IMAGES.update(
+            tile=art.tile_image(),
+            platform=art.platform_image(),
+            coin=art.coin_frames(),
+            heart=art.heart_images()["full"],
+        )
     return IMAGES[name]
 
 
@@ -57,6 +64,21 @@ class Coin(pygame.sprite.Sprite):
         self.image = self.frames[(self.spin // COIN_SPIN_SPEED) % len(self.frames)]
 
 
+class Heart(pygame.sprite.Sprite):
+    # Toplanabilir kalp: 1 can verir. Altın yerine nadiren çıkar (HEART_CHANCE)
+    def __init__(self, x, y):
+        super().__init__()
+        self.image = image("heart")
+        self.rect = self.image.get_rect(center=(x + TILE_SIZE // 2, y + TILE_SIZE // 2))
+        self.base_y = self.rect.y
+        self.time = 0
+
+    def update(self):
+        # Yavaşça aşağı yukarı süzülsün
+        self.time += 1
+        self.rect.y = self.base_y + round(3 * math.sin(self.time / 12))
+
+
 class Level:
     # Koordinatlar: en alttaki zeminin altı y = 0; yukarı çıktıkça y eksiye iner.
     def __init__(self, seed=LEVEL_SEED):
@@ -66,6 +88,8 @@ class Level:
         self.tiles = pygame.sprite.Group()
         # Toplanabilir altınlar
         self.coins = pygame.sprite.Group()
+        # Toplanabilir kalpler (can)
+        self.hearts = pygame.sprite.Group()
         # Platformlarda yürüyen düşmanlar
         self.enemies = pygame.sprite.Group()
         self.width = len(START_CHUNK["rows"][0]) * TILE_SIZE
@@ -91,9 +115,15 @@ class Level:
                 elif cell == "-":
                     sprites.append(Platform(x, y))
                 elif cell == "C":
-                    coin = Coin(x, y)
-                    sprites.append(coin)
-                    self.coins.add(coin)
+                    # Altın, nadiren de kalp
+                    if self.random.random() < HEART_CHANCE:
+                        heart = Heart(x, y)
+                        sprites.append(heart)
+                        self.hearts.add(heart)
+                    else:
+                        coin = Coin(x, y)
+                        sprites.append(coin)
+                        self.coins.add(coin)
                 elif cell == "E":
                     # Altındaki platformun kenarları arasında yürüsün
                     left, right = platform_run(rows, row_index, col_index)
@@ -126,6 +156,7 @@ class Level:
         while len(self.chunks) > 1 and self.chunks[0][0] > view_bottom + REMOVE_BELOW:
             _, _, sprites = self.chunks.pop(0)
             self.tiles.remove(sprites)
-            self.coins.remove(sprites)  # toplanmamış altınlar ve düşmanlar da gitsin
+            self.coins.remove(sprites)  # toplanmamış altınlar, kalpler ve düşmanlar da gitsin
+            self.hearts.remove(sprites)
             self.enemies.remove(sprites)
         self.bottom = self.chunks[0][1]

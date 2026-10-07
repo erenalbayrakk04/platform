@@ -111,6 +111,9 @@ class Sounds:
         start = []
         for midi in (72, 76, 79, 84):
             start += t(freq(midi), freq(midi), 0.08, volume=0.4)
+        life = []
+        for midi in (72, 76, 79, 84, 88):
+            life += t(freq(midi), freq(midi), 0.06, "pulse", 0.4)
         game_over = []
         for midi, length in ((67, 0.2), (64, 0.2), (60, 0.2), (55, 0.6)):
             game_over += t(freq(midi), freq(midi) * 0.98, length, "triangle", 0.8)
@@ -121,6 +124,7 @@ class Sounds:
             "hurt": hurt,
             "start": start,
             "game_over": game_over,
+            "life": life,
         }
         self.effects = {name: self.to_sound(s, SOUND_VOLUME) for name, s in sounds.items()}
 

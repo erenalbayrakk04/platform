@@ -41,7 +41,8 @@
   tarafı için her zorlukta parça olsun.
 - `enemy.py` — `Enemy(center_x, bottom, left, right)`: `left`-`right` piksel arasında `ENEMY_SPEED`
   ile gidip gelir (ondalıklı `pos_x`), tile'larla çarpışma yok (sınırlar parçadan hesaplanır).
-- `level.py` — `Tile`, `Platform`, `Coin` sprite'ları ve `Level(seed)`: y=0 zeminin altı, yukarı çıktıkça
+- `level.py` — `Tile`, `Platform`, `Coin`, `Heart` sprite'ları (her `C` `HEART_CHANCE` ihtimalle
+  `Heart` olur → `level.hearts`; alınca `player.heal()` +1 can, can doluysa `score.add_bonus(HEART_POINTS)`) ve `Level(seed)`: y=0 zeminin altı, yukarı çıktıkça
   y EKSİ. `add_chunk`, `pick_chunk` (giriş = önceki çıkışın tersi, zorluk ≤ 1 + yükseklik //
   `DIFFICULTY_STEP`), `update(view_top, view_bottom)` (`GENERATE_AHEAD` kadar yukarıyı doldurur,
   `REMOVE_BELOW`'dan aşağıdaki parçaları siler). `tiles` = çarpılan her şey, `coins` = altınlar,

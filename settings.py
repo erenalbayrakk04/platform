@@ -55,9 +55,11 @@ INVINCIBLE_TIME = 90  # can kaybedince kaç kare dokunulmaz kalır (60 kare = 1 
 HURT_BOUNCE = 7  # düşman çarpınca karakter ne kadar sıçrar
 LIFE_COLOR = (230, 50, 70)  # sağ üstteki dolu kalpler
 LIFE_EMPTY_COLOR = (80, 80, 100)  # kaybedilen can
+HEART_CHANCE = 0.05  # haritadaki her altının kalbe dönüşme ihtimali (0.05 = %5); kalp 1 can verir
 
 # Puan
 ENEMY_POINTS = 10  # üstüne basılıp yenilen her düşman kaç puan
+HEART_POINTS = 20  # canın doluyken kalp toplarsan kaç puan
 COIN_POINTS = 5  # her altın kaç puan
 HEIGHT_POINTS = 1  # tırmanılan her blok (40 piksel) kaç puan — sadece üstüne basılan en yüksek yer sayılır
 SCORE_COLOR = WHITE
