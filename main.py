@@ -3,11 +3,11 @@ import sys
 
 import pygame
 
-from settings import SCREEN_WIDTH, SCREEN_HEIGHT, TITLE, FPS, SKY_BLUE
+from settings import SCREEN_WIDTH, SCREEN_HEIGHT, TITLE, FPS, SKY_BLUE, STOMP_BOUNCE
 from player import Player
 from level import Level
 from camera import Camera
-from score import Score
+from score import Score, draw_lives
 
 
 def new_game():
@@ -47,8 +47,23 @@ def main():
             score.add_coin()
         score.update(player)
 
-        # Silinmiş bölgeye kadar düştüyse yeni oyun (can sistemi Aşama 6'da gelecek)
+        # Düşmanlar yürüsün; karakter değdiyse: yukarıdan düştüyse düşman ölür, değilse can gider
+        level.enemies.update()
+        for enemy in pygame.sprite.spritecollide(player, level.enemies, False):
+            if player.old_bottom <= enemy.rect.top:  # önceki karede tamamen düşmanın üstündeydi
+                enemy.kill()
+                score.add_enemy()
+                player.bounce(STOMP_BOUNCE)
+            elif not player.invincible:
+                player.hurt()
+
+        # Silinmiş bölgeye kadar düştüyse bir can gider, son durduğu yerden devam eder
         if player.rect.top > level.bottom:
+            player.hurt()
+            player.respawn()
+
+        # Can bittiyse yeni oyun (kaybettin ekranı Aşama 7'de gelecek)
+        if player.lives <= 0:
             level, player, camera, score = new_game()
 
         camera.follow(player.rect, level.bottom)
@@ -57,12 +72,16 @@ def main():
 
         # 3) Çizim — her şeyi kameraya göre kaydırarak çiz
         screen.fill(SKY_BLUE)
-        for sprite in [*level.tiles, *level.coins, player]:
+        sprites = [*level.tiles, *level.coins, *level.enemies]
+        if player.visible:  # dokunulmazken yanıp söner
+            sprites.append(player)
+        for sprite in sprites:
             screen_pos = camera.apply(sprite.rect)
             if screen_pos.colliderect(screen_rect):  # sadece ekranda görüneni çiz
                 screen.blit(sprite.image, screen_pos)
         # Puan yazısı kameradan bağımsız: hep ekranın sol üstünde
         score.draw(screen)
+        draw_lives(screen, player.lives)
         pygame.display.flip()
 
         clock.tick(FPS)

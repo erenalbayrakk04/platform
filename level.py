@@ -17,7 +17,8 @@ from settings import (
     REMOVE_BELOW,
     DIFFICULTY_STEP,
 )
-from chunks import START_CHUNK, CHUNKS
+from chunks import START_CHUNK, CHUNKS, platform_run
+from enemy import Enemy
 
 
 class Tile(pygame.sprite.Sprite):
@@ -61,6 +62,8 @@ class Level:
         self.tiles = pygame.sprite.Group()
         # Toplanabilir altınlar
         self.coins = pygame.sprite.Group()
+        # Platformlarda yürüyen düşmanlar
+        self.enemies = pygame.sprite.Group()
         self.width = len(START_CHUNK["rows"][0]) * TILE_SIZE
         self.player_start = (TILE_SIZE, 0)
         # Şu an bellekteki parçalar, aşağıdan yukarıya: (üst y, alt y, sprite listesi)
@@ -87,10 +90,18 @@ class Level:
                     coin = Coin(x, y)
                     sprites.append(coin)
                     self.coins.add(coin)
+                elif cell == "E":
+                    # Altındaki platformun kenarları arasında yürüsün
+                    left, right = platform_run(rows, row_index, col_index)
+                    enemy = Enemy(
+                        x + TILE_SIZE // 2, y + TILE_SIZE, left * TILE_SIZE, (right + 1) * TILE_SIZE
+                    )
+                    sprites.append(enemy)
+                    self.enemies.add(enemy)
                 elif cell == "P":
                     # Karakterin ayakları bu kutunun altına gelsin
                     self.player_start = (x + TILE_SIZE // 2, y + TILE_SIZE)
-        self.tiles.add([s for s in sprites if not isinstance(s, Coin)])
+        self.tiles.add([s for s in sprites if isinstance(s, (Tile, Platform))])
         self.chunks.append((top, self.top, sprites))
         self.top = top
         self.exit_side = chunk["exit"]
@@ -111,5 +122,6 @@ class Level:
         while len(self.chunks) > 1 and self.chunks[0][0] > view_bottom + REMOVE_BELOW:
             _, _, sprites = self.chunks.pop(0)
             self.tiles.remove(sprites)
-            self.coins.remove(sprites)  # toplanmamış altınlar da gitsin
+            self.coins.remove(sprites)  # toplanmamış altınlar ve düşmanlar da gitsin
+            self.enemies.remove(sprites)
         self.bottom = self.chunks[0][1]

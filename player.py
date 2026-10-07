@@ -9,6 +9,9 @@ from settings import (
     GRAVITY,
     JUMP_POWER,
     MAX_FALL_SPEED,
+    PLAYER_LIVES,
+    INVINCIBLE_TIME,
+    HURT_BOUNCE,
 )
 
 
@@ -20,21 +23,45 @@ class Player(pygame.sprite.Sprite):
         self.image.fill(PLAYER_COLOR)
         # rect = karakterin bölümdeki konumu ve boyutu
         self.rect = self.image.get_rect()
-        self.start_pos = (x, y)
+        # En son güvenle üstünde durduğu yer — düşünce buradan devam eder
+        self.safe_pos = (x, y)
         self.level_width = level_width
+        self.lives = PLAYER_LIVES
+        self.invincible = 0  # dokunulmazlığın bitmesine kaç kare kaldı (0 = dokunulabilir)
         self.respawn()
 
     def respawn(self):
-        # Karakteri başlangıç noktasına geri koy
-        self.rect.midbottom = self.start_pos
+        # Karakteri en son durduğu güvenli yere geri koy
+        self.rect.midbottom = self.safe_pos
         # Dikey hareket: eksi = yukarı, artı = aşağı
         self.velocity_y = 0.0
         # Konumu ondalıklı tutuyoruz ki küçük hızlar kaybolmasın
         self.pos_y = float(self.rect.bottom)
         self.on_ground = False
+        # Önceki karedeki ayak hizası — düşmana yukarıdan mı düştü anlamak için
+        self.old_bottom = self.rect.bottom
+
+    def hurt(self):
+        # Bir can kaybet ve kısa süre dokunulmaz ol (yanıp söner)
+        self.lives -= 1
+        self.invincible = INVINCIBLE_TIME
+        self.velocity_y = -HURT_BOUNCE
+
+    def bounce(self, power):
+        # Yukarı sıçra (ör. düşmanın üstüne basınca)
+        self.velocity_y = -power
+        self.on_ground = False
+
+    @property
+    def visible(self):
+        # Dokunulmazken birkaç karede bir görünmez olur → yanıp söner
+        return self.invincible == 0 or (self.invincible // 5) % 2 == 0
 
     def update(self, tiles):
         keys = pygame.key.get_pressed()
+        self.old_bottom = self.rect.bottom
+        if self.invincible > 0:
+            self.invincible -= 1
 
         # --- Yatay hareket ---
         # Sol ok veya A → sola, sağ ok veya D → sağa
@@ -78,3 +105,5 @@ class Player(pygame.sprite.Sprite):
         # Ayağının hemen altında blok varsa yerdedir
         feet = self.rect.move(0, 1)
         self.on_ground = any(feet.colliderect(tile.rect) for tile in tiles)
+        if self.on_ground:
+            self.safe_pos = self.rect.midbottom

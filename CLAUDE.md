@@ -29,24 +29,34 @@
   `{"entry": "L"/"R", "exit": "L"/"R", "difficulty": 1-3, "rows": [...]}`, 10 karakter genişlik
   (`#` katı blok, `-` ince platform — o da katı; kullanıcı alttan içinden geçilmesini İSTEMEDİ, kafa
   çarpmalı; `.` boş; `C` altın — bir platformun hemen üstündeki kareye konur, giriş/çıkış/en alt
-  satırda olamaz). Birleşme kuralı: en alt satır boş, sondan ikinci satır giriş (sadece `-`, giriş
+  satırda olamaz; `E` düşman — aynı kural + altındaki platform en az `ENEMY_MIN_PLATFORM` (3) kare;
+  `platform_run(rows, r, c)` düşmanın yürüyeceği sütun aralığını verir). Düşmanlar şimdilik sadece
+  geniş platformlu 4 kolay parçada (zor parçaların platformları dar). Birleşme kuralı: en alt satır boş, sondan ikinci satır giriş (sadece `-`, giriş
   tarafında; sol = sütun 0-4 ve 4 dolu, sağ = 5-9 ve 5 dolu), en üst satır çıkış (aynı kural). Çıkışı
   sol olanın üstüne girişi sağ olan gelir → birleşmede 2 satır fark, üst üste binme yok.
   `check_chunk` yanlış parçada oyun açılırken hata verir. Yeni parça eklerken her iki giriş
   tarafı için her zorlukta parça olsun.
+- `enemy.py` — `Enemy(center_x, bottom, left, right)`: `left`-`right` piksel arasında `ENEMY_SPEED`
+  ile gidip gelir (ondalıklı `pos_x`), tile'larla çarpışma yok (sınırlar parçadan hesaplanır).
 - `level.py` — `Tile`, `Platform`, `Coin` sprite'ları ve `Level(seed)`: y=0 zeminin altı, yukarı çıktıkça
   y EKSİ. `add_chunk`, `pick_chunk` (giriş = önceki çıkışın tersi, zorluk ≤ 1 + yükseklik //
   `DIFFICULTY_STEP`), `update(view_top, view_bottom)` (`GENERATE_AHEAD` kadar yukarıyı doldurur,
-  `REMOVE_BELOW`'dan aşağıdaki parçaları siler). `tiles` = çarpılan her şey, `coins` = altınlar
-  (katı değil; parça silinince onun altınları da silinir), `bottom` = en alttaki parçanın altı, `width` piksel.
+  `REMOVE_BELOW`'dan aşağıdaki parçaları siler). `tiles` = çarpılan her şey, `coins` = altınlar,
+  `enemies` = düşmanlar (katı değiller; parça silinince onunkiler de silinir), `bottom` = en alttaki parçanın altı, `width` piksel.
 - `score.py` — `Score(start_y)`: `height` = üstüne basılan en yüksek yer (blok, sadece `on_ground`
-  iken sayılır, düşünce azalmaz), `coins`, `total` = height × `HEIGHT_POINTS` + coins × `COIN_POINTS`;
-  `draw(screen)` sol üstte gölgeli yazı (kameradan bağımsız).
+  iken sayılır, düşünce azalmaz), `coins`, `enemies`, `total` = height × `HEIGHT_POINTS` + coins × `COIN_POINTS`
+  + enemies × `ENEMY_POINTS`; `draw(screen)` sol üstte gölgeli yazı (kameradan bağımsız);
+  `draw_lives(screen, lives)` sağ üstte kalpler (kaybedilen can gri).
+- Can sistemi `Player`'da: `lives`, `invincible` (kalan kare; `visible` ile yanıp söner), `hurt()`
+  (can −1, dokunulmazlık, küçük sıçrama), `bounce(power)`, `old_bottom` (önceki karenin ayak hizası),
+  `safe_pos` (en son yerde durduğu yer — `respawn()` oraya koyar).
 - `camera.py` — `Camera()`: DİKEYDE yumuşak takip (`CAMERA_SMOOTHNESS`), karakter ekranın
   `CAMERA_PLAYER_Y` oranında durur; yukarısı sınırsız, aşağıda `level.bottom`'da durur;
   `follow(rect, level_bottom)`, `top`/`bottom`, `apply(rect)`. Tüm çizim `main.py`'de kamera üzerinden.
 - `main.py` → `new_game()` yeni rastgele bölüm + karakter + kamera + puan kurar; altınlar
-  `spritecollide(player, level.coins, True)` ile toplanır. `level.bottom`'ın altına
+  `spritecollide(player, level.coins, True)` ile toplanır. Düşmana değince `old_bottom <= enemy.top`
+  ise düşman ölür (`STOMP_BOUNCE`), değilse dokunulmaz değilken `hurt()`. `level.bottom`'ın altına
+  düşerse `hurt()` + `respawn()`; `lives` 0 olunca şimdilik `new_game()` (kaybettin ekranı Aşama 7). `level.bottom`'ın altına
   düşerse şimdilik `new_game()` (yeni harita); can sistemi Aşama 6'da.
 - Parçaların çıkılabilirliği gerçek fizikle test edildi (her parça içi + tüm birleşmeler): yeni
   parça eklenince aynı tür bir test (Player'ı sahte tuşlarla çalıştıran BFS) tekrar yapılmalı.
@@ -63,14 +73,13 @@
 - [x] 4. Kamera & bölüm — dikey (yukarı doğru) uzun harita, dikey kamera takibi, ince platformlar
 - [x] 4b. Sonsuz parça sistemi — rastgele parçalar, geride kalanlar silinir, yükseldikçe zorlaşır
 - [x] 5. Toplanabilir — altın, puan göstergesi (puan = tırmanılan yükseklik + altınlar)
-- [ ] 6. Düşman & can — yürüyen düşman, can, ölme/yeniden başlama
+- [x] 6. Düşman & can — yürüyen düşman, can, ölme/yeniden başlama
 - [ ] 7. Oyun sonu — bayrak YOK (sonsuz): kaybettin ekranı + en yüksek skor, başlangıç menüsü
 - [ ] 8. Güzelleştirme — sprite, animasyon, ses/müzik, dokunmatik kontroller (ekran butonları)
 - [ ] 9. Ekstra — yeni parçalar, telefonda çalışır çıktı (ör. pygbag ile tarayıcıda)
 
 ## Sıradaki adım
-Aşama 6: yürüyen düşman ve can. Parçalara düşman işareti (ör. `E`) ekle: platformun üstünde sağa-sola
-yürüsün, platformun ucuna gelince geri dönsün; değince can azalsın (kısa süre dokunulmazlık), üstüne
-zıplayınca düşman ölsün (puan versin). Can sayısı ve puanlar `settings.py`'de, can ekranın üst
-köşesinde. Aşağı düşünce (`level.bottom`) can gitsin; can bitince şimdilik `new_game()`.
-Silinen parçanın düşmanları da silinmeli.
+Aşama 7: oyun sonu. Can bitince "Kaybettin" ekranı (puan, en yüksek skor; tuşla yeniden başla).
+En yüksek skor bir dosyada saklansın (ör. `highscore.txt`, git dışı) ve oyun kapanıp açılınca
+kalsın. Oyun açılınca başlangıç menüsü (oyun adı, "başlamak için Boşluk", en yüksek skor).
+Ekranlar (menü / oyun / kaybettin) `main.py`'de basit bir durum değişkeniyle yönetilsin.

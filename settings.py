@@ -42,7 +42,24 @@ COIN_SIZE = 20  # çapı (piksel)
 COIN_COLOR = (255, 210, 40)  # altın sarısı
 COIN_EDGE_COLOR = (200, 140, 20)  # kenarındaki koyu halka
 
+# Düşmanlar (haritada 'E') — platformun üstünde sağa-sola yürür
+ENEMY_WIDTH = 32
+ENEMY_HEIGHT = 28
+ENEMY_COLOR = (220, 60, 60)  # kırmızı
+ENEMY_EYE_COLOR = WHITE
+ENEMY_SPEED = 1.5  # her karede kaç piksel yürür
+STOMP_BOUNCE = 10  # düşmanın üstüne basınca karakter ne kadar sıçrar
+
+# Can
+PLAYER_LIVES = 3  # oyun kaç canla başlar
+INVINCIBLE_TIME = 90  # can kaybedince kaç kare dokunulmaz kalır (60 kare = 1 saniye), bu sürede yanıp söner
+HURT_BOUNCE = 7  # düşman çarpınca karakter ne kadar sıçrar
+LIFE_SIZE = 24  # sağ üstteki kalplerin boyu (piksel)
+LIFE_COLOR = (230, 50, 70)  # dolu kalp
+LIFE_EMPTY_COLOR = (80, 80, 100)  # kaybedilen can
+
 # Puan
+ENEMY_POINTS = 10  # üstüne basılıp yenilen her düşman kaç puan
 COIN_POINTS = 5  # her altın kaç puan
 HEIGHT_POINTS = 1  # tırmanılan her blok (40 piksel) kaç puan — sadece üstüne basılan en yüksek yer sayılır
 SCORE_COLOR = WHITE
