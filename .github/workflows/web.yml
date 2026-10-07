@@ -1,0 +1,53 @@
+# Web sürümü: GitHub'a her gönderimde (push) oyunu pygbag ile tarayıcı sürümüne çevirip
+# GitHub Pages'e koyar → https://erenalbayrakk04.github.io/platform/
+# Önce harita parçası testi çalışır; çıkılamayan bir parça varsa yayına çıkmaz.
+name: Web sürümü
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch: # GitHub'da "Actions" sekmesinden elle de çalıştırılabilsin
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# Arka arkaya gönderimlerde sadece en sonuncusu yayınlansın
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+
+      - name: Harita parçası testi
+        run: |
+          pip install pygame-ce
+          python check_chunks.py
+
+      - name: Tarayıcı sürümünü derle (pygbag)
+        run: |
+          pip install pygbag==0.9.3
+          python -m pygbag --build --width 400 --height 720 --title "Platform Oyunu" --template web.tmpl .
+
+      - uses: actions/upload-pages-artifact@v5
+        with:
+          path: build/web
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v5
