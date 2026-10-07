@@ -7,6 +7,15 @@
 - Kullanıcı hiç kod yazmamış: kodu Claude yazar, kullanıcı test eder ve geri bildirim verir.
 - Kullanıcıyla Türkçe konuş, teknik terimleri basitçe açıkla.
 - Çalıştırma: `python main.py` (ESC veya pencereyi kapatmak oyundan çıkar).
+- Web sürümü (pygbag 0.9.3, tarayıcıda Python 3.12 çalışır): `python -m pygbag --width 400 --height 720
+  --title "Platform Oyunu" --template web.tmpl .` → derler ve http://localhost:8000'de test sunucusu açar
+  (`--build` = sadece derle; çıktı `build/web`, git dışı). `pygbag.ini` pakete girmeyecek dosyalar
+  (check_chunks.py, CLAUDE.md, highscore.txt...). `web.tmpl` = sayfa şablonu (pygbag default.tmpl'den:
+  koyu arka plan, Türkçe yazılar `chr()` ile — düzenleme araçları ters bölü-u kaçışlarını harfe çeviriyor —,
+  telefonda kaydırma/yakınlaştırma kapalı, `image-rendering: pixelated`). pygbag şablonda sadece
+  `{{cookiecutter.x}}` doldurur (Jinja yorumu vb. çalışmaz). Tarayıcıda test: Chrome görünmez modda
+  CDP ile denendi (Edge görünmez modu wasm'da çöküyor); `window.python.PyRun_SimpleString(code)` ile
+  sayfadaki Python'a komut gönderilebilir.
 
 ## Çalışma kuralları
 - Her aşama sonunda oyun çalışır durumda olmalı.
@@ -67,7 +76,9 @@
   `draw_lives(screen, lives)` sağ üstte kalpler (kaybedilen can gri); `draw_powers(screen, player)` kalplerin
   altında süren güçlendirmelerin simgesi + süre çubuğu (son `POWERUP_WARN_TIME` karede yanıp söner); `draw_text(screen, font, text,
   color, center=/topleft=...)` gölgeli yazı (her yerde bu kullanılır); `load_high_score()` /
-  `save_high_score(v)` → `highscore.txt` (oyun klasöründe, git dışı; bozuk/yoksa 0, yazılamazsa sessiz).
+  `save_high_score(v)` → `highscore.txt` (oyun klasöründe, git dışı; bozuk/yoksa 0, yazılamazsa sessiz);
+  web'de (`settings.WEB`, `sys.platform == "emscripten"`) tarayıcı hafızası: `platform.window.localStorage`,
+  anahtar `HIGHSCORE_KEY`.
 - `screens.py` — `draw_menu(screen, high_score)` ve `draw_game_over(screen, score, high_score,
   new_record, ready)`: oyunun üstüne yarı saydam perde + ortalanmış yazılar; yazı tipleri önbellekte.
 - Can sistemi `Player`'da: `lives`, `invincible` (kalan kare; `visible` ile yanıp söner), `hurt()`
@@ -85,7 +96,8 @@
 - `main.py` → ekran durumu `state`: "menu" → (Boşluk/Enter/tıklama) → "playing" → (can biter) →
   "game_over" (`GAME_OVER_DELAY` kare tuş çalışmaz; rekor kırıldıysa hemen kaydedilir) → tuşla
   `new_game()` + "playing". `update_game(...)` oyun mantığı, `draw_world(...)` dünyayı çizer (her
-  ekranda arkada görünür). ESC her yerde oyundan çıkar.
+  ekranda arkada görünür). ESC her yerde oyundan çıkar (web'de hariç). `main()` `async`: döngü sonunda
+  `await asyncio.sleep(0)` (web için şart), en altta `asyncio.run(main())`.
   `new_game()` yeni rastgele bölüm + karakter + kamera + puan kurar; altınlar
   `spritecollide(player, level.coins, True)` ile toplanır. Düşmana değince `player.old_bottom <= enemy.old_top`
   ise düşman ölür (`STOMP_BOUNCE`); kalkan (`player.powers["shield"]`) varken değdiği düşman zıplamadan ölür;
@@ -136,9 +148,8 @@
 ## Sıradaki adım
 Aşama 9 devam. Yapılanlar: yeni parçalar, yükseldikçe değişen gök, can toplama (kalp), yay,
 hareketli platform, kırılan platform, uçan düşman (yarasa), mıknatıs ve kalkan güçlendirmeleri.
-Sıradaki (kullanıcı böyle istedi: önce fikirler, sonra web):
-- Telefonda/tarayıcıda çalışır çıktı: pygbag ile web sürümü (main döngüsü `async` + her karede
-  `await asyncio.sleep(0)` olmalı; `highscore.txt` tarayıcıda çalışmaz → localStorage gerekebilir;
-  ses biçimi tarayıcıda farklı olabilir — `Sounds` bunu zaten sessizce idare eder; check_chunks
-  multiprocessing kullanıyor, web paketine girmemeli). GitHub Pages'te yayın.
+Web sürümü hazır ve tarayıcıda denendi (menü, klavye, çoklu dokunma, ses, localStorage rekor çalışıyor).
+Kalan: yayınlamak. Depo GİZLİ → ücretsiz GitHub Pages çalışmaz; kullanıcıya nerede yayınlanacağı soruldu.
+Plan: GitHub Actions her push'ta pygbag ile derleyip yayınlasın (kullanıcı yayından sonra da değişiklik
+yapılabilsin istedi).
 - Sonra belki: başka güçlendirmeler (ör. jetpack), başka düşman türleri.
