@@ -56,8 +56,7 @@
 - `main.py` → `new_game()` yeni rastgele bölüm + karakter + kamera + puan kurar; altınlar
   `spritecollide(player, level.coins, True)` ile toplanır. Düşmana değince `old_bottom <= enemy.top`
   ise düşman ölür (`STOMP_BOUNCE`), değilse dokunulmaz değilken `hurt()`. `level.bottom`'ın altına
-  düşerse `hurt()` + `respawn()`; `lives` 0 olunca şimdilik `new_game()` (kaybettin ekranı Aşama 7). `level.bottom`'ın altına
-  düşerse şimdilik `new_game()` (yeni harita); can sistemi Aşama 6'da.
+  düşerse `hurt()` + `respawn()`; `lives` 0 olunca şimdilik `new_game()` (kaybettin ekranı Aşama 7).
 - Parçaların çıkılabilirliği gerçek fizikle test edildi (her parça içi + tüm birleşmeler): yeni
   parça eklenince aynı tür bir test (Player'ı sahte tuşlarla çalıştıran BFS) tekrar yapılmalı.
 - Zıplama ~133 px (3 blok = 120 px'e çıkılabilir), yatayda ~4 blok gidilebilir; parça
