@@ -31,17 +31,18 @@
   `{"entry": "L"/"R", "exit": "L"/"R", "difficulty": 1-3, "rows": [...]}`, 10 karakter genişlik
   (`#` katı blok, `-` ince platform — o da katı; kullanıcı alttan içinden geçilmesini İSTEMEDİ, kafa
   çarpmalı; `.` boş; `C` altın — bir platformun hemen üstündeki kareye konur, giriş/çıkış/en alt
-  satırda olamaz; `E` düşman — aynı kural + altındaki platform en az `ENEMY_MIN_PLATFORM` (3) kare;
+  satırda olamaz; `S` yay — aynı kural, `SPRING_POWER` ile ~9 blok fırlatır (yaylı parçalarda
+  3 satır kuralı yok); `E` düşman — aynı kural + altındaki platform en az `ENEMY_MIN_PLATFORM` (3) kare;
   `platform_run(rows, r, c)` düşmanın yürüyeceği sütun aralığını verir). `mirror(chunk)` sağ-sol
   aynası; `MIRRORED_CHUNKS` içindeki parçalar oyuna hem kendisi hem aynası olarak girer (yeni parçaları
-  buraya ekle → iki giriş tarafı otomatik). Toplam 24 parça (zorluk 1: 8, 2: 10, 3: 6). Birleşme kuralı: en alt satır boş, sondan ikinci satır giriş (sadece `-`, giriş
+  buraya ekle → iki giriş tarafı otomatik). Toplam 28 parça; 2 yaylı tasarım (+aynaları). Birleşme kuralı: en alt satır boş, sondan ikinci satır giriş (sadece `-`, giriş
   tarafında; sol = sütun 0-4 ve 4 dolu, sağ = 5-9 ve 5 dolu), en üst satır çıkış (aynı kural). Çıkışı
   sol olanın üstüne girişi sağ olan gelir → birleşmede 2 satır fark, üst üste binme yok.
   `check_chunk` yanlış parçada oyun açılırken hata verir. Yeni parça eklerken her iki giriş
   tarafı için her zorlukta parça olsun.
 - `enemy.py` — `Enemy(center_x, bottom, left, right)`: `left`-`right` piksel arasında `ENEMY_SPEED`
   ile gidip gelir (ondalıklı `pos_x`), tile'larla çarpışma yok (sınırlar parçadan hesaplanır).
-- `level.py` — `Tile`, `Platform`, `Coin`, `Heart` sprite'ları (her `C` `HEART_CHANCE` ihtimalle
+- `level.py` — `Tile`, `Platform`, `Coin`, `Heart`, `Spring` sprite'ları (`level.springs`; `Spring.squash()` basık resim) (her `C` `HEART_CHANCE` ihtimalle
   `Heart` olur → `level.hearts`; alınca `player.heal()` +1 can, can doluysa `score.add_bonus(HEART_POINTS)`) ve `Level(seed)`: y=0 zeminin altı, yukarı çıktıkça
   y EKSİ. `add_chunk`, `pick_chunk` (giriş = önceki çıkışın tersi, zorluk ≤ 1 + yükseklik //
   `DIFFICULTY_STEP`), `update(view_top, view_bottom)` (`GENERATE_AHEAD` kadar yukarıyı doldurur,
@@ -57,7 +58,9 @@
 - `screens.py` — `draw_menu(screen, high_score)` ve `draw_game_over(screen, score, high_score,
   new_record, ready)`: oyunun üstüne yarı saydam perde + ortalanmış yazılar; yazı tipleri önbellekte.
 - Can sistemi `Player`'da: `lives`, `invincible` (kalan kare; `visible` ile yanıp söner), `hurt()`
-  (can −1, dokunulmazlık, küçük sıçrama), `bounce(power)`, `old_bottom` (önceki karenin ayak hizası),
+  (can −1, dokunulmazlık, küçük sıçrama), `bounce(power)`, `check_springs(springs)` (ayak şeridi yaya
+  değiyor ve yükselmiyorsa `SPRING_POWER` ile fırlar; main ve check_chunks ikisi de player.update'ten
+  sonra çağırır), `heal()`, `old_bottom` (önceki karenin ayak hizası),
   `safe_pos` (en son yerde durduğu yer — `respawn()` oraya koyar).
 - `camera.py` — `Camera()`: DİKEYDE yumuşak takip (`CAMERA_SMOOTHNESS`), karakter ekranın
   `CAMERA_PLAYER_Y` oranında durur; yukarısı sınırsız, aşağıda `level.bottom`'da durur;

@@ -24,6 +24,7 @@ from settings import (
     ENEMY_COLOR,
     ENEMY_EYE_COLOR,
     LIFE_COLOR,
+    SPRING_COLOR,
     LIFE_EMPTY_COLOR,
     SCREEN_WIDTH,
     SCREEN_HEIGHT,
@@ -158,6 +159,24 @@ def coin_frames():
     }
     full, half, thin = (render(rows, palette, (COIN_SIZE, COIN_SIZE)) for rows in COIN_ROWS)
     return [full, half, thin, half]
+
+
+# --- Yay: normal ve basık hali ---
+SPRING_ROWS = [
+    ["hGGGGh", ".k..k.", "..kk..", "KKKKKK"],
+    ["hGGGGh", "KKKKKK"],
+]
+SPRING_SIZE = (24, 16)
+
+
+def spring_frames():
+    palette = {
+        "G": SPRING_COLOR,
+        "h": tint(SPRING_COLOR, 0.5),
+        "k": (170, 170, 190),
+        "K": (90, 90, 110),
+    }
+    return [render(rows, palette, SPRING_SIZE) for rows in SPRING_ROWS]
 
 
 # --- Blok: üstü çimen, altı toprak ---

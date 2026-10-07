@@ -8,6 +8,7 @@ from settings import (
     TILE_SIZE,
     COIN_SPIN_SPEED,
     HEART_CHANCE,
+    SPRING_SQUASH_TIME,
     LEVEL_SEED,
     GENERATE_AHEAD,
     REMOVE_BELOW,
@@ -28,6 +29,7 @@ def image(name):
             platform=art.platform_image(),
             coin=art.coin_frames(),
             heart=art.heart_images()["full"],
+            spring=art.spring_frames(),
         )
     return IMAGES[name]
 
@@ -79,6 +81,24 @@ class Heart(pygame.sprite.Sprite):
         self.rect.y = self.base_y + round(3 * math.sin(self.time / 12))
 
 
+class Spring(pygame.sprite.Sprite):
+    # Yay: altındaki platformun üstüne oturur; karakter üstüne basınca fırlar (Player.check_springs)
+    def __init__(self, x, y):
+        super().__init__()
+        self.frames = image("spring")
+        self.image = self.frames[0]
+        self.rect = self.image.get_rect(midbottom=(x + TILE_SIZE // 2, y + TILE_SIZE))
+        self.squashed = 0  # basık görünmesine kaç kare kaldı
+
+    def squash(self):
+        self.squashed = SPRING_SQUASH_TIME
+
+    def update(self):
+        if self.squashed > 0:
+            self.squashed -= 1
+        self.image = self.frames[1 if self.squashed else 0]
+
+
 class Level:
     # Koordinatlar: en alttaki zeminin altı y = 0; yukarı çıktıkça y eksiye iner.
     def __init__(self, seed=LEVEL_SEED):
@@ -90,6 +110,8 @@ class Level:
         self.coins = pygame.sprite.Group()
         # Toplanabilir kalpler (can)
         self.hearts = pygame.sprite.Group()
+        # Yaylar
+        self.springs = pygame.sprite.Group()
         # Platformlarda yürüyen düşmanlar
         self.enemies = pygame.sprite.Group()
         self.width = len(START_CHUNK["rows"][0]) * TILE_SIZE
@@ -124,6 +146,10 @@ class Level:
                         coin = Coin(x, y)
                         sprites.append(coin)
                         self.coins.add(coin)
+                elif cell == "S":
+                    spring = Spring(x, y)
+                    sprites.append(spring)
+                    self.springs.add(spring)
                 elif cell == "E":
                     # Altındaki platformun kenarları arasında yürüsün
                     left, right = platform_run(rows, row_index, col_index)
@@ -158,5 +184,6 @@ class Level:
             self.tiles.remove(sprites)
             self.coins.remove(sprites)  # toplanmamış altınlar, kalpler ve düşmanlar da gitsin
             self.hearts.remove(sprites)
+            self.springs.remove(sprites)
             self.enemies.remove(sprites)
         self.bottom = self.chunks[0][1]

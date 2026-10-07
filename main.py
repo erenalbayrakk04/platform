@@ -49,6 +49,8 @@ def update_game(level, player, camera, score, controls, sounds):
     player.update(level.tiles, controls)
     if player.jumped:
         sounds.play("jump")
+    if player.check_springs(level.springs):
+        sounds.play("spring")
 
     # Değdiği altınları topla (True = toplanan altın haritadan silinir)
     for coin in pygame.sprite.spritecollide(player, level.coins, True):
@@ -86,6 +88,7 @@ def update_game(level, player, camera, score, controls, sounds):
     # Animasyonlar: altınlar döner, parçacıklar uçar
     level.coins.update()
     level.hearts.update()
+    level.springs.update()
     level.effects.update()
 
     camera.follow(player.rect, level.bottom)
@@ -97,7 +100,7 @@ def draw_world(screen, background, level, player, camera):
     # Önce gökyüzü, sonra her şeyi kameraya göre kaydırarak çiz
     background.draw(screen, camera.top)
     screen_rect = screen.get_rect()
-    sprites = [*level.tiles, *level.coins, *level.hearts, *level.enemies, *level.effects]
+    sprites = [*level.tiles, *level.springs, *level.coins, *level.hearts, *level.enemies, *level.effects]
     if player.visible:  # dokunulmazken yanıp söner
         sprites.append(player)
     for sprite in sprites:

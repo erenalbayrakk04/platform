@@ -41,6 +41,11 @@ COIN_SIZE = 20  # çapı (piksel)
 COIN_COLOR = (255, 210, 40)  # altın sarısı
 COIN_EDGE_COLOR = (200, 140, 20)  # kenarındaki koyu halka
 
+# Yaylar (haritada 'S') — üstüne basınca çok yükseğe fırlatır
+SPRING_POWER = 24  # fırlatma gücü (zıplama 15; 24 ≈ 9 blok yükseğe)
+SPRING_COLOR = (80, 220, 120)  # yayın üst plakası (yeşil)
+SPRING_SQUASH_TIME = 10  # fırlatınca kaç kare basık görünür
+
 # Düşmanlar (haritada 'E') — platformun üstünde sağa-sola yürür
 ENEMY_WIDTH = 32
 ENEMY_HEIGHT = 28

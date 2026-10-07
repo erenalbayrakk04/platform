@@ -10,6 +10,7 @@ from settings import (
     INVINCIBLE_TIME,
     HURT_BOUNCE,
     ANIMATION_SPEED,
+    SPRING_POWER,
 )
 from art import player_frames
 
@@ -55,6 +56,18 @@ class Player(pygame.sprite.Sprite):
             return False
         self.lives += 1
         return True
+
+    def check_springs(self, springs):
+        # Bir yayın üstünde duruyorsa veya üstüne düştüyse çok yükseğe fırla; fırlatan yayı döndür
+        if self.velocity_y < 0:
+            return None  # zaten yükseliyor
+        feet = pygame.Rect(self.rect.left, self.rect.bottom - 1, self.rect.width, 1)
+        for spring in springs:
+            if feet.colliderect(spring.rect):
+                self.bounce(SPRING_POWER)
+                spring.squash()
+                return spring
+        return None
 
     def bounce(self, power):
         # Yukarı sıçra (ör. düşmanın üstüne basınca)

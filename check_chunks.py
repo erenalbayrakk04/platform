@@ -16,7 +16,7 @@ import pygame
 
 from chunks import START_CHUNK, CHUNKS, WIDTH, SOLID
 from controls import Controls
-from level import Tile, Platform
+from level import Tile, Platform, Spring
 from player import Player
 from settings import TILE_SIZE
 
@@ -31,18 +31,21 @@ MAX_FRAMES = 150
 
 
 def build(rows):
-    # Harf satırlarından çarpılabilir bloklar (en üst satır y = 0)
+    # Harf satırlarından çarpılabilir bloklar ve yaylar (en üst satır y = 0)
     tiles = pygame.sprite.Group()
+    springs = pygame.sprite.Group()
     for r, row in enumerate(rows):
         for c, cell in enumerate(row):
             if cell == "#":
                 tiles.add(Tile(c * TILE_SIZE, r * TILE_SIZE))
             elif cell == "-":
                 tiles.add(Platform(c * TILE_SIZE, r * TILE_SIZE))
-    return tiles
+            elif cell == "S":
+                springs.add(Spring(c * TILE_SIZE, r * TILE_SIZE))
+    return tiles, springs
 
 
-def simulate(player, tiles, x, bottom, action, limit):
+def simulate(player, tiles, springs, x, bottom, action, limit):
     # Karakteri (x, bottom)'da yerde dururken koy, hareketi uygula; yere indiği yeri döndür
     jump, d1, t1, d2 = action
     player.rect.x, player.rect.bottom = x, bottom
@@ -50,6 +53,7 @@ def simulate(player, tiles, x, bottom, action, limit):
     for frame in range(MAX_FRAMES):
         d = d1 if frame < t1 else d2
         player.update(tiles, Controls(d < 0, d > 0, jump and frame == 0))
+        player.check_springs(springs)
         if player.on_ground and (frame > 0 or not jump):
             return player.rect.x, player.rect.bottom
         if player.rect.top > limit:
@@ -59,7 +63,7 @@ def simulate(player, tiles, x, bottom, action, limit):
 
 def reachable(rows, starts, goal_bottom):
     # Başlangıç noktalarından (x, ayak hizası) hedef yüksekliğe basılabiliyor mu? (genişlik öncelikli arama)
-    tiles = build(rows)
+    tiles, springs = build(rows)
     player = Player(0, 0, WIDTH * TILE_SIZE)
     limit = len(rows) * TILE_SIZE + 100
     seen = set(starts)
@@ -69,7 +73,7 @@ def reachable(rows, starts, goal_bottom):
         if bottom == goal_bottom:
             return True
         for action in ACTIONS:
-            result = simulate(player, tiles, x, bottom, action, limit)
+            result = simulate(player, tiles, springs, x, bottom, action, limit)
             if result and result not in seen:
                 seen.add(result)
                 queue.append(result)

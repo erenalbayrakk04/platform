@@ -111,6 +111,7 @@ class Sounds:
         start = []
         for midi in (72, 76, 79, 84):
             start += t(freq(midi), freq(midi), 0.08, volume=0.4)
+        spring = t(150, 750, 0.3, "triangle", 0.9)
         life = []
         for midi in (72, 76, 79, 84, 88):
             life += t(freq(midi), freq(midi), 0.06, "pulse", 0.4)
@@ -125,6 +126,7 @@ class Sounds:
             "start": start,
             "game_over": game_over,
             "life": life,
+            "spring": spring,
         }
         self.effects = {name: self.to_sound(s, SOUND_VOLUME) for name, s in sounds.items()}
 

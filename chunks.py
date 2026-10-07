@@ -5,6 +5,7 @@
 #   -  = ince platform (o da katı)
 #   .  = boşluk
 #   C  = altın (toplanınca puan verir; bir platformun hemen üstüne koy ki alınabilsin)
+#   S  = yay (bir platformun hemen üstüne koy; üstüne basınca ~9 blok yükseğe fırlatır)
 #   E  = düşman (bir platformun hemen üstüne koy; o platformda sağa-sola yürür,
 #        platform en az 3 kare geniş olmalı)
 #   P  = karakterin başladığı yer (sadece başlangıç parçasında)
@@ -15,7 +16,8 @@
 #   - Sondan ikinci satır GİRİŞ: sadece ince platform ('-'), hepsi giriş tarafında.
 #     Sol taraf = 0-4. sütunlar ve 4. sütun dolu olmalı; sağ taraf = 5-9. sütunlar ve 5. sütun dolu olmalı.
 #   - En üst satır ÇIKIŞ: hepsi çıkış tarafında, aynı kural.
-#   - Altın (C) ve düşman (E) giriş, çıkış ve en alt satıra konmaz; altlarında katı bir şey olmalı.
+#   - Altın (C), yay (S) ve düşman (E) giriş, çıkış ve en alt satıra konmaz; altlarında katı bir şey olmalı.
+#   - Yaylı parçalarda "en fazla 3 satır" kuralı yay için geçerli değil (yay ~8 satır çıkarır).
 #   - Oyun bir parçanın çıkışı soldaysa üstüne girişi sağda olan bir parça koyar (ya da tersi).
 #     Böylece birleşme yerinde platformlar üst üste binmez ve aralarında sadece 2 satır olur.
 #   - Parçanın içinde: basılan yüzeyler arası en fazla 3 satır, bir üstteki platform
@@ -401,6 +403,45 @@ MIRRORED_CHUNKS = [
             "..........",
         ],
     },
+    # Kolay: yay seni yukarıdaki platforma fırlatır (yaysız çıkılamaz)
+    {
+        "entry": "L", "exit": "L", "difficulty": 1,
+        "rows": [
+            "-----.....",
+            "..........",
+            "......C...",
+            ".....---..",
+            "..........",
+            "..........",
+            "..........",
+            "..........",
+            "..........",
+            "..........",
+            ".S........",
+            "-----.....",
+            "..........",
+        ],
+    },
+    # Zor: tek karelik yay platformu, havada sağa uzun bir uçuş
+    {
+        "entry": "L", "exit": "R", "difficulty": 3,
+        "rows": [
+            ".....-....",
+            "..........",
+            "........C.",
+            "........-.",
+            "..........",
+            "..........",
+            "..........",
+            "..........",
+            "..........",
+            "..........",
+            "...S......",
+            "...-......",
+            "....-.....",
+            "..........",
+        ],
+    },
 ]
 CHUNKS += MIRRORED_CHUNKS + [mirror(chunk) for chunk in MIRRORED_CHUNKS]
 
@@ -438,7 +479,7 @@ def check_side_row(row, side, allowed):
 def check_chunk(chunk, is_start=False):
     # Parça kurallara uymuyorsa oyun açılırken hata ver (yanlış parça fark edilmeden kalmasın)
     rows = chunk["rows"]
-    allowed = "#-.CE" + ("P" if is_start else "")
+    allowed = "#-.CES" + ("P" if is_start else "")
     problem = None
     if any(len(row) != WIDTH for row in rows):
         problem = "her satır 10 karakter olmalı"
@@ -450,10 +491,10 @@ def check_chunk(chunk, is_start=False):
         problem = "en alt satır boş olmalı"
     elif not is_start and not check_side_row(rows[-2], chunk["entry"], "-"):
         problem = "sondan ikinci satır (giriş) kurala uymuyor"
-    # Altın ve düşman havada olmasın; düşmanın platformu yeterince geniş olsun
+    # Altın, yay ve düşman havada olmasın; düşmanın platformu yeterince geniş olsun
     for r, row in enumerate(rows):
         for c, cell in enumerate(row):
-            if problem or cell not in "CE":
+            if problem or cell not in "CES":
                 continue
             if r + 1 >= len(rows) or rows[r + 1][c] not in SOLID:
                 problem = f"{r}. satır {c}. sütundaki '{cell}' havada (altı katı değil)"
