@@ -46,17 +46,25 @@
 - `score.py` — `Score(start_y)`: `height` = üstüne basılan en yüksek yer (blok, sadece `on_ground`
   iken sayılır, düşünce azalmaz), `coins`, `enemies`, `total` = height × `HEIGHT_POINTS` + coins × `COIN_POINTS`
   + enemies × `ENEMY_POINTS`; `draw(screen)` sol üstte gölgeli yazı (kameradan bağımsız);
-  `draw_lives(screen, lives)` sağ üstte kalpler (kaybedilen can gri).
+  `draw_lives(screen, lives)` sağ üstte kalpler (kaybedilen can gri); `draw_text(screen, font, text,
+  color, center=/topleft=...)` gölgeli yazı (her yerde bu kullanılır); `load_high_score()` /
+  `save_high_score(v)` → `highscore.txt` (oyun klasöründe, git dışı; bozuk/yoksa 0, yazılamazsa sessiz).
+- `screens.py` — `draw_menu(screen, high_score)` ve `draw_game_over(screen, score, high_score,
+  new_record, ready)`: oyunun üstüne yarı saydam perde + ortalanmış yazılar; yazı tipleri önbellekte.
 - Can sistemi `Player`'da: `lives`, `invincible` (kalan kare; `visible` ile yanıp söner), `hurt()`
   (can −1, dokunulmazlık, küçük sıçrama), `bounce(power)`, `old_bottom` (önceki karenin ayak hizası),
   `safe_pos` (en son yerde durduğu yer — `respawn()` oraya koyar).
 - `camera.py` — `Camera()`: DİKEYDE yumuşak takip (`CAMERA_SMOOTHNESS`), karakter ekranın
   `CAMERA_PLAYER_Y` oranında durur; yukarısı sınırsız, aşağıda `level.bottom`'da durur;
   `follow(rect, level_bottom)`, `top`/`bottom`, `apply(rect)`. Tüm çizim `main.py`'de kamera üzerinden.
-- `main.py` → `new_game()` yeni rastgele bölüm + karakter + kamera + puan kurar; altınlar
+- `main.py` → ekran durumu `state`: "menu" → (Boşluk/Enter/tıklama) → "playing" → (can biter) →
+  "game_over" (`GAME_OVER_DELAY` kare tuş çalışmaz; rekor kırıldıysa hemen kaydedilir) → tuşla
+  `new_game()` + "playing". `update_game(...)` oyun mantığı, `draw_world(...)` dünyayı çizer (her
+  ekranda arkada görünür). ESC her yerde oyundan çıkar.
+  `new_game()` yeni rastgele bölüm + karakter + kamera + puan kurar; altınlar
   `spritecollide(player, level.coins, True)` ile toplanır. Düşmana değince `old_bottom <= enemy.top`
   ise düşman ölür (`STOMP_BOUNCE`), değilse dokunulmaz değilken `hurt()`. `level.bottom`'ın altına
-  düşerse `hurt()` + `respawn()`; `lives` 0 olunca şimdilik `new_game()` (kaybettin ekranı Aşama 7).
+  düşerse `hurt()` + `respawn()`.
 - Parçaların çıkılabilirliği gerçek fizikle test edildi (her parça içi + tüm birleşmeler): yeni
   parça eklenince aynı tür bir test (Player'ı sahte tuşlarla çalıştıran BFS) tekrar yapılmalı.
 - Zıplama ~133 px (3 blok = 120 px'e çıkılabilir), yatayda ~4 blok gidilebilir; parça
@@ -73,12 +81,12 @@
 - [x] 4b. Sonsuz parça sistemi — rastgele parçalar, geride kalanlar silinir, yükseldikçe zorlaşır
 - [x] 5. Toplanabilir — altın, puan göstergesi (puan = tırmanılan yükseklik + altınlar)
 - [x] 6. Düşman & can — yürüyen düşman, can, ölme/yeniden başlama
-- [ ] 7. Oyun sonu — bayrak YOK (sonsuz): kaybettin ekranı + en yüksek skor, başlangıç menüsü
+- [x] 7. Oyun sonu — bayrak YOK (sonsuz): kaybettin ekranı + en yüksek skor, başlangıç menüsü
 - [ ] 8. Güzelleştirme — sprite, animasyon, ses/müzik, dokunmatik kontroller (ekran butonları)
 - [ ] 9. Ekstra — yeni parçalar, telefonda çalışır çıktı (ör. pygbag ile tarayıcıda)
 
 ## Sıradaki adım
-Aşama 7: oyun sonu. Can bitince "Kaybettin" ekranı (puan, en yüksek skor; tuşla yeniden başla).
-En yüksek skor bir dosyada saklansın (ör. `highscore.txt`, git dışı) ve oyun kapanıp açılınca
-kalsın. Oyun açılınca başlangıç menüsü (oyun adı, "başlamak için Boşluk", en yüksek skor).
-Ekranlar (menü / oyun / kaybettin) `main.py`'de basit bir durum değişkeniyle yönetilsin.
+Aşama 8: güzelleştirme — kullanıcıya önce ne istediğini sor (resimler: hazır ücretsiz paket mi,
+kodla çizilmiş basit şekiller mi?). Sonra: karakter/düşman/altın/blok resimleri (`assets/`),
+basit animasyonlar (yürüme, altın dönmesi), sesler (zıplama, altın, düşman, can kaybı) ve müzik,
+telefonda oynanabilmesi için ekran butonları (sol/sağ/zıpla; fare tıklaması = dokunma).

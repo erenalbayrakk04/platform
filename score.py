@@ -1,5 +1,7 @@
 # Puan: tırmanılan yükseklik + altınlar + yenilen düşmanlar. Ekranın sol üstünde, kameradan
-# bağımsız çizilir. Canlar (kalpler) sağ üstte.
+# bağımsız çizilir. Canlar (kalpler) sağ üstte. En yüksek skor bir dosyada saklanır.
+import os
+
 import pygame
 
 from settings import (
@@ -16,6 +18,7 @@ from settings import (
     LIFE_SIZE,
     LIFE_COLOR,
     LIFE_EMPTY_COLOR,
+    HIGHSCORE_FILE,
 )
 
 
@@ -51,17 +54,42 @@ class Score:
     def add_enemy(self):
         self.enemies += 1
 
-    def draw_text(self, screen, font, text, pos):
-        # Önce 2 piksel kaydırılmış gölge, sonra asıl yazı — her zeminde okunsun
-        shadow = font.render(text, True, SCORE_SHADOW_COLOR)
-        screen.blit(shadow, (pos[0] + 2, pos[1] + 2))
-        screen.blit(font.render(text, True, SCORE_COLOR), pos)
-
     def draw(self, screen):
-        self.draw_text(screen, self.font, f"Puan: {self.total}", (12, 10))
-        self.draw_text(
-            screen, self.small_font, f"Yükseklik: {self.height}   Altın: {self.coins}", (12, 44)
+        draw_text(screen, self.font, f"Puan: {self.total}", topleft=(12, 10))
+        draw_text(
+            screen, self.small_font, f"Yükseklik: {self.height}   Altın: {self.coins}", topleft=(12, 44)
         )
+
+
+def draw_text(screen, font, text, color=SCORE_COLOR, **position):
+    # Gölgeli yazı: önce 2 piksel kaydırılmış gölge, sonra asıl yazı — her zeminde okunsun.
+    # Konum rect gibi verilir: topleft=(x, y) veya center=(x, y) vb.
+    image = font.render(text, True, color)
+    rect = image.get_rect(**position)
+    screen.blit(font.render(text, True, SCORE_SHADOW_COLOR), rect.move(2, 2))
+    screen.blit(image, rect)
+
+
+def high_score_path():
+    # Dosya, oyunun klasöründe dursun (oyun nereden çalıştırılırsa çalıştırılsın)
+    return os.path.join(os.path.dirname(os.path.abspath(__file__)), HIGHSCORE_FILE)
+
+
+def load_high_score():
+    # Dosya yoksa veya bozuksa en yüksek skor 0
+    try:
+        with open(high_score_path(), encoding="utf-8") as f:
+            return int(f.read().strip())
+    except (OSError, ValueError):
+        return 0
+
+
+def save_high_score(value):
+    try:
+        with open(high_score_path(), "w", encoding="utf-8") as f:
+            f.write(str(value))
+    except OSError:
+        pass  # kaydedilemese de oyun çalışmaya devam etsin
 
 
 def make_heart(color):

@@ -66,6 +66,18 @@ SCORE_COLOR = WHITE
 SCORE_SHADOW_COLOR = BLACK  # yazının arkasındaki gölge (her zeminde okunsun)
 SCORE_FONT_SIZE = 40  # büyük puan yazısı
 SCORE_SMALL_FONT_SIZE = 24  # altındaki yükseklik / altın yazısı
+HIGHSCORE_FILE = "highscore.txt"  # en yüksek skorun saklandığı dosya (oyun klasöründe)
+
+# Menü ve "Kaybettin" ekranı
+OVERLAY_ALPHA = 170  # oyunun üstüne serilen karanlık perdenin koyuluğu (0 = yok, 255 = simsiyah)
+TITLE_FONT_SIZE = 64  # büyük başlık yazısı
+MENU_FONT_SIZE = 30  # menüdeki diğer yazılar
+MENU_SMALL_FONT_SIZE = 22  # kontrol bilgisi gibi küçük yazılar
+TITLE_COLOR = (255, 210, 40)  # oyun adı (altın sarısı)
+GAME_OVER_COLOR = (230, 50, 70)  # "Kaybettin!" yazısı
+RECORD_COLOR = (255, 210, 40)  # "Yeni rekor!" yazısı
+HINT_COLOR = (180, 180, 200)  # soluk bilgi yazıları
+GAME_OVER_DELAY = 60  # kaybettin ekranında tuşların kaç kare sonra çalışacağı (yanlışlıkla geçilmesin)
 
 # Kamera
 CAMERA_SMOOTHNESS = 0.12  # 0-1 arası: 1 = karakteri anında takip eder, küçüldükçe daha yumuşak
