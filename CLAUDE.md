@@ -149,7 +149,8 @@
 Aşama 9 devam. Yapılanlar: yeni parçalar, yükseldikçe değişen gök, can toplama (kalp), yay,
 hareketli platform, kırılan platform, uçan düşman (yarasa), mıknatıs ve kalkan güçlendirmeleri.
 Web sürümü hazır ve tarayıcıda denendi (menü, klavye, çoklu dokunma, ses, localStorage rekor çalışıyor).
-Kalan: yayınlamak. Depo GİZLİ → ücretsiz GitHub Pages çalışmaz; kullanıcıya nerede yayınlanacağı soruldu.
-Plan: GitHub Actions her push'ta pygbag ile derleyip yayınlasın (kullanıcı yayından sonra da değişiklik
-yapılabilsin istedi).
+Yayın: kullanıcı GitHub Pages seçti (depoyu herkese açık yapacak). `.github/workflows/web.yml` her push'ta:
+check_chunks.py → pygbag derleme → Pages'e yükleme. Adres: https://erenalbayrakk04.github.io/platform/
+Kullanıcının GitHub'da yapacağı: depoyu Public yapmak + Settings → Pages → Source = "GitHub Actions".
+Açık depoda çalışma durumu girişsiz bakılabilir: https://api.github.com/repos/erenalbayrakk04/platform/actions/runs
 - Sonra belki: başka güçlendirmeler (ör. jetpack), başka düşman türleri.
