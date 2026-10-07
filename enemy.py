@@ -1,17 +1,20 @@
 # Düşman: bir platformun üstünde sağa-sola yürür, ucuna gelince geri döner.
 import pygame
 
-from settings import ENEMY_WIDTH, ENEMY_HEIGHT, ENEMY_COLOR, ENEMY_EYE_COLOR, ENEMY_SPEED
+from settings import ENEMY_WIDTH, ENEMY_SPEED, ANIMATION_SPEED
+from art import enemy_frames
+
+# Tüm düşmanlar aynı resimleri kullanır; ilk düşman yaratılınca bir kere hazırlanır
+FRAMES = []
 
 
 class Enemy(pygame.sprite.Sprite):
     def __init__(self, center_x, bottom, left, right):
         super().__init__()
-        # Şimdilik gözlü kırmızı bir kare; resmi Aşama 8'de ekleyeceğiz
-        self.image = pygame.Surface((ENEMY_WIDTH, ENEMY_HEIGHT))
-        self.image.fill(ENEMY_COLOR)
-        for eye_x in (ENEMY_WIDTH // 3, ENEMY_WIDTH * 2 // 3):
-            pygame.draw.rect(self.image, ENEMY_EYE_COLOR, (eye_x - 3, 7, 6, 6))
+        if not FRAMES:
+            FRAMES.extend(enemy_frames())
+        self.image = FRAMES[0][1]
+        self.anim_time = 0
         self.rect = self.image.get_rect(midbottom=(center_x, bottom))
         # Yürüyebileceği sınırlar (platformun sol ve sağ kenarı, piksel)
         self.left = left
@@ -30,3 +33,7 @@ class Enemy(pygame.sprite.Sprite):
             self.pos_x = self.left
             self.direction = 1
         self.rect.x = round(self.pos_x)
+        # İki resim arasında kıpırdasın, yürüdüğü yöne baksın
+        self.anim_time += 1
+        frame = FRAMES[(self.anim_time // (ANIMATION_SPEED * 2)) % 2]
+        self.image = frame[self.direction]

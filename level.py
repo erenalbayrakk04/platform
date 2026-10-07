@@ -5,13 +5,7 @@ import pygame
 
 from settings import (
     TILE_SIZE,
-    TILE_COLOR,
-    TILE_TOP_COLOR,
-    PLATFORM_HEIGHT,
-    PLATFORM_COLOR,
-    COIN_SIZE,
-    COIN_COLOR,
-    COIN_EDGE_COLOR,
+    COIN_SPIN_SPEED,
     LEVEL_SEED,
     GENERATE_AHEAD,
     REMOVE_BELOW,
@@ -19,15 +13,22 @@ from settings import (
 )
 from chunks import START_CHUNK, CHUNKS, platform_run
 from enemy import Enemy
+import art
+
+# Resimler bir kere hazırlanır, aynı türdeki her parça aynı resmi kullanır (art.py)
+IMAGES = {}
+
+
+def image(name):
+    if name not in IMAGES:
+        IMAGES.update(tile=art.tile_image(), platform=art.platform_image(), coin=art.coin_frames())
+    return IMAGES[name]
 
 
 class Tile(pygame.sprite.Sprite):
     def __init__(self, x, y):
         super().__init__()
-        self.image = pygame.Surface((TILE_SIZE, TILE_SIZE))
-        self.image.fill(TILE_COLOR)
-        # Üstüne ince bir çimen şeridi çiz
-        pygame.draw.rect(self.image, TILE_TOP_COLOR, (0, 0, TILE_SIZE, 8))
+        self.image = image("tile")
         self.rect = self.image.get_rect(topleft=(x, y))
 
 
@@ -35,8 +36,7 @@ class Platform(pygame.sprite.Sprite):
     # İnce platform: karenin sadece üst kısmını kaplar, blok gibi katıdır
     def __init__(self, x, y):
         super().__init__()
-        self.image = pygame.Surface((TILE_SIZE, PLATFORM_HEIGHT))
-        self.image.fill(PLATFORM_COLOR)
+        self.image = image("platform")
         self.rect = self.image.get_rect(topleft=(x, y))
 
 
@@ -44,13 +44,17 @@ class Coin(pygame.sprite.Sprite):
     # Altın: katı değil, karakter içinden geçince toplanır
     def __init__(self, x, y):
         super().__init__()
-        # SRCALPHA = saydam arka plan, sadece daire görünsün
-        self.image = pygame.Surface((COIN_SIZE, COIN_SIZE), pygame.SRCALPHA)
-        radius = COIN_SIZE // 2
-        pygame.draw.circle(self.image, COIN_EDGE_COLOR, (radius, radius), radius)
-        pygame.draw.circle(self.image, COIN_COLOR, (radius, radius), radius - 3)
+        self.frames = image("coin")
+        self.image = self.frames[0]
         # Karenin ortasına koy
         self.rect = self.image.get_rect(center=(x + TILE_SIZE // 2, y + TILE_SIZE // 2))
+        # Hepsi aynı anda dönmesin diye her altın farklı bir yerden başlar
+        self.spin = (x + y) // 7
+
+    def update(self):
+        # Dönme animasyonu: resimler sırayla değişir
+        self.spin += 1
+        self.image = self.frames[(self.spin // COIN_SPIN_SPEED) % len(self.frames)]
 
 
 class Level:

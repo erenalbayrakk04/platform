@@ -2,9 +2,6 @@
 import pygame
 
 from settings import (
-    PLAYER_WIDTH,
-    PLAYER_HEIGHT,
-    PLAYER_COLOR,
     PLAYER_SPEED,
     GRAVITY,
     JUMP_POWER,
@@ -12,15 +9,19 @@ from settings import (
     PLAYER_LIVES,
     INVINCIBLE_TIME,
     HURT_BOUNCE,
+    ANIMATION_SPEED,
 )
+from art import player_frames
 
 
 class Player(pygame.sprite.Sprite):
     def __init__(self, x, y, level_width):
         super().__init__()
-        # Şimdilik karakter düz renkli bir kare; resmi Aşama 8'de ekleyeceğiz.
-        self.image = pygame.Surface((PLAYER_WIDTH, PLAYER_HEIGHT))
-        self.image.fill(PLAYER_COLOR)
+        # Resimler (art.py): "idle" duruyor, "walk1"/"walk2" yürüyor, "jump" havada; her biri sağa/sola
+        self.frames = player_frames()
+        self.facing = 1  # 1 = sağa bakıyor, -1 = sola
+        self.walk_time = 0  # yürüme animasyonu sayacı
+        self.image = self.frames["idle"][self.facing]
         # rect = karakterin bölümdeki konumu ve boyutu
         self.rect = self.image.get_rect()
         # En son güvenle üstünde durduğu yer — düşünce buradan devam eder
@@ -38,6 +39,7 @@ class Player(pygame.sprite.Sprite):
         # Konumu ondalıklı tutuyoruz ki küçük hızlar kaybolmasın
         self.pos_y = float(self.rect.bottom)
         self.on_ground = False
+        self.jumped = False
         # Önceki karedeki ayak hizası — düşmana yukarıdan mı düştü anlamak için
         self.old_bottom = self.rect.bottom
 
@@ -57,18 +59,17 @@ class Player(pygame.sprite.Sprite):
         # Dokunulmazken birkaç karede bir görünmez olur → yanıp söner
         return self.invincible == 0 or (self.invincible // 5) % 2 == 0
 
-    def update(self, tiles):
-        keys = pygame.key.get_pressed()
+    def update(self, tiles, controls):
+        # controls: sola / sağa / zıpla basılıyor mu (klavye veya ekran butonları, controls.py)
         self.old_bottom = self.rect.bottom
         if self.invincible > 0:
             self.invincible -= 1
 
         # --- Yatay hareket ---
-        # Sol ok veya A → sola, sağ ok veya D → sağa
         dx = 0
-        if keys[pygame.K_LEFT] or keys[pygame.K_a]:
+        if controls.left:
             dx -= PLAYER_SPEED
-        if keys[pygame.K_RIGHT] or keys[pygame.K_d]:
+        if controls.right:
             dx += PLAYER_SPEED
         self.rect.x += dx
 
@@ -84,8 +85,9 @@ class Player(pygame.sprite.Sprite):
         self.rect.right = min(self.rect.right, self.level_width)
 
         # --- Dikey hareket ---
-        # Zıplama: Boşluk, yukarı ok veya W — sadece yerdeyken
-        if (keys[pygame.K_SPACE] or keys[pygame.K_UP] or keys[pygame.K_w]) and self.on_ground:
+        # Zıplama: sadece yerdeyken. jumped = bu karede zıpladı mı (ses çalmak için)
+        self.jumped = controls.jump and self.on_ground
+        if self.jumped:
             self.velocity_y = -JUMP_POWER
 
         # Yerçekimi: her karede aşağı doğru biraz daha hızlan
@@ -107,3 +109,19 @@ class Player(pygame.sprite.Sprite):
         self.on_ground = any(feet.colliderect(tile.rect) for tile in tiles)
         if self.on_ground:
             self.safe_pos = self.rect.midbottom
+
+        self.animate(dx)
+
+    def animate(self, dx):
+        # Hareket yönüne dön; havadaysa zıplama, yürüyorsa sırayla iki yürüme resmi, yoksa duruş
+        if dx:
+            self.facing = 1 if dx > 0 else -1
+        if not self.on_ground:
+            name = "jump"
+        elif dx:
+            self.walk_time += 1
+            name = "walk1" if (self.walk_time // ANIMATION_SPEED) % 2 == 0 else "walk2"
+        else:
+            self.walk_time = 0
+            name = "idle"
+        self.image = self.frames[name][self.facing]

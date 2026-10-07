@@ -14,13 +14,15 @@
   ve hemen `git push` ile GitHub'a gönder. Kullanıcıya ayrıca sorma; bu kalıcı izin.
   Depo: https://github.com/erenalbayrakk04/platform, dal `main`. Commit mesajları Türkçe ve kısa.
 - Ayarlanabilir sayılar (hız, zıplama gücü, renkler) `settings.py` içinde dursun.
-- Önce oyun çalışsın, sonra güzelleşsin: resim/ses 8. aşamaya kadar yok, renkli kareler kullan.
+- Görseller ve sesler dosya DEĞİL, kodla üretiliyor (kullanıcı kararı, Aşama 8): piksel sanatı
+  `art.py`'de, retro sesler/müzik `sound.py`'de. Renkler settings.py'deki ana renklerden gelir.
 
 ## Dosyalar
 - `main.py` — oyun döngüsü (olaylar → güncelleme → çizim)
 - `settings.py` — tüm ayarlar
-- `player.py` — karakter (`Player` sprite'ı; ok tuşları / A-D ile hareket, Boşluk/Yukarı/W ile
-  zıplama; yerçekimi `velocity_y` + ondalıklı `pos_y`; `update(tiles)` yatay ve dikey
+- `player.py` — karakter (`Player` sprite'ı; `update(tiles, controls)` — tuşları kendisi okumaz,
+  `controls.left/right/jump` alır; `jumped` = bu karede zıpladı (ses için); `animate(dx)` resim seçer
+  (idle/walk1/walk2/jump × `facing`); yerçekimi `velocity_y` + ondalıklı `pos_y`; yatay ve dikey
   çarpışmayı ayrı çözer; `on_ground` ayağın 1 px altını kontrol eder; `respawn()` başlangıca döndürür;
   `Player(x, y, level_width)` — bölüm kenarından dışarı çıkamaz)
 - OYUN SONSUZ (kullanıcı kararı, Doodle Jump tarzı): harita elle yazılmış küçük PARÇALARIN rastgele
@@ -42,7 +44,8 @@
   y EKSİ. `add_chunk`, `pick_chunk` (giriş = önceki çıkışın tersi, zorluk ≤ 1 + yükseklik //
   `DIFFICULTY_STEP`), `update(view_top, view_bottom)` (`GENERATE_AHEAD` kadar yukarıyı doldurur,
   `REMOVE_BELOW`'dan aşağıdaki parçaları siler). `tiles` = çarpılan her şey, `coins` = altınlar,
-  `enemies` = düşmanlar (katı değiller; parça silinince onunkiler de silinir), `bottom` = en alttaki parçanın altı, `width` piksel.
+  `enemies` = düşmanlar (katı değiller; parça silinince onunkiler de silinir). Tile/Platform/Coin resimleri `level.image()`
+  ile bir kere hazırlanıp paylaşılır; `Coin.update()` dönme animasyonu., `bottom` = en alttaki parçanın altı, `width` piksel.
 - `score.py` — `Score(start_y)`: `height` = üstüne basılan en yüksek yer (blok, sadece `on_ground`
   iken sayılır, düşünce azalmaz), `coins`, `enemies`, `total` = height × `HEIGHT_POINTS` + coins × `COIN_POINTS`
   + enemies × `ENEMY_POINTS`; `draw(screen)` sol üstte gölgeli yazı (kameradan bağımsız);
@@ -70,7 +73,19 @@
 - Zıplama ~133 px (3 blok = 120 px'e çıkılabilir), yatayda ~4 blok gidilebilir; parça
   tasarlarken basılan yüzeyler arası dikey fark en fazla 3 satır olsun. Platformlar katı olduğu
   için bir üst platform tam tepede olmasın; yana kaydırılmış olsun ki zıplayıp üstüne çıkılabilsin.
-- `assets/` — resim ve sesler (Aşama 8'de eklenecek)
+- `art.py` — piksel sanatı: harf haritası + palet → `render(rows, palette, size)` (her harf
+  `PIXEL_SCALE` px, çizim alta-ortaya yaslı), `shade`/`tint` ile tonlar; `player_frames()`,
+  `enemy_frames()` ({1: sağ, -1: sol} çiftleri), `coin_frames()` (dönme), `tile_image()`,
+  `platform_image()`, `heart_images()`, `Background` (renk geçişli gök + `STAR_PARALLAX` ile kayan yıldızlar).
+- `sound.py` — `pre_init()` (pygame.init'ten önce; 22050 Hz mono 16 bit), `Sounds()`: efektler
+  (jump, coin, stomp, hurt, start, game_over) ve 8 ölçülük döngü müzik (`MELODY`/`BASS` nota
+  numaraları) `array` ile üretilir (numpy YOK); `play(name)`, `start_music/stop_music`, `toggle_mute`
+  (M). Mixer yoksa/biçim farklıysa `enabled=False`, her şey sessizce çalışır. Stereo da desteklenir.
+- `controls.py` — `Controls(left, right, jump)`; `TouchButtons`: sol altta ←→, sağ altta zıpla,
+  çoklu dokunma (`FINGER*` olayları, parmak yoksa farenin sol tuşu), `handle_event`, `update`,
+  `draw` (sadece oyun sırasında); `read_controls(touch)` klavye + butonları birleştirir.
+- `effects.py` — `Particle`, `burst(group, center, color)`: altın/düşman/can kaybında saçılan
+  kareler; `level.effects` grubunda (new_game'de oluşur).
 
 ## Yol haritası
 - [x] 0. Kurulum — boş pencere açılıyor
@@ -82,11 +97,14 @@
 - [x] 5. Toplanabilir — altın, puan göstergesi (puan = tırmanılan yükseklik + altınlar)
 - [x] 6. Düşman & can — yürüyen düşman, can, ölme/yeniden başlama
 - [x] 7. Oyun sonu — bayrak YOK (sonsuz): kaybettin ekranı + en yüksek skor, başlangıç menüsü
-- [ ] 8. Güzelleştirme — sprite, animasyon, ses/müzik, dokunmatik kontroller (ekran butonları)
+- [x] 8. Güzelleştirme — sprite, animasyon, ses/müzik, dokunmatik kontroller (ekran butonları)
 - [ ] 9. Ekstra — yeni parçalar, telefonda çalışır çıktı (ör. pygbag ile tarayıcıda)
 
 ## Sıradaki adım
-Aşama 8: güzelleştirme — kullanıcıya önce ne istediğini sor (resimler: hazır ücretsiz paket mi,
-kodla çizilmiş basit şekiller mi?). Sonra: karakter/düşman/altın/blok resimleri (`assets/`),
-basit animasyonlar (yürüme, altın dönmesi), sesler (zıplama, altın, düşman, can kaybı) ve müzik,
-telefonda oynanabilmesi için ekran butonları (sol/sağ/zıpla; fare tıklaması = dokunma).
+Aşama 9 (ekstra): kullanıcıya hangisiyle başlamak istediğini sor:
+- Telefonda/tarayıcıda çalışır çıktı: pygbag ile web sürümü (main döngüsü `async` + her karede
+  `await asyncio.sleep(0)` olmalı; `highscore.txt` tarayıcıda çalışmaz → localStorage gerekebilir;
+  ses biçimi tarayıcıda farklı olabilir — `Sounds` bunu zaten sessizce idare eder). GitHub Pages'te yayın.
+- Yeni parçalar (her iki giriş tarafı × her zorluk; orta/zor parçalara düşman için geniş platform),
+  eklendikçe BFS çıkılabilirlik testi.
+- Başka fikirler: hareketli platform, yay/trambolin, can toplama, yükseldikçe değişen gök rengi.

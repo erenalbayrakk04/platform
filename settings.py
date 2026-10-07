@@ -9,7 +9,6 @@ FPS = 60  # saniyedeki kare sayısı
 # Renkler (Kırmızı, Yeşil, Mavi) — her biri 0-255 arası
 BLACK = (0, 0, 0)
 WHITE = (255, 255, 255)
-SKY_BLUE = (30, 30, 50)
 
 # Karakter
 PLAYER_WIDTH = 40
@@ -54,8 +53,7 @@ STOMP_BOUNCE = 10  # düşmanın üstüne basınca karakter ne kadar sıçrar
 PLAYER_LIVES = 3  # oyun kaç canla başlar
 INVINCIBLE_TIME = 90  # can kaybedince kaç kare dokunulmaz kalır (60 kare = 1 saniye), bu sürede yanıp söner
 HURT_BOUNCE = 7  # düşman çarpınca karakter ne kadar sıçrar
-LIFE_SIZE = 24  # sağ üstteki kalplerin boyu (piksel)
-LIFE_COLOR = (230, 50, 70)  # dolu kalp
+LIFE_COLOR = (230, 50, 70)  # sağ üstteki dolu kalpler
 LIFE_EMPTY_COLOR = (80, 80, 100)  # kaybedilen can
 
 # Puan
@@ -78,6 +76,28 @@ GAME_OVER_COLOR = (230, 50, 70)  # "Kaybettin!" yazısı
 RECORD_COLOR = (255, 210, 40)  # "Yeni rekor!" yazısı
 HINT_COLOR = (180, 180, 200)  # soluk bilgi yazıları
 GAME_OVER_DELAY = 60  # kaybettin ekranında tuşların kaç kare sonra çalışacağı (yanlışlıkla geçilmesin)
+
+# Görünüş — resimler art.py'de kodla piksel piksel çiziliyor (renkleri yukarıdaki ayarlardan alır)
+PIXEL_SCALE = 4  # piksel sanatındaki her kare ekranda kaç piksel (büyürse daha "kaba" görünür)
+ANIMATION_SPEED = 8  # yürüme ve düşman animasyonunda her resim kaç kare ekranda kalır
+COIN_SPIN_SPEED = 7  # altının dönme animasyonu: her resim kaç kare (küçüldükçe hızlı döner)
+SKY_TOP_COLOR = (12, 12, 32)  # gökyüzü: ekranın üstü
+SKY_BOTTOM_COLOR = (50, 34, 84)  # gökyüzü: ekranın altı (arada yumuşak geçiş)
+STAR_COUNT = 70  # arka plandaki yıldız sayısı
+STAR_PARALLAX = 0.25  # yıldızlar haritaya göre ne kadar yavaş kaysın (0 = hiç, 1 = harita kadar) — derinlik hissi
+PARTICLE_COUNT = 10  # altın alınca / düşman ölünce saçılan parça sayısı
+PARTICLE_LIFE = 30  # parçaların kaç kare ekranda kaldığı
+
+# Ses — sesler ve müzik sound.py'de kodla üretiliyor
+SOUND_VOLUME = 0.5  # efekt sesleri (0-1 arası)
+MUSIC_VOLUME = 0.25  # müzik (0-1 arası)
+MUTE_KEY = "m"  # bu tuş sesi açıp kapatır
+
+# Dokunmatik butonlar (telefonda oynamak için; bilgisayarda fareyle de basılır)
+SHOW_TOUCH_BUTTONS = True  # False = butonları gizle
+TOUCH_BUTTON_SIZE = 84  # butonların çapı (piksel)
+TOUCH_BUTTON_MARGIN = 16  # ekran kenarına uzaklık
+TOUCH_BUTTON_ALPHA = 60  # saydamlık (0 = görünmez, 255 = tam dolu); basılıyken daha belirgin
 
 # Kamera
 CAMERA_SMOOTHNESS = 0.12  # 0-1 arası: 1 = karakteri anında takip eder, küçüldükçe daha yumuşak

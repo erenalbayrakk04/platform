@@ -13,6 +13,7 @@ from settings import (
     GAME_OVER_COLOR,
     RECORD_COLOR,
     HINT_COLOR,
+    MUTE_KEY,
 )
 from score import draw_text
 
@@ -49,11 +50,12 @@ def draw_menu(screen, high_score):
     draw_text(screen, font(TITLE_FONT_SIZE), rest, TITLE_COLOR, center=(CENTER_X, 255))
     draw_text(screen, font(MENU_FONT_SIZE), f"En yüksek skor: {high_score}", center=(CENTER_X, 350))
     if blink_on():
-        draw_text(screen, font(MENU_FONT_SIZE), "Başlamak için Boşluk'a bas", center=(CENTER_X, 450))
+        draw_text(screen, font(MENU_FONT_SIZE), "Başlamak için Boşluk / dokun", center=(CENTER_X, 450))
     small = font(MENU_SMALL_FONT_SIZE)
     draw_text(screen, small, "Ok tuşları / A-D: yürü", HINT_COLOR, center=(CENTER_X, 560))
     draw_text(screen, small, "Boşluk / Yukarı / W: zıpla", HINT_COLOR, center=(CENTER_X, 588))
     draw_text(screen, small, "Düşmanların üstüne zıpla!", HINT_COLOR, center=(CENTER_X, 616))
+    draw_text(screen, small, f"{MUTE_KEY.upper()}: sesi aç / kapat", HINT_COLOR, center=(CENTER_X, 644))
 
 
 def draw_game_over(screen, score, high_score, new_record, ready):
@@ -69,4 +71,4 @@ def draw_game_over(screen, score, high_score, new_record, ready):
         draw_text(screen, font(MENU_FONT_SIZE), f"En yüksek skor: {high_score}", center=(CENTER_X, 400))
     # Tuşlar çalışmaya başlayınca "tekrar oyna" yazısı çıksın
     if ready and blink_on():
-        draw_text(screen, font(MENU_FONT_SIZE), "Tekrar için Boşluk'a bas", center=(CENTER_X, 500))
+        draw_text(screen, font(MENU_FONT_SIZE), "Tekrar için Boşluk / dokun", center=(CENTER_X, 500))

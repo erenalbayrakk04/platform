@@ -4,6 +4,7 @@ import os
 
 import pygame
 
+from art import heart_images
 from settings import (
     TILE_SIZE,
     COIN_POINTS,
@@ -15,9 +16,6 @@ from settings import (
     SCORE_SMALL_FONT_SIZE,
     SCREEN_WIDTH,
     PLAYER_LIVES,
-    LIFE_SIZE,
-    LIFE_COLOR,
-    LIFE_EMPTY_COLOR,
     HIGHSCORE_FILE,
 )
 
@@ -92,26 +90,14 @@ def save_high_score(value):
         pass  # kaydedilemese de oyun çalışmaya devam etsin
 
 
-def make_heart(color):
-    # Kalp: yan yana iki daire + altında aşağı bakan üçgen
-    size = LIFE_SIZE
-    r = size // 4
-    image = pygame.Surface((size, size), pygame.SRCALPHA)
-    pygame.draw.circle(image, color, (r, r + 1), r + 1)
-    pygame.draw.circle(image, color, (size - r - 1, r + 1), r + 1)
-    pygame.draw.polygon(image, color, [(0, r + 2), (size - 1, r + 2), (size // 2, size - 1)])
-    return image
-
-
 HEART_IMAGES = {}
 
 
 def draw_lives(screen, lives):
     # Sağ üstte PLAYER_LIVES kadar kalp: kalan canlar dolu, kaybedilenler gri
     if not HEART_IMAGES:  # ilk çizimde bir kere hazırla
-        HEART_IMAGES["full"] = make_heart(LIFE_COLOR)
-        HEART_IMAGES["empty"] = make_heart(LIFE_EMPTY_COLOR)
+        HEART_IMAGES.update(heart_images())
+    width = HEART_IMAGES["full"].get_width() + 6
     for i in range(PLAYER_LIVES):
         image = HEART_IMAGES["full" if i < lives else "empty"]
-        x = SCREEN_WIDTH - 12 - (PLAYER_LIVES - i) * (LIFE_SIZE + 6)
-        screen.blit(image, (x, 14))
+        screen.blit(image, (SCREEN_WIDTH - 12 - (PLAYER_LIVES - i) * width, 14))
