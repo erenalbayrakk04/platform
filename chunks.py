@@ -288,6 +288,122 @@ CHUNKS = [
     },
 ]
 
+
+
+def mirror(chunk):
+    # Parçanın sağ-sol aynası: her satır ters çevrilir, giriş/çıkış tarafları yer değiştirir
+    swap = {"L": "R", "R": "L"}
+    return {
+        "entry": swap[chunk["entry"]],
+        "exit": swap[chunk["exit"]],
+        "difficulty": chunk["difficulty"],
+        "rows": [row[::-1] for row in chunk["rows"]],
+    }
+
+
+# Bu parçalar oyuna iki kere girer: bir olduğu gibi, bir de aynalanmış haliyle (mirror).
+# Böylece her biri için iki giriş tarafı da olur.
+MIRRORED_CHUNKS = [
+    # Kolay: blok merdiven, ortadaki blokta bir düşman
+    {
+        "entry": "L", "exit": "R", "difficulty": 1,
+        "rows": [
+            ".....----.",
+            "..........",
+            ".C........",
+            ".###......",
+            "..........",
+            ".....E....",
+            "....###...",
+            "..........",
+            "........C.",
+            ".......###",
+            "..........",
+            "..---.....",
+            "..........",
+        ],
+    },
+    # Orta: geniş platformlar ama iki düşman
+    {
+        "entry": "L", "exit": "L", "difficulty": 2,
+        "rows": [
+            "-----.....",
+            "..........",
+            "........C.",
+            ".....-----",
+            "..........",
+            "..E.......",
+            ".----.....",
+            "..........",
+            "......E...",
+            ".....----.",
+            "..........",
+            "..---.....",
+            "..........",
+        ],
+    },
+    # Orta: dar platformlar, düşmanın yanındaki altın riskli
+    {
+        "entry": "L", "exit": "L", "difficulty": 2,
+        "rows": [
+            "..---.....",
+            "..........",
+            "C.........",
+            "##........",
+            "..........",
+            "..........",
+            "...--.....",
+            "..........",
+            ".....CE...",
+            ".....---..",
+            "..........",
+            "..........",
+            "...--.....",
+            "..........",
+        ],
+    },
+    # Orta: ortada düşmanlı blok, sağa sola zikzak
+    {
+        "entry": "L", "exit": "R", "difficulty": 2,
+        "rows": [
+            ".....--...",
+            "..........",
+            "........C.",
+            "........--",
+            "..........",
+            ".....E....",
+            "....###...",
+            "..........",
+            ".C........",
+            ".--.......",
+            "..........",
+            "...--.....",
+            "..........",
+        ],
+    },
+    # Zor: tek karelik platformlar, düşman tam inilecek yerde bekliyor
+    {
+        "entry": "L", "exit": "R", "difficulty": 3,
+        "rows": [
+            ".....-....",
+            "..........",
+            "...C......",
+            "...-......",
+            "..........",
+            "......C...",
+            "......-...",
+            "..........",
+            "..E.......",
+            ".###......",
+            "..........",
+            "..........",
+            "....-.....",
+            "..........",
+        ],
+    },
+]
+CHUNKS += MIRRORED_CHUNKS + [mirror(chunk) for chunk in MIRRORED_CHUNKS]
+
 WIDTH = 10
 # Her taraf için hangi sütunlar ona ait ve hangi sütun mutlaka dolu olmalı
 SIDE_COLUMNS = {"L": range(0, 5), "R": range(5, 10)}

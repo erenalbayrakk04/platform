@@ -32,8 +32,9 @@
   (`#` katı blok, `-` ince platform — o da katı; kullanıcı alttan içinden geçilmesini İSTEMEDİ, kafa
   çarpmalı; `.` boş; `C` altın — bir platformun hemen üstündeki kareye konur, giriş/çıkış/en alt
   satırda olamaz; `E` düşman — aynı kural + altındaki platform en az `ENEMY_MIN_PLATFORM` (3) kare;
-  `platform_run(rows, r, c)` düşmanın yürüyeceği sütun aralığını verir). Düşmanlar şimdilik sadece
-  geniş platformlu 4 kolay parçada (zor parçaların platformları dar). Birleşme kuralı: en alt satır boş, sondan ikinci satır giriş (sadece `-`, giriş
+  `platform_run(rows, r, c)` düşmanın yürüyeceği sütun aralığını verir). `mirror(chunk)` sağ-sol
+  aynası; `MIRRORED_CHUNKS` içindeki parçalar oyuna hem kendisi hem aynası olarak girer (yeni parçaları
+  buraya ekle → iki giriş tarafı otomatik). Toplam 24 parça (zorluk 1: 8, 2: 10, 3: 6). Birleşme kuralı: en alt satır boş, sondan ikinci satır giriş (sadece `-`, giriş
   tarafında; sol = sütun 0-4 ve 4 dolu, sağ = 5-9 ve 5 dolu), en üst satır çıkış (aynı kural). Çıkışı
   sol olanın üstüne girişi sağ olan gelir → birleşmede 2 satır fark, üst üste binme yok.
   `check_chunk` yanlış parçada oyun açılırken hata verir. Yeni parça eklerken her iki giriş
@@ -68,8 +69,11 @@
   `spritecollide(player, level.coins, True)` ile toplanır. Düşmana değince `old_bottom <= enemy.top`
   ise düşman ölür (`STOMP_BOUNCE`), değilse dokunulmaz değilken `hurt()`. `level.bottom`'ın altına
   düşerse `hurt()` + `respawn()`.
-- Parçaların çıkılabilirliği gerçek fizikle test edildi (her parça içi + tüm birleşmeler): yeni
-  parça eklenince aynı tür bir test (Player'ı sahte tuşlarla çalıştıran BFS) tekrar yapılmalı.
+- `check_chunks.py` — çıkılabilirlik testi: `python check_chunks.py` (~20 sn, çok çekirdekli).
+  Gerçek `Player` fiziğiyle (sahte `Controls`) BFS: her parçanın girişinden (başlangıçta P) tepesine
+  ve her geçerli birleşmede (alt parçanın üst 4 satırı + üst parçanın alt 5 satırı) girişe
+  ulaşılabiliyor mu. Düşmanları hesaba katmaz. Yeni parça eklenince veya zıplama/hız ayarı
+  değişince MUTLAKA çalıştır. (Konsol cp1254: çıktıda "→" gibi karakter kullanma.)
 - Zıplama ~133 px (3 blok = 120 px'e çıkılabilir), yatayda ~4 blok gidilebilir; parça
   tasarlarken basılan yüzeyler arası dikey fark en fazla 3 satır olsun. Platformlar katı olduğu
   için bir üst platform tam tepede olmasın; yana kaydırılmış olsun ki zıplayıp üstüne çıkılabilsin.
@@ -101,10 +105,8 @@
 - [ ] 9. Ekstra — yeni parçalar, telefonda çalışır çıktı (ör. pygbag ile tarayıcıda)
 
 ## Sıradaki adım
-Aşama 9 (ekstra): kullanıcıya hangisiyle başlamak istediğini sor:
+Aşama 9 devam — yeni parçalar eklendi (Aşama 9'un ilk kısmı). Kalan seçenekler (kullanıcıya sor):
 - Telefonda/tarayıcıda çalışır çıktı: pygbag ile web sürümü (main döngüsü `async` + her karede
   `await asyncio.sleep(0)` olmalı; `highscore.txt` tarayıcıda çalışmaz → localStorage gerekebilir;
   ses biçimi tarayıcıda farklı olabilir — `Sounds` bunu zaten sessizce idare eder). GitHub Pages'te yayın.
-- Yeni parçalar (her iki giriş tarafı × her zorluk; orta/zor parçalara düşman için geniş platform),
-  eklendikçe BFS çıkılabilirlik testi.
-- Başka fikirler: hareketli platform, yay/trambolin, can toplama, yükseldikçe değişen gök rengi.
+- Yeni oyun öğeleri: hareketli platform, yay/trambolin, can toplama, yükseldikçe değişen gök rengi.
