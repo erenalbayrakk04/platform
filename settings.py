@@ -139,6 +139,9 @@ PARTICLE_LIFE = 30  # parçaların kaç kare ekranda kaldığı
 SOUND_VOLUME = 0.5  # efekt sesleri (0-1 arası)
 MUSIC_VOLUME = 0.25  # müzik (0-1 arası)
 MUTE_KEY = "m"  # bu tuş sesi açıp kapatır
+# Web sürümünde ses tamponu (örnek sayısı, 2'nin kuvveti): küçükse ses cızırdar, büyükse sesler
+# biraz geç duyulur. 2048 ≈ 0,04 saniye. Telefonda hâlâ cızırdarsa 4096 yap
+WEB_AUDIO_BUFFER = 2048
 
 # Dokunmatik butonlar (telefonda oynamak için; bilgisayarda fareyle de basılır)
 SHOW_TOUCH_BUTTONS = True  # False = butonları gizle

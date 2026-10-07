@@ -70,9 +70,10 @@ async def custom_site():
         __import__(__name__).__file__ = main
 
         # now make a prompt
-        # "Baslamak icin ekrana dokun" (Turkce harfler chr ile: sayfa kodlamasindan etkilenmesin)
-        msg  = "Ba" + chr(0x15F) + "lamak i" + chr(0xE7) + "in ekrana dokun"
-        platform.window.infobox.innerText = msg
+        # "Baslamak icin ekrana dokun": Python'dan tarayiciya giden yazida Turkce harfler bozuluyor,
+        # o yuzden yazi sadece ASCII, harfler HTML koduyla (&#351; = s-cedilla, &#231; = c-cedilla)
+        msg  = "Ba&#351;lamak i&#231;in ekrana dokun"
+        platform.window.infobox.innerHTML = msg
         print("\n"*4, f"    * Waiting for media user engagement. {msg} *" , "\n"*4)
 
         while not platform.window.MM.UME:

@@ -5,15 +5,17 @@ import random
 
 import pygame
 
-from settings import SOUND_VOLUME, MUSIC_VOLUME
+from settings import SOUND_VOLUME, MUSIC_VOLUME, WEB, WEB_AUDIO_BUFFER
 
 SAMPLE_RATE = 22050  # saniyedeki ses örneği sayısı (düşük = daha "retro" ve hızlı üretilir)
 MUSIC_TEMPO = 140  # müziğin hızı (dakikadaki vuruş)
 
 
 def pre_init():
-    # pygame.init()'ten ÖNCE çağrılmalı: sesi tek kanal (mono), 16 bit kur
-    pygame.mixer.pre_init(SAMPLE_RATE, -16, 1, 512)
+    # pygame.init()'ten ÖNCE çağrılmalı: sesi tek kanal (mono), 16 bit kur.
+    # Tarayıcıda ses, oyunla aynı yerde doldurulur; küçük tamponda yetişemez ve cızırdar
+    buffer = WEB_AUDIO_BUFFER if WEB else 512
+    pygame.mixer.pre_init(SAMPLE_RATE, -16, 1, buffer)
 
 
 def freq(midi):
