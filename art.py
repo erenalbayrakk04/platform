@@ -25,6 +25,11 @@ from settings import (
     ENEMY_COLOR,
     ENEMY_EYE_COLOR,
     FLYER_COLOR,
+    SLIME_COLOR,
+    SPIKY_COLOR,
+    CANNON_COLOR,
+    FIREBALL_COLOR,
+    BEE_COLOR,
     LIFE_COLOR,
     SPRING_COLOR,
     MOVING_PLATFORM_COLOR,
@@ -189,6 +194,154 @@ def flyer_frames():
         "Y": (255, 230, 90),  # parlayan gözler
     }
     return [render(rows, palette) for rows in FLYER_ROWS]
+
+
+# --- Zıplayan sümük (sağa bakıyor): iki yürüme resmi, zıplamadan önce basık, havada uzamış ---
+SLIME_ROWS = {
+    "walk1": [
+        "..KKKK..",
+        ".KGhGGK.",
+        "KGhGGGGK",
+        "KGWEGWEK",
+        "KGGGGGGK",
+        "KgGGGGgK",
+        ".KKKKKK.",
+    ],
+    "walk2": [
+        "........",
+        ".KKKKKK.",
+        "KGhGGGGK",
+        "KGWEGWEK",
+        "KGGGGGGK",
+        "KgGGGGgK",
+        "KKKKKKKK",
+    ],
+    "squash": [
+        ".KKKKKK.",
+        "KGhGGGGK",
+        "KGWEGWEK",
+        "KgGGGGgK",
+        "KKKKKKKK",
+    ],
+    "jump": [
+        "..KKKK..",
+        ".KGhGGK.",
+        ".KhGGGK.",
+        ".KWEWEK.",
+        ".KGGGGK.",
+        ".KgGGgK.",
+        "..KKKK..",
+    ],
+}
+
+
+def slime_frames():
+    palette = {
+        "K": shade(SLIME_COLOR, 0.3),
+        "G": SLIME_COLOR,
+        "g": shade(SLIME_COLOR, 0.75),
+        "h": tint(SLIME_COLOR, 0.6),
+        "W": WHITE,
+        "E": EYE_DARK,
+    }
+    size = (ENEMY_WIDTH, ENEMY_HEIGHT)
+    return {name: facing_pair(render(rows, palette, size)) for name, rows in SLIME_ROWS.items()}
+
+
+# --- Dikenli kirpi (sağa bakıyor): sırtında açık renkli dikenler, iki yürüme resmi ---
+SPIKY_BODY = [
+    ".s.s.s..",
+    "sKsKsKF.",
+    "KSSSSFEF",
+    "sSSSSFFN",
+    "KSSSSFF.",
+    "sKSSSKK.",
+]
+SPIKY_LEGS = [".K...K..", "..K.K..."]
+
+
+def spiky_frames():
+    palette = {
+        "s": tint(SPIKY_COLOR, 0.8),  # diken uçları
+        "S": SPIKY_COLOR,
+        "K": shade(SPIKY_COLOR, 0.45),
+        "F": (240, 205, 160),  # yüz
+        "E": EYE_DARK,
+        "N": EYE_DARK,  # burun
+    }
+    size = (ENEMY_WIDTH, ENEMY_HEIGHT)
+    return [facing_pair(render(SPIKY_BODY + [legs], palette, size)) for legs in SPIKY_LEGS]
+
+
+# --- Topçu (sağa bakıyor): gözü olan yuvarlak top. Ateş etmeden önce namlunun ağzı kızarır ---
+CANNON_ROWS = [
+    "..KKK...",
+    ".KGhGK..",
+    "KGWEGKKK",
+    "KGGGGGGM",
+    "KGGGGGGM",
+    "KGGGGKKK",
+    ".KwwK...",
+]
+CANNON_MUZZLE_Y = 4 * PIXEL_SCALE  # namlu (M) 3. ve 4. satırda; ortası tepeden bu kadar aşağıda (ateş topu çıkar)
+
+
+def cannon_frames():
+    # [normal, kızarmış] — her biri {1: sağa, -1: sola}
+    images = []
+    for glow in (False, True):
+        palette = {
+            "K": shade(CANNON_COLOR, 0.35),
+            "G": tint(CANNON_COLOR, 0.25) if glow else CANNON_COLOR,
+            "h": tint(CANNON_COLOR, 0.55),
+            "M": FIREBALL_COLOR if glow else EYE_DARK,  # namlunun ağzı
+            "W": (255, 220, 120) if glow else WHITE,
+            "E": EYE_DARK,
+            "w": (60, 60, 70),  # tekerlekler
+        }
+        images.append(facing_pair(render(CANNON_ROWS, palette, (ENEMY_WIDTH, ENEMY_HEIGHT))))
+    return images
+
+
+# --- Ateş topu: iki resim arasında titreşir ---
+FIREBALL_ROWS = [
+    [".OO.", "OYYO", "OYYO", ".OO."],
+    [".RO.", "OYYR", "RYYO", ".OR."],
+]
+
+
+def fireball_frames():
+    palette = {
+        "Y": tint(FIREBALL_COLOR, 0.7),  # parlak orta
+        "O": FIREBALL_COLOR,
+        "R": shade(FIREBALL_COLOR, 0.75),
+    }
+    return [render(rows, palette) for rows in FIREBALL_ROWS]
+
+
+# --- Arı (yandan, sağa bakıyor): çizgili gövde, arkada iğne, kanat çırpar ---
+BEE_BODY = [
+    "..KKKKKK.",
+    ".KYKYKYYK",
+    "SKYKYKYEK",
+    ".KYKYKYYK",
+    "..KKKKKK.",
+]
+BEE_WINGS = [
+    ["...ww.ww.", "..wwwwww."],
+    [".........", "...wwwww."],
+]
+
+
+def bee_frames():
+    palette = {
+        "Y": BEE_COLOR,
+        "K": (40, 30, 20),
+        "S": (40, 30, 20),  # iğne
+        "E": WHITE,
+        "w": (225, 240, 255),  # saydamımsı kanatlar
+    }
+    return [facing_pair(render(wings + BEE_BODY, palette)) for wings in BEE_WINGS]
 
 
 # --- Altın: dönüyormuş gibi daralıp genişler ---

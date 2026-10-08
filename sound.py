@@ -120,6 +120,7 @@ class Sounds:
         crumble = [
             a + b for a, b in zip(t(0, 0, 0.25, "noise", 0.5), t(180, 60, 0.25, "triangle", 0.5))
         ]
+        shoot = [a + b for a, b in zip(t(0, 0, 0.14, "noise", 0.35), t(420, 140, 0.14, volume=0.3))]
         life = []
         for midi in (72, 76, 79, 84, 88):
             life += t(freq(midi), freq(midi), 0.06, "pulse", 0.4)
@@ -142,6 +143,7 @@ class Sounds:
             "life": life,
             "spring": spring,
             "crumble": crumble,
+            "shoot": shoot,
             "powerup": powerup,
             "powerdown": powerdown,
         }

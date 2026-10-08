@@ -6,6 +6,11 @@ import pygame
 
 from settings import (
     TILE_SIZE,
+    PLAYER_HEIGHT,
+    WALKER_KINDS,
+    FLYER_KINDS,
+    BEE_RANGE,
+    BEE_MIN_PATH,
     COIN_SPIN_SPEED,
     MAGNET_CHANCE,
     SHIELD_CHANCE,
@@ -29,8 +34,10 @@ from chunks import (
     free_span,
     walker_spots,
     flyer_spots,
+    column_span,
+    SOLID,
 )
-from enemy import Enemy, FlyingEnemy
+from enemy import Enemy, Slime, Spiky, Cannon, FlyingEnemy, Bee
 import art
 
 
@@ -245,6 +252,8 @@ class Level:
         self.crumblers = pygame.sprite.Group()
         # Düşmanlar: platformlarda yürüyenler ve uçanlar
         self.enemies = pygame.sprite.Group()
+        # Topçuların attığı ateş topları (hiçbir parçaya ait değiller; çarpınca kendileri söner)
+        self.shots = pygame.sprite.Group()
         self.width = len(START_CHUNK["rows"][0]) * TILE_SIZE
         self.player_start = (TILE_SIZE, 0)
         # Şu an bellekteki parçalar, aşağıdan yukarıya: (üst y, alt y, sprite listesi)
@@ -291,27 +300,33 @@ class Level:
                     sprites.append(spring)
                     self.springs.add(spring)
                 elif cell == "E":
-                    # Altındaki platformun kenarları arasında yürüsün
+                    # Yürüyen düşman yeri: altındaki platformun kenarları arasında yürür.
+                    # Türü rastgele; sümüğün zıplayacak yeri (platformun iki üstü boş) olmalı
                     left, right = platform_run(rows, row_index, col_index)
-                    enemy = Enemy(
-                        x + TILE_SIZE // 2,
-                        y + TILE_SIZE,
-                        left * TILE_SIZE,
-                        (right + 1) * TILE_SIZE,
-                        blend(mode["enemy_speed"], mode["enemy_speed_max"], t),
-                    )
+                    roof = rows[row_index - 1][left : right + 1]
+                    kind = self.pick_enemy(WALKER_KINDS, t, ("slime",) if any(c in SOLID for c in roof) else ())
+                    feet = (x + TILE_SIZE // 2, y + TILE_SIZE)
+                    if kind == "cannon":
+                        enemy = Cannon(*feet, self.shots)
+                    else:
+                        walker = {"walker": Enemy, "slime": Slime, "spiky": Spiky}[kind]
+                        speed = blend(mode["enemy_speed"], mode["enemy_speed_max"], t)
+                        enemy = walker(*feet, left * TILE_SIZE, (right + 1) * TILE_SIZE, speed)
                     sprites.append(enemy)
                     self.enemies.add(enemy)
                 elif cell == "F":
-                    # Satırında duvara veya kenara kadar uçsun
-                    left, right = free_span(row, col_index, col_index)
-                    flyer = FlyingEnemy(
-                        x + TILE_SIZE // 2,
-                        y + TILE_SIZE // 2,
-                        left * TILE_SIZE,
-                        (right + 1) * TILE_SIZE,
-                        blend(mode["flyer_speed"], mode["flyer_speed_max"], t),
-                    )
+                    # Uçan düşman yeri: yarasa satırında duvara veya kenara kadar uçar, arı sütununda
+                    # aşağı-yukarı (yeri yoksa arı gelmez)
+                    path = self.bee_path(rows, top, row_index, col_index)
+                    kind = self.pick_enemy(FLYER_KINDS, t, () if path else ("bee",))
+                    center = (x + TILE_SIZE // 2, y + TILE_SIZE // 2)
+                    speed = blend(mode["flyer_speed"], mode["flyer_speed_max"], t)
+                    if kind == "bee":
+                        facing = 1 if center[0] < self.width // 2 else -1  # ortaya baksın
+                        flyer = Bee(*center, *path, speed, facing)
+                    else:
+                        left, right = free_span(row, col_index, col_index)
+                        flyer = FlyingEnemy(*center, left * TILE_SIZE, (right + 1) * TILE_SIZE, speed)
                     sprites.append(flyer)
                     self.enemies.add(flyer)
                 elif cell == "P":
@@ -352,6 +367,28 @@ class Level:
             if self.random.random() < flyer_chance:
                 put(r, cells, "F")
         return rows
+
+    def pick_enemy(self, kinds, t, banned=()):
+        # Düşman yerine hangi tür gelecek (settings WALKER_KINDS / FLYER_KINDS): ağırlıklar
+        # (başta, en zorda), zorluk (t) arttıkça "en zorda"ya kayar. banned = o yere uymayan türler
+        options = [kind for kind in kinds if kind not in banned]
+        weights = [blend(*kinds[kind], t) for kind in options]
+        return self.random.choices(options, weights)[0]
+
+    def bee_path(self, rows, top, row, col):
+        # Arının uçabileceği yol: (üst, alt) piksel; yeterince yer yoksa None. top = parçanın tepesi
+        first, last = column_span(rows, row, col, BEE_RANGE)
+        high = top + first * TILE_SIZE
+        low = top + (last + 1) * TILE_SIZE
+        # Altındaki platformda duran karakterin kafasına inmesin (karakter bir bloktan uzun,
+        # o yüzden iki satır aşağıya kadar bak)
+        for below in (last + 1, last + 2):
+            if rows[below][col] in SOLID:
+                low = min(low, top + below * TILE_SIZE - PLAYER_HEIGHT - 4)
+                break
+        if low - high < BEE_MIN_PATH * TILE_SIZE:
+            return None
+        return high, low
 
     def pick_item(self, t=0.0):
         # Altın karesine ne gelecek: çoğunlukla "coin", nadiren kalp veya güçlendirme.

@@ -190,12 +190,15 @@ def update_game(level, player, camera, score, controls, sounds):
     if score.update(player):  # yükseklik rekoru şimdi kırıldı
         sounds.play("powerup")
 
-    # Düşmanlar yürüsün; karakter değdiyse: yukarıdan düştüyse veya kalkanı varsa düşman ölür,
-    # değilse can gider
-    level.enemies.update()
+    # Düşmanlar yürüsün/uçsun (topçular karaktere bakıp ateş eder); karakter değdiyse: yukarıdan
+    # düştüyse (kirpi hariç — dikenli) veya kalkanı varsa düşman ölür, değilse can gider
+    shots_before = len(level.shots)
+    level.enemies.update(player.rect)
+    if len(level.shots) > shots_before:
+        sounds.play("shoot")
     for enemy in pygame.sprite.spritecollide(player, level.enemies, False):
         stomped = player.old_bottom <= enemy.old_top  # önceki karede tamamen düşmanın üstündeydi
-        if stomped or player.powers["shield"]:
+        if (stomped and not enemy.spiky) or player.powers["shield"]:
             enemy.kill()
             score.add_enemy()
             if stomped:
@@ -203,6 +206,17 @@ def update_game(level, player, camera, score, controls, sounds):
             sounds.play("stomp")
             burst(level.effects, enemy.rect.center, enemy.color)
         elif not player.invincible:
+            player.hurt()
+            sounds.play("hurt")
+            burst(level.effects, player.rect.center, PLAYER_COLOR)
+    # Ateş topları uçar; değerse can gider (kalkan varsa sadece top söner)
+    level.shots.update(level.tiles, level.width)
+    for shot in pygame.sprite.spritecollide(player, level.shots, False):
+        if player.powers["shield"]:
+            shot.kill()
+            burst(level.effects, shot.rect.center, shot.color)
+        elif not player.invincible:
+            shot.kill()
             player.hurt()
             sounds.play("hurt")
             burst(level.effects, player.rect.center, PLAYER_COLOR)
@@ -248,7 +262,10 @@ def draw_world(screen, background, level, player, camera, score):
     screen_rect = screen.get_rect()
     # Kırık platformlar geri gelmeden az önce silik görünür
     ghosts = [crumbler for crumbler in level.crumblers if crumbler.ghost]
-    sprites = [*level.tiles, *ghosts, *level.springs, *level.coins, *level.pickups, *level.enemies, *level.effects]
+    sprites = [
+        *level.tiles, *ghosts, *level.springs, *level.coins, *level.pickups, *level.enemies, *level.shots,
+        *level.effects,
+    ]
     if player.visible:  # dokunulmazken yanıp söner
         sprites.append(player)
     for sprite in sprites:

@@ -59,10 +59,17 @@
   sol olanın üstüne girişi sağ olan gelir → birleşmede 2 satır fark, üst üste binme yok.
   `check_chunk` yanlış parçada oyun açılırken hata verir. Yeni parça eklerken her iki giriş
   tarafı için her zorlukta parça olsun.
-- `enemy.py` — ortak `Patrol` (`patrol()`: `left`-`right` piksel arasında gidip gelir, ondalıklı `pos_x`,
-  `old_top` = önceki karedeki üst kenar); `Enemy(center_x, bottom, left, right, speed)` yürür,
-  `FlyingEnemy(center_x, center_y, left, right, speed)` yarasa: uçar, `FLYER_BOB` kadar süzülür (hızları level.py moda göre verir).
-  İkisi de `level.enemies`'te; tile'larla çarpışma yok (sınırlar parçadan hesaplanır).
+- `enemy.py` — ortak `Patrol` (`patrol()`: `start`-`end` piksel arasında gidip gelir, `vertical` ise dikeyde; ondalıklı `pos`,
+  `old_top` = önceki karedeki üst kenar, `spiky` = üstüne basılamaz); resimler `frames(tür)` ile bir kere hazırlanır.
+  Hepsinin `update(target)`'ı karakterin kutusunu alır (`level.enemies.update(player.rect)`; sadece topçu kullanır).
+  Yürüyenler (E yeri): `Enemy(center_x, bottom, left, right, speed)` kırmızı; `Spiky` kirpi (`Enemy` gibi, `SPIKY_SPEED` kat
+  yavaş, `spiky = True`); `Slime` sümük (`SLIME_JUMP_TIME`'da bir `SLIME_SQUASH_TIME` basılıp bekler, `SLIME_JUMP_POWER` +
+  `GRAVITY` ile zıplar, havada da yürür); `Cannon(center_x, bottom, shots)` topçu (yürümez, karaktere döner; karakter dikeyde
+  `CANNON_RANGE` içindeyken `CANNON_FIRE_TIME`'da bir `Fireball` atar, önceki `CANNON_WARN_TIME` karede kızarır — kızarma ancak
+  karakter yakındayken başlar). `Fireball(center_x, center_y, direction)`: `level.shots`'ta, `update(tiles, level_width)` katıya
+  /kenara gelince söner. Uçanlar (F yeri): `FlyingEnemy(center_x, center_y, left, right, speed)` yarasa: `FLYER_BOB` kadar
+  süzülür; `Bee(center_x, center_y, top, bottom, speed, facing)` arı: dikey `Patrol`, ekranın ortasına bakar.
+  Hızları level.py moda göre verir. Hepsi `level.enemies`'te; tile'larla çarpışma yok (sınırlar parçadan hesaplanır).
 - `level.py` — `Tile`, `Platform`, `Coin`, `Pickup`, `Spring` (`level.springs`; `Spring.squash()` basık resim), `MovingPlatform` (`level.movers` VE
   `level.tiles`; `move()` kaydığı pikseli döndürür; `unsafe = True`), `CrumblingPlatform` (`level.crumblers`;
   sağlamken `level.tiles`'ta da; `step(player, tiles)` her karede: basılınca `CRUMBLE_DELAY` kare titrer
@@ -86,7 +93,12 @@
   `pick_item(t)` kalp ihtimali `heart_chance`→`heart_chance_min`.
   EK RASTGELE DÜŞMANLAR (kullanıcı "daha fazla düşman" istedi): `add_extra_enemies(rows, t)` her parçada (başlangıç hariç)
   satırların kopyasına 'E'/'F' yazar: `walker_spots`'taki her platforma `extra_enemy_chance`, `flyer_spots`'taki her
-  satıra `extra_flyer_chance` ihtimalle (t ile `_max`'a artar). Orta'da parça başı düşman ~0,55 → ~1,4-1,55. Tile/Platform/Coin resimleri `level.image()`
+  satıra `extra_flyer_chance` ihtimalle (t ile `_max`'a artar). Orta'da parça başı düşman ~0,55 → ~1,4-1,55.
+  DÜŞMAN TÜRLERİ: her E/F yeri `pick_enemy(kinds, t, banned)` ile settings `WALKER_KINDS` (walker/slime/spiky/cannon) /
+  `FLYER_KINDS` (bat/bee) ağırlıklarıyla (başta, en zorda) bir türe dönüşür. KULLANICI KARARI: düşman ORANI (sayısı) böyle
+  kalsın — yeni tür eklenince sayı artmaz, var olan yerlerin türü değişir. Sümük: platformun iki üstünde katı varsa gelmez.
+  Arı: `bee_path(rows, top, row, col)` (chunks `column_span` + `BEE_RANGE`; alttaki platformda (2 satıra kadar) duran
+  karakterin kafasına inmesin diye `PLAYER_HEIGHT` kadar kısaltılır; `BEE_MIN_PATH` bloktan kısaysa None → yarasa). Tile/Platform/Coin resimleri `level.image()`
   ile bir kere hazırlanıp paylaşılır; `Coin.update()` dönme animasyonu., `bottom` = en alttaki parçanın altı, `width` piksel.
 - `score.py` — `Score(start_y, record)`: `height` = üstüne basılan en yüksek yer (blok = ekranda "m", sadece `on_ground`
   iken sayılır, düşünce azalmaz), `coins`, `enemies`, `total` = height × `HEIGHT_POINTS` + coins × `COIN_POINTS`
@@ -118,7 +130,7 @@
   `PAUSE_BUTTONS` resume/sound/menu, `GAME_OVER_BUTTONS` again/menu), `LABELS` sabit yazılar (değişenleri main
   verir); `draw_main_menu` (başlık, "Rekor: N m", düğmeler, web'de HEP `draw_slow_hint` — kullanıcı isteği),
   `draw_howto` (kontroller + `HOWTO_ROWS`: oyundaki resimlerle her şeyin açıklaması — yeni öğe eklenince buraya da
-  ekle), `draw_records(best_heights, high_scores, stats, current)` (her modun tırmanış + puan rekoru, seçili mod sarı; altında
+  ekle; 13 satır `HOWTO_TOP`/`HOWTO_GAP` ile sığıyor, daha fazlası için aralık daralt; `HOWTO_WARN_ROWS` sarı yazı), `draw_records(best_heights, high_scores, stats, current)` (her modun tırmanış + puan rekoru, seçili mod sarı; altında
   tüm modların toplamları), `draw_pause`, `draw_game_over(screen, score, mode_name, ...)` (başlık altında "Zorluk: ...";
   düğmeler `ready` olunca).
   Oyunun üstüne yarı saydam perde; büyük yazı yükseklik/rekor (m), puan küçük.
@@ -156,7 +168,8 @@
   `main()` `async`: döngü sonunda `await asyncio.sleep(0)` (web için şart), en altta `asyncio.run(main())`.
   `new_game(best_height, mode)` yeni rastgele bölüm + karakter + kamera + puan kurar; altınlar
   `spritecollide(player, level.coins, True)` ile toplanır. Düşmana değince `player.old_bottom <= enemy.old_top`
-  ise düşman ölür (`STOMP_BOUNCE`); kalkan (`player.powers["shield"]`) varken değdiği düşman zıplamadan ölür;
+  ise (ve `enemy.spiky` değilse — kirpiye basan yanar) düşman ölür (`STOMP_BOUNCE`); topçu ateş edince (level.shots
+  arttıysa) "shoot" sesi; ateş topu değerse `hurt()` (kalkan varsa sadece söner); kalkan (`player.powers["shield"]`) varken değdiği düşman zıplamadan ölür;
   değilse dokunulmaz değilken `hurt()`. `level.bottom`'ın altına düşerse (kalkan olsa da) `hurt()` +
   `respawn()`. Mıknatıs varken her karede `coin.attract(player.rect.center)`. Kalkan sürerken `draw_world`
   karakterin etrafına `art.shield_bubble` çizer. Düşmanın `color`'ı ölünce saçılan parçacıkların rengi.
@@ -182,13 +195,15 @@
 - `art.py` — piksel sanatı: harf haritası + palet → `render(rows, palette, size)` (her harf
   `PIXEL_SCALE` px, çizim alta-ortaya yaslı; hiç `.` yoksa ve ekran açıksa `convert()` = saydamsız → tarayıcıda
   ~5 kat hızlı çizilir), `shade`/`tint` ile tonlar; `player_frames()`,
-  `enemy_frames()` ({1: sağ, -1: sol} çiftleri), `flyer_frames()` (kanat çırpma), `crumble_frames()`
+  `enemy_frames()` ({1: sağ, -1: sol} çiftleri), `flyer_frames()` (kanat çırpma), `slime_frames()` (walk1/walk2/squash/jump),
+  `spiky_frames()`, `cannon_frames()` ([normal, kızarmış]; `CANNON_MUZZLE_Y` namlu yüksekliği), `fireball_frames()`,
+  `bee_frames()`, `crumble_frames()`
   (sağlam, çatlak, silik), `magnet_image()`, `shield_image()`, `shield_bubble(r)`, `coin_frames()` (dönme), `tile_image()`,
   `platform_image()`, `heart_images()`, `Background` (`SKY_THEMES` gökleri, her `SKY_CHANGE_HEIGHT` px tırmanışta sıradakine
   `SKY_BLEND_HEIGHT` boyunca saydamlıkla geçer, döngüsel; + `STAR_PARALLAX` ile kayan yıldızlar).
 - `sound.py` — `pre_init()` (pygame.init'ten önce; 22050 Hz mono 16 bit; tampon masaüstünde 512,
   web'de `WEB_AUDIO_BUFFER` = 2048 — tarayıcı 512'de cızırdıyordu; tarayıcı frekansı kendisi seçer, 48000), `Sounds()`: efektler
-  (jump, coin, stomp, hurt, start, game_over, life, spring, crumble, powerup, powerdown) ve 8 ölçülük döngü müzik (`MELODY`/`BASS` nota
+  (jump, coin, stomp, hurt, start, game_over, life, spring, crumble, shoot, powerup, powerdown) ve 8 ölçülük döngü müzik (`MELODY`/`BASS` nota
   numaraları) `array` ile üretilir (numpy YOK); `play(name)`, `start_music/stop_music`, `toggle_mute`,
   `set_levels(music, effects)` (0-1 çarpan; tam = `MUSIC_VOLUME`/`SOUND_VOLUME`)
   (M). Mixer yoksa/biçim farklıysa `enabled=False`, her şey sessizce çalışır. Stereo da desteklenir.
@@ -222,7 +237,9 @@ Açık depoda çalışma durumu girişsiz bakılabilir: https://api.github.com/r
 - Zorlaştırma yapıldı (kullanıcı seçti: düşmanlar kolaydı, acele yoktu, çok kalp vardı): yükseldikçe zorlaşma +
   yükselen lav. Kullanıcı oynayıp lav/düşman hızı için geri bildirim verecek (sayılar settings.py'de).
   Kolay/orta/zor MODLARI sonra, ana menüyle birlikte (her modun ayrı rekoru olsun).
-- Sonra belki: başka güçlendirmeler (ör. jetpack), başka düşman türleri.
+- Sonra belki: başka güçlendirmeler (ör. jetpack).
+- YENİ DÜŞMANLAR yapıldı (kullanıcı dördünü de seçti): zıplayan sümük, dikenli kirpi, ateş atan topçu, dikey uçan arı.
+  Düşman sayısı/oranı değişmedi (kullanıcı isteği). Tür sıklığı settings `WALKER_KINDS`/`FLYER_KINDS`.
 - ANA MENÜ yapıldı (Oyna, Zorluk, Nasıl Oynanır, Rekorlar, Ses Ayarları (müzik/efekt seviyesi) + oyunda durdur). Web'de menüde "Düşük Güç Modu'nu
   kapat" sabit yazıyor (otomatik ipucu kullanıcının iPhone'unda çıkmamıştı).
 - ZORLUK MODLARI yapıldı: Kolay / Orta / Zor / Ultra Zor (kullanıcı Ultra Zor'u istedi), her modun ayrı rekoru.

@@ -156,10 +156,10 @@ SOUND_MENU = SoundMenu()
 
 
 def howto_icons():
-    # Nasıl oynanır sayfasındaki küçük resimler: oyundaki resimlerin aynısı, en fazla 36 piksel
+    # Nasıl oynanır sayfasındaki küçük resimler: oyundaki resimlerin aynısı, en fazla HOWTO_ICON piksel
     if "howto" not in _cache:
 
-        def fit(image, box=36):
+        def fit(image, box=HOWTO_ICON):
             scale = min(1, box / image.get_width(), box / image.get_height())
             size = (round(image.get_width() * scale), round(image.get_height() * scale))
             return pygame.transform.scale(image, size)
@@ -171,7 +171,11 @@ def howto_icons():
             "shield": fit(art.shield_image()),
             "spring": fit(art.spring_frames()[0]),
             "enemy": fit(art.enemy_frames()[0][1]),
+            "slime": fit(art.slime_frames()["walk1"][1]),
+            "spiky": fit(art.spiky_frames()[0][1]),
+            "cannon": fit(art.cannon_frames()[1][1]),
             "bat": fit(art.flyer_frames()[0]),
+            "bee": fit(art.bee_frames()[0][1]),
             "crumble": fit(art.crumble_frames()[1]),
             "lava": fit(art.lava_frames()[0].subsurface((0, 0, 36, 32))),
         }
@@ -184,11 +188,19 @@ HOWTO_ROWS = (
     ("magnet", "Mıknatıs: altınları çeker"),
     ("shield", "Kalkan: düşman ve lavdan korur"),
     ("spring", "Yay: çok yükseğe fırlatır"),
-    ("enemy", "Düşman: üstüne zıpla, yanına değme"),
-    ("bat", "Yarasa: onun da üstüne zıpla"),
     ("crumble", "Çatlak taş: basınca kırılır"),
+    ("enemy", "Düşman: üstüne zıpla, yanına değme"),
+    ("slime", "Sümük: zıplar, inince üstüne bas"),
+    ("spiky", "Kirpi: dikenli, üstüne BASMA!"),
+    ("cannon", "Topçu: ateş atar, üstüne zıpla"),
+    ("bat", "Yarasa: onun da üstüne zıpla"),
+    ("bee", "Arı: aşağı yukarı uçar"),
     ("lava", "Lav: yükseliyor, acele et!"),
 )
+HOWTO_WARN_ROWS = ("spiky", "lava")  # yazısı uyarı renginde olanlar
+HOWTO_ICON = 30  # resimlerin en fazla boyu (piksel)
+HOWTO_TOP = 200  # ilk satırın ortası (y)
+HOWTO_GAP = 34  # satırlar arası (piksel)
 
 
 def draw_howto(screen):
@@ -203,11 +215,11 @@ def draw_howto(screen):
     )
     icons = howto_icons()
     for i, (name, text) in enumerate(HOWTO_ROWS):
-        y = 220 + i * 44
+        y = HOWTO_TOP + i * HOWTO_GAP
         icon = icons[name]
         screen.blit(icon, icon.get_rect(center=(58, y)))
-        color = LAVA_TOP_COLOR if name == "lava" else None
-        draw_text(screen, small, text, color or (255, 255, 255), midleft=(92, y))
+        color = LAVA_TOP_COLOR if name in HOWTO_WARN_ROWS else (255, 255, 255)
+        draw_text(screen, small, text, color, midleft=(92, y))
     BACK_BUTTON.draw(screen, LABELS)
 
 

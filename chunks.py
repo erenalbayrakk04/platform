@@ -679,6 +679,21 @@ def flyer_spots(rows):
     return spots
 
 
+def column_span(rows, row, col, reach):
+    # Arının (Level.bee_path) uçabileceği satırlar (ilk, son): (row, col)'dan yukarı ve aşağı en fazla
+    # reach satır. Boş (ya da altınlı) karelerden geçer; katı kareye, giriş/çıkış satırına ve içinde başka
+    # düşman ya da hareketli platform olan satıra gelince durur (onların içinden geçmesin)
+    def free(r):
+        return 1 <= r <= len(rows) - 3 and rows[r][col] in ".C" and not any(m in rows[r] for m in "EFM")
+
+    first = last = row
+    while row - first < reach and free(first - 1):
+        first -= 1
+    while last - row < reach and free(last + 1):
+        last += 1
+    return first, last
+
+
 def moving_platforms(rows):
     # Her satırdaki M grubu bir hareketli platform:
     # (satır, ilk sütun, genişlik, gidebildiği en sol sütun, en sağ sütun)

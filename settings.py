@@ -131,18 +131,51 @@ SPRING_POWER = 24  # fırlatma gücü (zıplama 15; 24 ≈ 9 blok yükseğe)
 SPRING_COLOR = (80, 220, 120)  # yayın üst plakası (yeşil)
 SPRING_SQUASH_TIME = 10  # fırlatınca kaç kare basık görünür
 
-# Düşmanlar (haritada 'E') — platformun üstünde sağa-sola yürür (hızları yukarıda, DIFFICULTIES içinde)
+# Düşmanlar (haritada 'E') — platformun üstünde sağa-sola yürür (hızları yukarıda, DIFFICULTIES içinde).
+# Yerine bazen sümük, kirpi veya topçu gelir (aşağıda, WALKER_KINDS)
 ENEMY_WIDTH = 32
 ENEMY_HEIGHT = 28
 ENEMY_COLOR = (220, 60, 60)  # kırmızı
 ENEMY_EYE_COLOR = WHITE
 STOMP_BOUNCE = 10  # düşmanın üstüne basınca karakter ne kadar sıçrar
 
-# Uçan düşmanlar (haritada 'F') — havada kendi satırında sağa-sola uçar; üstüne basılınca ölür (hızı DIFFICULTIES'te)
+# Uçan düşmanlar (haritada 'F') — havada kendi satırında sağa-sola uçar; üstüne basılınca ölür (hızı DIFFICULTIES'te).
+# Yerine bazen arı gelir (aşağıda, FLYER_KINDS)
 FLYER_COLOR = (150, 90, 220)  # mor yarasa
 FLYER_BOB = 6  # uçarken kaç piksel aşağı-yukarı süzülür
 FLYER_BOB_SPEED = 15  # süzülmenin yavaşlığı (büyürse daha yavaş)
 FLYER_FLAP_SPEED = 6  # kanat çırpma: her resim kaç kare ekranda kalır
+
+# Düşman türleri — haritadaki her yürüyen düşman yeri (E) ve uçan düşman yeri (F) rastgele bir türe dönüşür.
+# Düşman SAYISI değişmez (kullanıcı kararı: oran böyle kalsın), sadece çeşidi. Sayılar ağırlık:
+# (başta, en zorda) — büyük sayı = daha sık. Yükseldikçe "en zorda" değerine kayar
+WALKER_KINDS = {"walker": (4, 2), "slime": (2, 3), "spiky": (1, 2), "cannon": (1, 2)}
+FLYER_KINDS = {"bat": (2, 1), "bee": (1, 1)}
+
+# Zıplayan sümük — yürür, arada bir önce basılır (uyarı), sonra zıplar
+SLIME_COLOR = (90, 200, 90)  # yeşil
+SLIME_SPEED = 0.8  # yürüme hızı, yürüyen düşmanın hızının kaç katı
+SLIME_JUMP_POWER = 9  # zıplama gücü (9 ≈ 1,2 blok yükseğe)
+SLIME_JUMP_TIME = 110  # kaç karede bir zıplar (60 kare = 1 saniye)
+SLIME_SQUASH_TIME = 20  # zıplamadan önce kaç kare basılıp bekler
+
+# Dikenli kirpi — üstüne basılamaz (basarsan canın gider), sadece kalkan öldürür; üstünden atla
+SPIKY_COLOR = (150, 105, 65)  # kahverengi
+SPIKY_SPEED = 0.6  # yürüme hızı, yürüyen düşmanın hızının kaç katı (yavaş)
+
+# Topçu — yerinde durur; karakter yakınındayken ona dönüp ateş topu atar, atmadan önce namlusu kızarır
+CANNON_COLOR = (140, 140, 165)  # metal grisi
+CANNON_FIRE_TIME = 150  # kaç karede bir ateş eder
+CANNON_WARN_TIME = 40  # ateş etmeden kaç kare önce kızarır (uyarı)
+CANNON_RANGE = 160  # karakter dikeyde bu kadar yakındaysa (piksel) ateş eder
+FIREBALL_SPEED = 3  # ateş topu her karede kaç piksel gider (katı bir şeye çarpınca söner)
+FIREBALL_COLOR = (255, 130, 30)  # turuncu
+
+# Arı — kendi sütununda aşağı-yukarı uçar; altındaki platformda duranın kafasına inmez
+BEE_COLOR = (250, 200, 40)  # sarı
+BEE_SPEED = 0.8  # uçuş hızı, yarasanın hızının kaç katı
+BEE_RANGE = 2  # başladığı yerden en fazla kaç blok yukarı ve aşağı uçar
+BEE_MIN_PATH = 2  # yolu en az kaç blok olmalı (yer yoksa arı yerine yarasa gelir)
 
 # Lav — aşağıdan yükselir; değersen bir can gider, son durduğun yere dönersin (kalkan varsa can gitmez, aşağıda).
 # Hızı ve bekleme süresi her zorluk modunda farklı (yukarıda, DIFFICULTIES)
