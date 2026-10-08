@@ -5,3 +5,4 @@ dist/
 *.spec
 .vscode/
 highscore.txt
+bestheight.txt

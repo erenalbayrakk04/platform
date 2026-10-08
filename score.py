@@ -1,5 +1,6 @@
-# Puan: tırmanılan yükseklik + altınlar + yenilen düşmanlar. Ekranın sol üstünde, kameradan
-# bağımsız çizilir. Canlar (kalpler) sağ üstte. En yüksek skor bir dosyada saklanır.
+# Yükseklik (asıl hedef, büyük yazı) ve puan: tırmanılan yükseklik + altınlar + yenilen düşmanlar.
+# Ekranın sol üstünde, kameradan bağımsız çizilir. Canlar (kalpler) sağ üstte.
+# Rekorlar (en yüksek tırmanış ve en yüksek puan) dosyada / tarayıcı hafızasında saklanır.
 import os
 
 import pygame
@@ -18,22 +19,33 @@ from settings import (
     PLAYER_LIVES,
     HIGHSCORE_FILE,
     HIGHSCORE_KEY,
+    BEST_HEIGHT_FILE,
+    BEST_HEIGHT_KEY,
+    RECORD_TOAST_TIME,
+    RECORD_COLOR,
     WEB,
     POWERUP_WARN_TIME,
 )
 
 
 class Score:
-    def __init__(self, start_y):
+    def __init__(self, start_y, record=0):
         # Karakterin ayaklarının başladığı yükseklik — yükseklik buna göre ölçülür
         self.start_y = start_y
+        self.record = record  # oyun başlarken en yüksek tırmanış rekoru (blok)
         self.height = 0  # üstüne basılan en yüksek yer (blok sayısı)
         self.coins = 0  # toplanan altın sayısı
         self.enemies = 0  # üstüne basılıp yenilen düşman sayısı
         self.bonus = 0  # diğer puanlar (ör. canın doluyken alınan kalp)
+        self.toast = 0  # "YENİ REKOR!" yazısının kalan süresi
         # None = pygame'in kendi yazı tipi
         self.font = pygame.font.Font(None, SCORE_FONT_SIZE)
         self.small_font = pygame.font.Font(None, SCORE_SMALL_FONT_SIZE)
+
+    @property
+    def new_record(self):
+        # Bu oyunda yükseklik rekoru kırıldı mı
+        return self.height > self.record
 
     @property
     def total(self):
@@ -46,10 +58,19 @@ class Score:
 
     def update(self, player):
         # Sadece üstüne bastığı yer sayılır (havada zıplamak puan vermesin);
-        # aşağı düşünce puan azalmaz, en yükseği hatırlanır
-        if player.on_ground:
-            climbed = (self.start_y - player.rect.bottom) // TILE_SIZE
-            self.height = max(self.height, climbed)
+        # aşağı düşünce puan azalmaz, en yükseği hatırlanır.
+        # Rekor bu karede kırıldıysa True döner (ses için); ilk oyunda (rekor 0) kutlama yok
+        if self.toast:
+            self.toast -= 1
+        if not player.on_ground:
+            return False
+        was_record = self.new_record
+        climbed = (self.start_y - player.rect.bottom) // TILE_SIZE
+        self.height = max(self.height, climbed)
+        if self.new_record and not was_record and self.record > 0:
+            self.toast = RECORD_TOAST_TIME
+            return True
+        return False
 
     def add_coin(self):
         self.coins += 1
@@ -61,9 +82,27 @@ class Score:
         self.bonus += points
 
     def draw(self, screen):
-        draw_text(screen, self.font, f"Puan: {self.total}", topleft=(12, 10))
+        # Büyük yazı yükseklik (asıl hedef); puan ve altın altında küçük.
+        # Rekor kırıldıysa yükseklik rekor renginde
+        color = RECORD_COLOR if self.new_record and self.record > 0 else SCORE_COLOR
+        draw_text(screen, self.font, f"{self.height} m", color, topleft=(12, 10))
         draw_text(
-            screen, self.small_font, f"Yükseklik: {self.height}   Altın: {self.coins}", topleft=(12, 44)
+            screen, self.small_font, f"Puan: {self.total}   Altın: {self.coins}", topleft=(12, 44)
+        )
+        if self.toast and (self.toast // 10) % 2 == 0:  # yanıp söner
+            draw_text(screen, self.font, "YENİ REKOR!", RECORD_COLOR, center=(SCREEN_WIDTH // 2, 120))
+
+    def draw_record_line(self, screen, camera):
+        # Haritada rekor yüksekliğinde kesikli çizgi + "Rekor" yazısı (rekor kırılınca kaybolur)
+        if self.record <= 0 or self.new_record:
+            return
+        y = round(self.start_y - self.record * TILE_SIZE - camera.top)
+        if not -20 < y < screen.get_height():
+            return
+        for x in range(0, SCREEN_WIDTH, 16):
+            screen.fill(RECORD_COLOR, (x, y - 1, 10, 3))
+        draw_text(
+            screen, self.small_font, f"Rekor {self.record} m", RECORD_COLOR, bottomright=(SCREEN_WIDTH - 8, y - 4)
         )
 
 
@@ -85,36 +124,43 @@ def draw_text(screen, font, text, color=SCORE_COLOR, **position):
     screen.blit(image, rect)
 
 
-def high_score_path():
+# Rekor türleri: (bilgisayardaki dosya, tarayıcı hafızasındaki ad)
+RECORDS = {
+    "height": (BEST_HEIGHT_FILE, BEST_HEIGHT_KEY),  # en yüksek tırmanış (blok)
+    "score": (HIGHSCORE_FILE, HIGHSCORE_KEY),  # en yüksek puan
+}
+
+
+def record_path(kind):
     # Dosya, oyunun klasöründe dursun (oyun nereden çalıştırılırsa çalıştırılsın)
-    return os.path.join(os.path.dirname(os.path.abspath(__file__)), HIGHSCORE_FILE)
+    return os.path.join(os.path.dirname(os.path.abspath(__file__)), RECORDS[kind][0])
 
 
 # Tarayıcıda dosyaya yazılan şey sayfa kapanınca kaybolur; orada rekor tarayıcının kendi
 # hafızasında (localStorage) saklanır. pygbag, tarayıcıya platform.window ile eriştirir.
 
 
-def load_high_score():
-    # Kayıt yoksa veya bozuksa en yüksek skor 0
+def load_record(kind):
+    # Kayıt yoksa veya bozuksa 0
     try:
         if WEB:
             from platform import window
 
-            return int(window.localStorage.getItem(HIGHSCORE_KEY) or 0)
-        with open(high_score_path(), encoding="utf-8") as f:
+            return int(window.localStorage.getItem(RECORDS[kind][1]) or 0)
+        with open(record_path(kind), encoding="utf-8") as f:
             return int(f.read().strip())
     except Exception:
         return 0
 
 
-def save_high_score(value):
+def save_record(kind, value):
     try:
         if WEB:
             from platform import window
 
-            window.localStorage.setItem(HIGHSCORE_KEY, str(value))
+            window.localStorage.setItem(RECORDS[kind][1], str(value))
             return
-        with open(high_score_path(), "w", encoding="utf-8") as f:
+        with open(record_path(kind), "w", encoding="utf-8") as f:
             f.write(str(value))
     except Exception:
         pass  # kaydedilemese de oyun çalışmaya devam etsin

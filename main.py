@@ -32,7 +32,7 @@ from player import Player
 from level import Level
 from lava import Lava
 from camera import Camera
-from score import Score, draw_lives, draw_powers, draw_text, load_high_score, save_high_score
+from score import Score, draw_lives, draw_powers, draw_text, load_record, save_record
 from screens import draw_menu, draw_game_over
 from art import Background, shield_bubble
 from controls import TouchButtons, read_controls
@@ -113,14 +113,15 @@ class FpsMeter:
         draw_text(screen, self.font, self.text, center=(SCREEN_WIDTH // 2, 80))
 
 
-def new_game():
-    # Yeni rastgele bölüm kur, karakteri başlangıç parçasındaki P noktasına koy
+def new_game(best_height):
+    # Yeni rastgele bölüm kur, karakteri başlangıç parçasındaki P noktasına koy.
+    # best_height = yükseklik rekoru (haritada "Rekor" çizgisi orada çizilir)
     level = Level()
     player = Player(*level.player_start, level.width)
     camera = Camera()
     camera.follow(player.rect, level.bottom, instant=True)
     level.update(camera.top, camera.bottom)
-    score = Score(level.player_start[1])
+    score = Score(level.player_start[1], best_height)
     # Saçılan parçacıklar (effects.py) — dünyada dururlar, kamerayla birlikte çizilirler
     level.effects = pygame.sprite.Group()
     # Aşağıdan yükselen lav (lava.py) — zeminin altından başlar
@@ -170,7 +171,8 @@ def update_game(level, player, camera, score, controls, sounds):
             player.power_up(item.kind)
             sounds.play("powerup")
         burst(level.effects, item.rect.center, PICKUP_COLORS[item.kind])
-    score.update(player)
+    if score.update(player):  # yükseklik rekoru şimdi kırıldı
+        sounds.play("powerup")
 
     # Düşmanlar yürüsün; karakter değdiyse: yukarıdan düştüyse veya kalkanı varsa düşman ölür,
     # değilse can gider
@@ -215,9 +217,10 @@ def update_game(level, player, camera, score, controls, sounds):
     level.update(camera.top, camera.bottom)
 
 
-def draw_world(screen, background, level, player, camera):
+def draw_world(screen, background, level, player, camera, score):
     # Önce gökyüzü, sonra her şeyi kameraya göre kaydırarak çiz
     background.draw(screen, camera.top)
+    score.draw_record_line(screen, camera)  # rekor yüksekliği (platformların arkasında)
     screen_rect = screen.get_rect()
     # Kırık platformlar geri gelmeden az önce silik görünür
     ghosts = [crumbler for crumbler in level.crumblers if crumbler.ghost]
@@ -252,8 +255,10 @@ async def main():
     touch = TouchButtons()
     mute_key = pygame.key.key_code(MUTE_KEY)
 
-    high_score = load_high_score()
-    level, player, camera, score = new_game()
+    # Rekorlar: asıl hedef en yüksek tırmanış (blok), ayrıca en yüksek puan
+    best_height = load_record("height")
+    high_score = load_record("score")
+    level, player, camera, score = new_game(best_height)
     # Hangi ekrandayız: "menu" (başlangıç), "playing" (oyun), "game_over" (kaybettin)
     state = "menu"
     game_over_timer = 0  # kaybettin ekranında tuşlar çalışana kadar kalan kare
@@ -298,17 +303,20 @@ async def main():
                     game_over_timer = GAME_OVER_DELAY
                     sounds.stop_music()
                     sounds.play("game_over")
-                    new_record = score.total > high_score
+                    new_record = score.new_record  # yükseklik rekoru
                     if new_record:
+                        best_height = score.height
+                        save_record("height", best_height)
+                    if score.total > high_score:
                         high_score = score.total
-                        save_high_score(high_score)
+                        save_record("score", high_score)
                     break
 
         elif state == "game_over":
             if game_over_timer > 0:
                 game_over_timer = max(0, game_over_timer - steps)
             elif start_pressed:
-                level, player, camera, score = new_game()
+                level, player, camera, score = new_game(best_height)
                 state = "playing"
                 sounds.play("start")
                 sounds.start_music()
@@ -319,9 +327,9 @@ async def main():
             fps_meter.count()
             # Telefon saniyede az kare gösteriyorsa (Düşük Güç Modu) menülerde ipucu çıkar
             slow = WEB and fps_meter.slow
-            draw_world(screen, background, level, player, camera)
+            draw_world(screen, background, level, player, camera, score)
             if state == "menu":
-                draw_menu(screen, high_score, slow)
+                draw_menu(screen, best_height, high_score, slow)
             else:
                 # Puan ve canlar kameradan bağımsız: hep ekranın üst köşelerinde
                 score.draw(screen)
@@ -330,7 +338,9 @@ async def main():
                 if state == "playing":
                     touch.draw(screen)
                 if state == "game_over":
-                    draw_game_over(screen, score, high_score, new_record, game_over_timer == 0, slow)
+                    draw_game_over(
+                        screen, score, best_height, high_score, new_record, game_over_timer == 0, slow
+                    )
             if show_fps:
                 fps_meter.draw(screen)
             pygame.display.flip()

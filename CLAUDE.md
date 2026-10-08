@@ -80,18 +80,23 @@
   Zorluk sayıları settings.py "Zorluk" bölümünde ve `*_MAX`/`*_MIN` çiftleri → ileride kolay/orta/zor modları
   bu sayıların farklı takımları olacak. Tile/Platform/Coin resimleri `level.image()`
   ile bir kere hazırlanıp paylaşılır; `Coin.update()` dönme animasyonu., `bottom` = en alttaki parçanın altı, `width` piksel.
-- `score.py` — `Score(start_y)`: `height` = üstüne basılan en yüksek yer (blok, sadece `on_ground`
+- `score.py` — `Score(start_y, record)`: `height` = üstüne basılan en yüksek yer (blok = ekranda "m", sadece `on_ground`
   iken sayılır, düşünce azalmaz), `coins`, `enemies`, `total` = height × `HEIGHT_POINTS` + coins × `COIN_POINTS`
-  + enemies × `ENEMY_POINTS`; `draw(screen)` sol üstte gölgeli yazı (kameradan bağımsız);
+  + enemies × `ENEMY_POINTS`. ASIL HEDEF YÜKSEKLİK (kullanıcı kararı: oyuncu kendi tırmanış rekorunu geçmek ister):
+  `draw(screen)` sol üstte BÜYÜK "37 m", altında küçük "Puan / Altın" (kameradan bağımsız); `record` = oyun
+  başındaki yükseklik rekoru, `new_record` = geçildi mi; `update(player)` rekor o an kırıldıysa True döner
+  (main "powerup" sesi çalar) ve `toast` = `RECORD_TOAST_TIME` kare "YENİ REKOR!" (ilk oyunda, rekor 0 iken yok);
+  `draw_record_line(screen, camera)` haritada rekor yüksekliğinde kesikli çizgi + "Rekor N m" (draw_world, gökten hemen sonra);
   `draw_lives(screen, lives)` sağ üstte kalpler (kaybedilen can gri); `draw_powers(screen, player)` kalplerin
   altında süren güçlendirmelerin simgesi + süre çubuğu (son `POWERUP_WARN_TIME` karede yanıp söner); `draw_text(screen, font, text,
   color, center=/topleft=...)` gölgeli yazı (her yerde bu kullanılır; resimleri `TEXT_CACHE`'te, her karede
-  yeniden yazılmaz); `load_high_score()` /
-  `save_high_score(v)` → `highscore.txt` (oyun klasöründe, git dışı; bozuk/yoksa 0, yazılamazsa sessiz);
-  web'de (`settings.WEB`, `sys.platform == "emscripten"`) tarayıcı hafızası: `platform.window.localStorage`,
-  anahtar `HIGHSCORE_KEY`.
-- `screens.py` — `draw_menu(screen, high_score)` ve `draw_game_over(screen, score, high_score,
-  new_record, ready)`: oyunun üstüne yarı saydam perde + ortalanmış yazılar; yazı tipleri önbellekte.
+  yeniden yazılmaz); `load_record(kind)` / `save_record(kind, v)`, kind `RECORDS`'tan: "height" →
+  `bestheight.txt` / `BEST_HEIGHT_KEY` (asıl rekor), "score" → `highscore.txt` / `HIGHSCORE_KEY` (en yüksek puan);
+  dosyalar oyun klasöründe, git ve pygbag dışı; bozuk/yoksa 0, yazılamazsa sessiz;
+  web'de (`settings.WEB`, `sys.platform == "emscripten"`) tarayıcı hafızası: `platform.window.localStorage`.
+- `screens.py` — `draw_menu(screen, best_height, high_score)` ve `draw_game_over(screen, score, best_height,
+  high_score, new_record, ready)` (`new_record` = yükseklik rekoru): oyunun üstüne yarı saydam perde + ortalanmış
+  yazılar; büyük yazı yükseklik/rekor (m), puan küçük; yazı tipleri önbellekte.
 - Can sistemi `Player`'da: `lives`, `invincible` (kalan kare; `visible` ile yanıp söner), `hurt()`
   (can −1, dokunulmazlık, küçük sıçrama), `bounce(power)`, `check_springs(springs)` (ayak şeridi yaya
   değiyor ve yükselmiyorsa `SPRING_POWER` ile fırlar; main ve check_chunks ikisi de player.update'ten
@@ -113,11 +118,11 @@
   Kullanıcı iPhone'da doğruladı: Düşük Güç Modu açıkken 30, kapalıyken 60 kare/sn (oyunun elinde değil).
   `FpsMeter.count()` her çizilen karede sayar; `slow` = 2 sn üst üste `LOW_FPS_LIMIT` altı → web'de menü ve
   kaybettin ekranının altında `screens.draw_slow_hint` ("Düşük Güç Modu'nu kapat"); oyun sırasında gösterilmez. Ekran durumu `state`: "menu" → (Boşluk/Enter/tıklama) → "playing" → (can biter) →
-  "game_over" (`GAME_OVER_DELAY` kare tuş çalışmaz; rekor kırıldıysa hemen kaydedilir) → tuşla
+  "game_over" (`GAME_OVER_DELAY` kare tuş çalışmaz; yükseklik ve puan rekorları kırıldıysa hemen kaydedilir) → tuşla
   `new_game()` + "playing". `update_game(...)` oyun mantığı, `draw_world(...)` dünyayı çizer (her
   ekranda arkada görünür). ESC her yerde oyundan çıkar (web'de hariç). `main()` `async`: döngü sonunda
   `await asyncio.sleep(0)` (web için şart), en altta `asyncio.run(main())`.
-  `new_game()` yeni rastgele bölüm + karakter + kamera + puan kurar; altınlar
+  `new_game(best_height)` yeni rastgele bölüm + karakter + kamera + puan kurar; altınlar
   `spritecollide(player, level.coins, True)` ile toplanır. Düşmana değince `player.old_bottom <= enemy.old_top`
   ise düşman ölür (`STOMP_BOUNCE`); kalkan (`player.powers["shield"]`) varken değdiği düşman zıplamadan ölür;
   değilse dokunulmaz değilken `hurt()`. `level.bottom`'ın altına düşerse (kalkan olsa da) `hurt()` +

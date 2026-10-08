@@ -133,8 +133,12 @@ SCORE_COLOR = WHITE
 SCORE_SHADOW_COLOR = BLACK  # yazının arkasındaki gölge (her zeminde okunsun)
 SCORE_FONT_SIZE = 40  # büyük puan yazısı
 SCORE_SMALL_FONT_SIZE = 24  # altındaki yükseklik / altın yazısı
-HIGHSCORE_FILE = "highscore.txt"  # en yüksek skorun saklandığı dosya (oyun klasöründe)
-HIGHSCORE_KEY = "platform-oyunu-rekor"  # web sürümünde rekorun tarayıcı hafızasındaki adı
+HIGHSCORE_FILE = "highscore.txt"  # en yüksek puanın saklandığı dosya (oyun klasöründe)
+HIGHSCORE_KEY = "platform-oyunu-rekor"  # web sürümünde en yüksek puanın tarayıcı hafızasındaki adı
+# Asıl rekor: en yüksek tırmanış (blok = "m"). Oyunda o yükseklikte "Rekor" çizgisi görünür
+BEST_HEIGHT_FILE = "bestheight.txt"
+BEST_HEIGHT_KEY = "platform-oyunu-yukseklik-rekor"
+RECORD_TOAST_TIME = 120  # rekoru geçince "YENİ REKOR!" yazısı kaç kare görünür
 
 # Menü ve "Kaybettin" ekranı
 OVERLAY_ALPHA = 170  # oyunun üstüne serilen karanlık perdenin koyuluğu (0 = yok, 255 = simsiyah)
