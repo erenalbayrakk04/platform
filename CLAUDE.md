@@ -159,8 +159,9 @@
 - `lava.py` — `Lava(mode)`: aşağıdan yükselen lav, `level.lava`'da (new_game kurar). `y` = yüzey; `lava_delay`
   bekler, sonra `blend(lava_speed, lava_speed_max, hardness(-camera.bottom, mode))` hızla yükselir; ekranın en fazla
   `LAVA_MAX_GAP` altında kalır (< `REMOVE_BELOW` → düşen önce lava değer). `update(camera_bottom)`, `touches(rect)`
-  (ayak `LAVA_HIT_DEPTH` içerideyse) → main: kalkan olsa da `hurt()` + `respawn()` + `push_back(ayak)` (lav
-  `LAVA_PUSHBACK` aşağı çekilir). `draw(screen, camera)` her şeyin önünde (`art.lava_frames()` dalga şeridi + düz dolgu);
+  (ayak `LAVA_HIT_DEPTH` içerideyse) → main: `hurt()` + `respawn()` + `push_back(ayak)` (lav
+  `LAVA_PUSHBACK` aşağı çekilir). Kalkan varsa (kullanıcı isteği) can gitmez: `bounce(SHIELD_LAVA_BOUNCE)` ile
+  lavdan fırlar, kalkan kırılır (bir kez kurtarır), lav yine `push_back`. `draw(screen, camera)` her şeyin önünde (`art.lava_frames()` dalga şeridi + düz dolgu);
   ekranın altındayken `LAVA_WARN_DISTANCE` içinde `art.lava_glow()` kızıllık. check_chunks lavı hesaba katmaz.
 - `check_chunks.py` — çıkılabilirlik testi: `python check_chunks.py` (~20 sn, çok çekirdekli).
   Gerçek `Player` fiziğiyle (sahte `Controls`) BFS: her parçanın girişinden (başlangıçta P) tepesine

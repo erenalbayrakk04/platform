@@ -133,7 +133,7 @@ FLYER_BOB = 6  # uçarken kaç piksel aşağı-yukarı süzülür
 FLYER_BOB_SPEED = 15  # süzülmenin yavaşlığı (büyürse daha yavaş)
 FLYER_FLAP_SPEED = 6  # kanat çırpma: her resim kaç kare ekranda kalır
 
-# Lav — aşağıdan yükselir; değersen bir can gider (kalkan korumaz), son durduğun yere dönersin.
+# Lav — aşağıdan yükselir; değersen bir can gider, son durduğun yere dönersin (kalkan varsa can gitmez, aşağıda).
 # Hızı ve bekleme süresi her zorluk modunda farklı (yukarıda, DIFFICULTIES)
 LAVA_START_GAP = 80  # başta zeminin kaç piksel altında
 LAVA_MAX_GAP = 160  # ekranın altından en fazla bu kadar aşağıda kalır (hızlı tırmansan da peşini bırakmaz)
@@ -160,6 +160,7 @@ MAGNET_PULL = 8  # çekilen altın her karede kaç piksel yaklaşır
 MAGNET_COLOR = (230, 60, 70)  # kırmızı mıknatıs
 SHIELD_CHANCE = 0.03  # bir altının kalkana dönüşme ihtimali
 SHIELD_TIME = 600  # kalkan kaç kare sürer — bu sürede düşmanlar zarar veremez, değdiğin düşman ölür
+SHIELD_LAVA_BOUNCE = 24  # kalkanla lava düşünce can gitmez, bu güçle yukarı fırlarsın (24 ≈ 9 blok) ve kalkan kırılır
 SHIELD_COLOR = (90, 200, 255)  # mavi kalkan ve karakterin etrafındaki baloncuk
 
 # Puan

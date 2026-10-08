@@ -182,7 +182,7 @@ HOWTO_ROWS = (
     ("coin", f"Altın: +{COIN_POINTS} puan"),
     ("heart", "Kalp: +1 can"),
     ("magnet", "Mıknatıs: altınları çeker"),
-    ("shield", "Kalkan: düşmanlar zarar veremez"),
+    ("shield", "Kalkan: düşman ve lavdan korur"),
     ("spring", "Yay: çok yükseğe fırlatır"),
     ("enemy", "Düşman: üstüne zıpla, yanına değme"),
     ("bat", "Yarasa: onun da üstüne zıpla"),

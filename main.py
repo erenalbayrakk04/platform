@@ -24,6 +24,7 @@ from settings import (
     CRUMBLE_COLOR,
     MAGNET_COLOR,
     SHIELD_COLOR,
+    SHIELD_LAVA_BOUNCE,
     POWERUP_WARN_TIME,
     LAVA_COLOR,
     DIFFICULTY_NAMES,
@@ -206,14 +207,22 @@ def update_game(level, player, camera, score, controls, sounds):
             sounds.play("hurt")
             burst(level.effects, player.rect.center, PLAYER_COLOR)
 
-    # Lav yükselir; değdiyse (kalkan olsa da) bir can gider, son durduğu yerden devam eder, lav geri çekilir
+    # Lav yükselir; değdiyse bir can gider, son durduğu yerden devam eder, lav geri çekilir.
+    # Kalkanı varsa can gitmez: lavdan yukarı fırlar ve kalkan kırılır (bir kez kurtarır)
     level.lava.update(camera.bottom)
     if level.lava.touches(player.rect):
         burst(level.effects, player.rect.center, LAVA_COLOR)
-        player.hurt()
-        player.respawn()
+        if player.powers["shield"]:
+            player.powers["shield"] = 0
+            player.bounce(SHIELD_LAVA_BOUNCE)
+            burst(level.effects, player.rect.center, SHIELD_COLOR)
+            sounds.play("spring")
+            sounds.play("powerdown")
+        else:
+            player.hurt()
+            player.respawn()
+            sounds.play("hurt")
         level.lava.push_back(player.rect.bottom)
-        sounds.play("hurt")
 
     # Silinmiş bölgeye kadar düştüyse bir can gider, son durduğu yerden devam eder
     if player.rect.top > level.bottom:
