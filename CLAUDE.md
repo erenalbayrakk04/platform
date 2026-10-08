@@ -93,15 +93,18 @@
   yeniden yazılmaz).
 - `storage.py` — kalıcı kayıtlar, `STORES` = tür → (dosya, localStorage adı): "height" (`bestheight.txt`, asıl
   rekor), "score" (`highscore.txt`, en yüksek puan), "stats" (`stats.json`: games/climbed/coins/enemies toplamları),
-  "options" (`options.json`: muted, difficulty). `load_record/save_record` (sayı), `load_dict(kind, defaults)/save_dict`
+  "options" (`options.json`: muted, difficulty, music_volume, effects_volume). `load_record/save_record` (sayı), `load_dict(kind, defaults)/save_dict`
   (JSON; eksik/bozuk/yanlış tipli değer → default). Dosyalar oyun klasöründe, git ve pygbag dışı; okunamazsa
   default, yazılamazsa sessiz; web'de (`settings.WEB`, `sys.platform == "emscripten"`) `platform.window.localStorage`.
 - `ui.py` — `Buttons(actions, top, gap)`: alt alta ortalı düğmeler; `handle_event(event)` basılan düğmenin adını
   döndürür (dokunma `FINGERDOWN`, sol tık, klavye ↑↓/W-S + Enter/Boşluk; `MOUSEMOTION` ile seçili olan değişir;
   `focus` = seçili); `draw(screen, labels)`. `take_click()`: `BUTTON_CLICK_GAP` ms içindeki ikinci tıklama sayılmaz
   (telefonda bir dokunuş hem parmak hem fare olayı gelebilir; ör. menüden dönünce alttaki düğmeye de basılıyordu).
-  `PauseButton` oyunda sağ üstte ⏸ (`clicked(event)`). Düğme renk/boyları settings "Menü düğmeleri".
-- `screens.py` — her ekranın `Buttons`'ı (`MAIN_BUTTONS` play/difficulty/howto/records/sound, `BACK_BUTTON`,
+  `PauseButton` oyunda sağ üstte ⏸ (`clicked(event)`). `Slider(center_y)` kaydırma çubuğu: `value` 0..`VOLUME_STEPS`,
+  parmak/fareyle sürükle veya dokun (`handle_event` → değişti mi), `nudge(±1)` klavye için. Düğme renk/boyları settings "Menü düğmeleri".
+- `screens.py` — `SOUND_MENU` (`SoundMenu`: ses ayarları ekranı; Müzik + Efektler çubukları, "sound" (Ses: Açık/Kapalı)
+  ve "back" düğmeleri; ↑↓ seçer, ←→ çubuğu ayarlar; `handle_event` → "music"/"effects"/"sound"/"back"),
+  her ekranın `Buttons`'ı (`MAIN_BUTTONS` play/difficulty/howto/records/sound_menu, `BACK_BUTTON`,
   `PAUSE_BUTTONS` resume/sound/menu, `GAME_OVER_BUTTONS` again/menu), `LABELS` sabit yazılar (değişenleri main
   verir); `draw_main_menu` (başlık, "Rekor: N m", düğmeler, web'de HEP `draw_slow_hint` — kullanıcı isteği),
   `draw_howto` (kontroller + `HOWTO_ROWS`: oyundaki resimlerle her şeyin açıklaması — yeni öğe eklenince buraya da
@@ -129,7 +132,8 @@
   `FpsMeter.count()` her çizilen karede sayar; `slow` = 2 sn üst üste `LOW_FPS_LIMIT` altı → web'de
   kaybettin ekranının altında `screens.draw_slow_hint` ("Düşük Güç Modu'nu kapat"; ana menüde web'de hep var).
   `Game` sınıfı tüm durumu tutar: rekorlar, `stats`, `options` (açılışta yüklenir; muted ise ses kapalı başlar),
-  `level/player/camera/score`; `state`: "menu" (ana menü) ↔ "howto"/"records" (Geri/ESC); menü "play" →
+  `level/player/camera/score`; `state`: "menu" (ana menü) ↔ "sound"/"howto"/"records" (Geri/ESC);
+  ses çubuğu oynayınca `change_volume` (ses kapalıysa açar, kaydeder, efektte örnek "coin" sesi çalar); menü "play" →
   `start()` → "playing" ↔ "paused" (⏸ düğmesi, ESC veya P; durunca Devam/Ses/Ana Menü); can biter → "game_over"
   (`GAME_OVER_DELAY` kare düğme yok) → Tekrar Oyna (`start()`) / Ana Menü (`to_menu()`). `finish()` oyun bitince
   (kaybedince VE durdurup ana menüye dönünce) rekorları + istatistikleri kaydeder. `handle_event`, `update(steps, touch)`,
@@ -171,7 +175,8 @@
 - `sound.py` — `pre_init()` (pygame.init'ten önce; 22050 Hz mono 16 bit; tampon masaüstünde 512,
   web'de `WEB_AUDIO_BUFFER` = 2048 — tarayıcı 512'de cızırdıyordu; tarayıcı frekansı kendisi seçer, 48000), `Sounds()`: efektler
   (jump, coin, stomp, hurt, start, game_over, life, spring, crumble, powerup, powerdown) ve 8 ölçülük döngü müzik (`MELODY`/`BASS` nota
-  numaraları) `array` ile üretilir (numpy YOK); `play(name)`, `start_music/stop_music`, `toggle_mute`
+  numaraları) `array` ile üretilir (numpy YOK); `play(name)`, `start_music/stop_music`, `toggle_mute`,
+  `set_levels(music, effects)` (0-1 çarpan; tam = `MUSIC_VOLUME`/`SOUND_VOLUME`)
   (M). Mixer yoksa/biçim farklıysa `enabled=False`, her şey sessizce çalışır. Stereo da desteklenir.
 - `controls.py` — `Controls(left, right, jump)`; `TouchButtons`: sol altta ←→, sağ altta zıpla,
   çoklu dokunma (`FINGER*` olayları, parmak yoksa farenin sol tuşu), `handle_event`, `update`,
@@ -204,7 +209,7 @@ Açık depoda çalışma durumu girişsiz bakılabilir: https://api.github.com/r
   yükselen lav. Kullanıcı oynayıp lav/düşman hızı için geri bildirim verecek (sayılar settings.py'de).
   Kolay/orta/zor MODLARI sonra, ana menüyle birlikte (her modun ayrı rekoru olsun).
 - Sonra belki: başka güçlendirmeler (ör. jetpack), başka düşman türleri.
-- ANA MENÜ yapıldı (Oyna, Zorluk, Nasıl Oynanır, Rekorlar, Ses + oyunda durdur). Web'de menüde "Düşük Güç Modu'nu
+- ANA MENÜ yapıldı (Oyna, Zorluk, Nasıl Oynanır, Rekorlar, Ses Ayarları (müzik/efekt seviyesi) + oyunda durdur). Web'de menüde "Düşük Güç Modu'nu
   kapat" sabit yazıyor (otomatik ipucu kullanıcının iPhone'unda çıkmamıştı).
 - SIRADAKİ: Zorluk düğmesinin etkisi (kolay/orta/zor modlar): settings "Zorluk" + lav + can sayılarının mod başına
   takımı; her modun ayrı rekoru olsun (storage'da tür adına mod eklenebilir).

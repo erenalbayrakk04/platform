@@ -52,6 +52,9 @@ BASS = [48, 55, 48, 55, 45, 52, 45, 52, 41, 48, 41, 48, 43, 50, 43, 50] * 2
 class Sounds:
     def __init__(self):
         self.muted = False
+        # Ses seviyeleri (0-1): ses ekranındaki çubuklar. 1 = settings'teki SOUND_VOLUME / MUSIC_VOLUME
+        self.music_level = 1.0
+        self.effects_level = 1.0
         self.effects = {}
         self.music = None
         self.channels = 0
@@ -165,6 +168,15 @@ class Sounds:
         # Müzik kendi kanalında çalsın, efektler onu kesmesin
         pygame.mixer.set_reserved(1)
         self.music_channel = pygame.mixer.Channel(0)
+
+    def set_levels(self, music, effects):
+        # Müzik ve efekt seviyesini değiştir (0-1); çalan müzik de hemen kısılır/açılır
+        self.music_level = music
+        self.effects_level = effects
+        if self.enabled:
+            self.music.set_volume(MUSIC_VOLUME * music)
+            for effect in self.effects.values():
+                effect.set_volume(SOUND_VOLUME * effects)
 
     # --- Çalma ---
     def play(self, name):

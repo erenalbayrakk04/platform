@@ -13,6 +13,12 @@ from settings import (
     BUTTON_FOCUS_BORDER_COLOR,
     BUTTON_CLICK_GAP,
     PAUSE_BUTTON_SIZE,
+    VOLUME_STEPS,
+    SLIDER_HEIGHT,
+    SLIDER_KNOB_RADIUS,
+    SLIDER_TRACK_COLOR,
+    SLIDER_FILL_COLOR,
+    SLIDER_MUTED_COLOR,
     WHITE,
 )
 from score import draw_text
@@ -114,3 +120,68 @@ class PauseButton:
 
     def draw(self, screen):
         screen.blit(self.image, self.rect)
+
+
+def finger_pos(event):
+    # Parmak / fare olayının ekrandaki yeri (parmakta x, y 0-1 arası gelir)
+    return (event.x * SCREEN_WIDTH, event.y * SCREEN_HEIGHT)
+
+
+class Slider:
+    # Kaydırma çubuğu (ses seviyesi): parmakla / fareyle sürüklenir veya çubuğa dokunulur,
+    # klavyede seçiliyken sol/sağ ok ile ayarlanır. value = 0..VOLUME_STEPS
+    def __init__(self, center_y, value=VOLUME_STEPS):
+        self.rect = pygame.Rect(0, 0, BUTTON_WIDTH, SLIDER_HEIGHT)
+        self.rect.center = (SCREEN_WIDTH // 2, center_y)
+        self.value = value
+        self.dragging = False
+
+    def touch_area(self):
+        # Çubuk ince; dokunulacak alan daha büyük olsun
+        return self.rect.inflate(2 * SLIDER_KNOB_RADIUS, 40)
+
+    def set_from_x(self, x):
+        # Ekrandaki x'e en yakın basamağı seç. Değer değiştiyse True
+        fraction = (x - self.rect.left) / self.rect.width
+        value = max(0, min(VOLUME_STEPS, round(fraction * VOLUME_STEPS)))
+        changed = value != self.value
+        self.value = value
+        return changed
+
+    def nudge(self, step):
+        # Bir basamak aç (+1) / kıs (-1). Değer değiştiyse True
+        value = max(0, min(VOLUME_STEPS, self.value + step))
+        changed = value != self.value
+        self.value = value
+        return changed
+
+    def handle_event(self, event):
+        # Değer değiştiyse True. Telefonda aynı dokunuş hem parmak hem fare olayı olarak gelebilir;
+        # ikisi de aynı yeri gösterdiği için zararı yok
+        if event.type in (pygame.FINGERDOWN, pygame.MOUSEBUTTONDOWN):
+            pos = click_pos(event)
+            if pos is not None and self.touch_area().collidepoint(pos):
+                self.dragging = True
+                return self.set_from_x(pos[0])
+        elif event.type in (pygame.FINGERUP, pygame.MOUSEBUTTONUP):
+            self.dragging = False
+        elif self.dragging and event.type == pygame.FINGERMOTION:
+            return self.set_from_x(finger_pos(event)[0])
+        elif self.dragging and event.type == pygame.MOUSEMOTION and event.buttons[0]:
+            return self.set_from_x(event.pos[0])
+        return False
+
+    def draw(self, screen, focused=False, muted=False):
+        radius = SLIDER_HEIGHT // 2
+        pygame.draw.rect(screen, SLIDER_TRACK_COLOR, self.rect, border_radius=radius)
+        knob_x = self.rect.left + self.rect.width * self.value // VOLUME_STEPS
+        fill = self.rect.copy()
+        fill.width = knob_x - self.rect.left
+        if fill.width > 0:
+            color = SLIDER_MUTED_COLOR if muted else SLIDER_FILL_COLOR
+            pygame.draw.rect(screen, color, fill, border_radius=radius)
+        border = BUTTON_FOCUS_BORDER_COLOR if focused else BUTTON_BORDER_COLOR
+        pygame.draw.rect(screen, border, self.rect, 2, border_radius=radius)
+        knob = (knob_x, self.rect.centery)
+        pygame.draw.circle(screen, BUTTON_FOCUS_COLOR if focused else BUTTON_COLOR, knob, SLIDER_KNOB_RADIUS)
+        pygame.draw.circle(screen, border if focused else WHITE, knob, SLIDER_KNOB_RADIUS, 3)

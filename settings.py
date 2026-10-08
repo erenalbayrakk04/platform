@@ -159,6 +159,13 @@ BUTTON_BORDER_COLOR = (150, 140, 210)
 BUTTON_FOCUS_BORDER_COLOR = (255, 210, 40)
 BUTTON_CLICK_GAP = 250  # iki tıklama arası en az kaç milisaniye (telefonda bir dokunuş iki kez sayılmasın)
 PAUSE_BUTTON_SIZE = 36  # oyun sırasında sağ üstteki durdur düğmesi (piksel)
+# Ses ekranındaki kaydırma çubukları (müzik / efekt seviyesi)
+VOLUME_STEPS = 10  # çubuk kaç basamak (10 = %10'ar)
+SLIDER_HEIGHT = 14  # çubuğun kalınlığı
+SLIDER_KNOB_RADIUS = 15  # tutulan yuvarlak düğmenin yarıçapı
+SLIDER_TRACK_COLOR = (40, 36, 80)  # çubuğun boş kısmı
+SLIDER_FILL_COLOR = (255, 210, 40)  # dolu kısmı (ses seviyesi)
+SLIDER_MUTED_COLOR = (110, 110, 130)  # ses kapalıyken dolu kısım
 
 # Menü ve "Kaybettin" ekranı
 OVERLAY_ALPHA = 170  # oyunun üstüne serilen karanlık perdenin koyuluğu (0 = yok, 255 = simsiyah)

@@ -1,4 +1,4 @@
-# Ekranlar: ana menü, nasıl oynanır, rekorlar, durdu ve "Kaybettin". Oyunun üstüne karanlık bir perde
+# Ekranlar: ana menü, ses ayarları, nasıl oynanır, rekorlar, durdu ve "Kaybettin". Oyunun üstüne karanlık bir perde
 # serilip yazılar ve düğmeler (ui.py) ortalanır. Hangi düğmeye basıldığına main.py bakar.
 import pygame
 
@@ -18,15 +18,16 @@ from settings import (
     LAVA_TOP_COLOR,
     COIN_POINTS,
     MUTE_KEY,
+    VOLUME_STEPS,
 )
 from score import draw_text
-from ui import Buttons
+from ui import Buttons, Slider, take_click, ACTIVATE_KEYS, UP_KEYS, DOWN_KEYS
 import art
 
 CENTER_X = SCREEN_WIDTH // 2
 
 # Her ekranın düğmeleri (adları main.py'de kullanılır)
-MAIN_BUTTONS = Buttons(["play", "difficulty", "howto", "records", "sound"], top=345)
+MAIN_BUTTONS = Buttons(["play", "difficulty", "howto", "records", "sound_menu"], top=345)
 BACK_BUTTON = Buttons(["back"], top=655)
 PAUSE_BUTTONS = Buttons(["resume", "sound", "menu"], top=330)
 GAME_OVER_BUTTONS = Buttons(["again", "menu"], top=505)
@@ -34,6 +35,7 @@ GAME_OVER_BUTTONS = Buttons(["again", "menu"], top=505)
 # Düğme yazıları; değişenler ("sound", "difficulty") main.py'den gelir
 LABELS = {
     "play": "Oyna",
+    "sound_menu": "Ses Ayarları",
     "howto": "Nasıl Oynanır",
     "records": "Rekorlar",
     "back": "Geri",
@@ -82,6 +84,74 @@ def draw_main_menu(screen, best_height, labels, web=False):
     # Telefonda (tarayıcıda) hep yazsın: iPhone Düşük Güç Modu'nda oyun daha az akıcı
     if web:
         draw_slow_hint(screen)
+
+
+class SoundMenu:
+    # Ses ayarları ekranı: müzik ve efekt seviyesi çubukları + "Ses: Açık/Kapalı" ve "Geri" düğmeleri.
+    # Klavyede yukarı/aşağı ile seçilir, çubuk seçiliyken sol/sağ ok ile ayarlanır
+    SLIDER_NAMES = ("music", "effects")
+    TITLES = {"music": "Müzik", "effects": "Efektler"}
+    LEFT_KEYS = (pygame.K_LEFT, pygame.K_a)
+    RIGHT_KEYS = (pygame.K_RIGHT, pygame.K_d)
+
+    def __init__(self):
+        self.sliders = {"music": Slider(255), "effects": Slider(370)}
+        self.buttons = Buttons(["sound", "back"], top=480)
+        self.focus = 0  # 0 = müzik, 1 = efektler, 2+ = düğmeler
+
+    def open(self):
+        self.focus = 0
+        self.buttons.focus = -1  # hiçbir düğme seçili görünmesin
+
+    def set_focus(self, index):
+        count = len(self.SLIDER_NAMES)
+        self.focus = index % (count + len(self.buttons.actions))
+        self.buttons.focus = self.focus - count  # çubuk seçiliyse eksi (düğme seçili görünmez)
+
+    def handle_event(self, event):
+        # Değişen çubuğun adı ("music"/"effects") veya basılan düğmenin adı ("sound"/"back"), yoksa None
+        count = len(self.SLIDER_NAMES)
+        if event.type == pygame.KEYDOWN:
+            if event.key in UP_KEYS:
+                self.set_focus(self.focus - 1)
+            elif event.key in DOWN_KEYS:
+                self.set_focus(self.focus + 1)
+            elif self.focus < count:
+                name = self.SLIDER_NAMES[self.focus]
+                step = -1 if event.key in self.LEFT_KEYS else 1 if event.key in self.RIGHT_KEYS else 0
+                if step and self.sliders[name].nudge(step):
+                    return name
+            elif event.key in ACTIVATE_KEYS and take_click():
+                return self.buttons.actions[self.focus - count]
+            return None
+        for i, name in enumerate(self.SLIDER_NAMES):
+            slider = self.sliders[name]
+            if slider.handle_event(event):
+                self.set_focus(i)
+                return name
+            if event.type == pygame.MOUSEMOTION and slider.touch_area().collidepoint(event.pos):
+                self.set_focus(i)
+        action = self.buttons.handle_event(event)
+        if self.buttons.focus >= 0:  # fare bir düğmenin üstüne geldi
+            self.focus = self.buttons.focus + count
+        return action
+
+    def draw(self, screen, labels, muted):
+        draw_overlay(screen)
+        draw_title(screen, "Ses Ayarları", 120)
+        for i, name in enumerate(self.SLIDER_NAMES):
+            slider = self.sliders[name]
+            focused = self.focus == i
+            y = slider.rect.top - 32
+            color = TITLE_COLOR if focused else (255, 255, 255)
+            draw_text(screen, font(MENU_FONT_SIZE), self.TITLES[name], color, midleft=(slider.rect.left, y))
+            percent = f"%{slider.value * 100 // VOLUME_STEPS}"
+            draw_text(screen, font(MENU_FONT_SIZE), percent, color, midright=(slider.rect.right, y))
+            slider.draw(screen, focused, muted)
+        self.buttons.draw(screen, {**LABELS, **labels})
+
+
+SOUND_MENU = SoundMenu()
 
 
 def howto_icons():

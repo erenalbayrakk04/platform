@@ -28,6 +28,7 @@ from settings import (
     LAVA_COLOR,
     DIFFICULTY_NAMES,
     DEFAULT_DIFFICULTY,
+    VOLUME_STEPS,
     WEB,
 )
 from player import Player
@@ -50,7 +51,12 @@ SHIELD_BUBBLE = []
 
 # Saklanan istatistikler ve seçenekler (storage.py), ilk açılıştaki değerleriyle
 STATS_DEFAULTS = {"games": 0, "climbed": 0, "coins": 0, "enemies": 0}
-OPTIONS_DEFAULTS = {"muted": False, "difficulty": DEFAULT_DIFFICULTY}
+OPTIONS_DEFAULTS = {
+    "muted": False,
+    "difficulty": DEFAULT_DIFFICULTY,
+    "music_volume": VOLUME_STEPS,  # ses ekranındaki çubuklar (0..VOLUME_STEPS)
+    "effects_volume": VOLUME_STEPS,
+}
 # Oyun sırasında durduran tuşlar
 PAUSE_KEYS = (pygame.K_ESCAPE, pygame.K_p)
 
@@ -252,7 +258,7 @@ def draw_world(screen, background, level, player, camera, score):
 
 class Game:
     # Oyunun bütün durumu: hangi ekrandayız, rekorlar, seçenekler ve şu an oynanan bölüm.
-    # Ekranlar (state): "menu" (ana menü), "howto" (nasıl oynanır), "records" (rekorlar),
+    # Ekranlar (state): "menu" (ana menü), "sound" (ses ayarları), "howto" (nasıl oynanır), "records" (rekorlar),
     # "playing" (oyun), "paused" (durdu), "game_over" (kaybettin)
     def __init__(self, sounds):
         self.sounds = sounds
@@ -265,6 +271,13 @@ class Game:
             self.options["difficulty"] = DEFAULT_DIFFICULTY
         if self.options["muted"]:
             sounds.toggle_mute()
+        # Ses seviyeleri: kayıttaki değer çubuklara ve seslere
+        sliders = screens.SOUND_MENU.sliders
+        for name in sliders:
+            key = f"{name}_volume"
+            self.options[key] = max(0, min(VOLUME_STEPS, self.options[key]))
+            sliders[name].value = self.options[key]
+        self.apply_volume()
         self.state = "menu"
         self.game_over_timer = 0  # kaybettin ekranında düğmeler çıkana kadar kalan kare
         self.new_record = False
@@ -285,6 +298,23 @@ class Game:
     def save_options(self):
         self.options["muted"] = self.sounds.muted
         save_dict("options", self.options)
+
+    def apply_volume(self):
+        # Ses ekranındaki çubukların değeri seslere geçer
+        sliders = screens.SOUND_MENU.sliders
+        self.sounds.set_levels(
+            sliders["music"].value / VOLUME_STEPS, sliders["effects"].value / VOLUME_STEPS
+        )
+
+    def change_volume(self, name):
+        # Çubuk oynatıldı: ses kapalıysa aç (duyulsun), yeni seviyeyi kaydet
+        self.options[f"{name}_volume"] = screens.SOUND_MENU.sliders[name].value
+        self.apply_volume()
+        if self.sounds.muted:
+            self.sounds.toggle_mute()
+        self.save_options()
+        if name == "effects":
+            self.sounds.play("coin")  # efekt sesi ne kadar yüksek, hemen duyulsun
 
     def toggle_sound(self):
         self.sounds.toggle_mute()
@@ -337,11 +367,21 @@ class Game:
                 self.start()
             elif action == "difficulty":
                 self.next_difficulty()
-            elif action == "sound":
-                self.toggle_sound()
+            elif action == "sound_menu":
+                self.state = "sound"
+                screens.SOUND_MENU.open()
             elif action in ("howto", "records"):
                 self.state = action
                 screens.BACK_BUTTON.focus = 0
+
+        elif self.state == "sound":
+            action = screens.SOUND_MENU.handle_event(event)
+            if key == pygame.K_ESCAPE or action == "back":
+                self.state = "menu"
+            elif action == "sound":
+                self.toggle_sound()
+            elif action in ("music", "effects"):
+                self.change_volume(action)
 
         elif self.state in ("howto", "records"):
             if key == pygame.K_ESCAPE or screens.BACK_BUTTON.handle_event(event) == "back":
@@ -393,6 +433,8 @@ class Game:
         draw_world(screen, background, self.level, self.player, self.camera, self.score)
         if self.state == "menu":
             screens.draw_main_menu(screen, self.best_height, self.labels(), WEB)
+        elif self.state == "sound":
+            screens.SOUND_MENU.draw(screen, self.labels(), self.sounds.muted)
         elif self.state == "howto":
             screens.draw_howto(screen)
         elif self.state == "records":
