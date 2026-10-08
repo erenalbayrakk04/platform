@@ -13,6 +13,7 @@ from settings import (
     GAME_OVER_COLOR,
     RECORD_COLOR,
     HINT_COLOR,
+    SLOW_HINT_COLOR,
     MUTE_KEY,
 )
 from score import draw_text
@@ -42,7 +43,13 @@ def blink_on():
     return pygame.time.get_ticks() // 500 % 2 == 0
 
 
-def draw_menu(screen, high_score):
+def draw_slow_hint(screen):
+    # Telefon tarayıcıyı saniyede 30 kareyle sınırlıyorsa (iPhone Düşük Güç Modu) oyuncuya söyle
+    draw_text(screen, font(MENU_SMALL_FONT_SIZE), "Daha akıcı oyun için", SLOW_HINT_COLOR, center=(CENTER_X, 682))
+    draw_text(screen, font(MENU_SMALL_FONT_SIZE), "Düşük Güç Modu'nu kapat", SLOW_HINT_COLOR, center=(CENTER_X, 704))
+
+
+def draw_menu(screen, high_score, slow=False):
     draw_overlay(screen)
     # Oyun adı iki satır: "Platform" / "Oyunu"
     first, _, rest = TITLE.partition(" ")
@@ -56,9 +63,11 @@ def draw_menu(screen, high_score):
     draw_text(screen, small, "Boşluk / Yukarı / W: zıpla", HINT_COLOR, center=(CENTER_X, 588))
     draw_text(screen, small, "Düşmanların üstüne zıpla!", HINT_COLOR, center=(CENTER_X, 616))
     draw_text(screen, small, f"{MUTE_KEY.upper()}: sesi aç / kapat", HINT_COLOR, center=(CENTER_X, 644))
+    if slow:
+        draw_slow_hint(screen)
 
 
-def draw_game_over(screen, score, high_score, new_record, ready):
+def draw_game_over(screen, score, high_score, new_record, ready, slow=False):
     draw_overlay(screen)
     draw_text(screen, font(TITLE_FONT_SIZE), "Kaybettin!", GAME_OVER_COLOR, center=(CENTER_X, 220))
     draw_text(screen, font(MENU_FONT_SIZE + 10), f"Puan: {score.total}", center=(CENTER_X, 310))
@@ -72,3 +81,5 @@ def draw_game_over(screen, score, high_score, new_record, ready):
     # Tuşlar çalışmaya başlayınca "tekrar oyna" yazısı çıksın
     if ready and blink_on():
         draw_text(screen, font(MENU_FONT_SIZE), "Tekrar için Boşluk / dokun", center=(CENTER_X, 500))
+    if slow:
+        draw_slow_hint(screen)

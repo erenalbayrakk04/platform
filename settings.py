@@ -15,6 +15,9 @@ MAX_CATCH_UP = 4
 # True = ekranın üstünde saniyede kaç kare çizildiği yazar (akıcılık testi için).
 # Web'de adresin sonuna #fps eklenince de açılır: .../platform/#fps
 SHOW_FPS = False
+# Web'de saniyedeki kare 2 saniye üst üste bundan az olursa menüde "Düşük Güç Modu'nu kapat" ipucu çıkar
+# (iPhone Düşük Güç Modu'nda tarayıcı saniyede 30 kare gösterir)
+LOW_FPS_LIMIT = 45
 
 # Renkler (Kırmızı, Yeşil, Mavi) — her biri 0-255 arası
 BLACK = (0, 0, 0)
@@ -120,6 +123,7 @@ TITLE_COLOR = (255, 210, 40)  # oyun adı (altın sarısı)
 GAME_OVER_COLOR = (230, 50, 70)  # "Kaybettin!" yazısı
 RECORD_COLOR = (255, 210, 40)  # "Yeni rekor!" yazısı
 HINT_COLOR = (180, 180, 200)  # soluk bilgi yazıları
+SLOW_HINT_COLOR = (255, 210, 40)  # "Düşük Güç Modu'nu kapat" ipucu (sarı, dikkat çeksin)
 GAME_OVER_DELAY = 60  # kaybettin ekranında tuşların kaç kare sonra çalışacağı (yanlışlıkla geçilmesin)
 
 # Görünüş — resimler art.py'de kodla piksel piksel çiziliyor (renkleri yukarıdaki ayarlardan alır)

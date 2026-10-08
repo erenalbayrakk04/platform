@@ -13,6 +13,7 @@ from settings import (
     FPS,
     MAX_CATCH_UP,
     SHOW_FPS,
+    LOW_FPS_LIMIT,
     STOMP_BOUNCE,
     GAME_OVER_DELAY,
     MUTE_KEY,
@@ -83,20 +84,30 @@ def fps_wanted():
 
 
 class FpsMeter:
-    # Saniyede kaç kare çizildiğini sayar ve ekranın üstüne yazar
+    # Saniyede kaç kare çizildiğini sayar (her çizilen karede count()); istenirse ekranın üstüne yazar
     def __init__(self):
         self.font = pygame.font.Font(None, 22)
         self.frames = 0
         self.start = time.perf_counter()
         self.text = "..."
+        self.low_seconds = 0  # kaç saniyedir üst üste LOW_FPS_LIMIT'in altında
 
-    def draw(self, screen):
+    def count(self):
         self.frames += 1
         now = time.perf_counter()
         if now - self.start >= 1:
-            self.text = f"{self.frames / (now - self.start):.0f} kare/sn"
+            fps = self.frames / (now - self.start)
+            self.text = f"{fps:.0f} kare/sn"
+            self.low_seconds = self.low_seconds + 1 if fps < LOW_FPS_LIMIT else 0
             self.frames = 0
             self.start = now
+
+    @property
+    def slow(self):
+        # Tek seferlik takılma sayılmasın: 2 saniye üst üste düşük olmalı
+        return self.low_seconds >= 2
+
+    def draw(self, screen):
         draw_text(screen, self.font, self.text, center=(SCREEN_WIDTH // 2, 80))
 
 
@@ -234,7 +245,8 @@ async def main():
     new_record = False
     sounds.start_music()
     timer = StepTimer()
-    fps_meter = FpsMeter() if fps_wanted() else None
+    fps_meter = FpsMeter()
+    show_fps = fps_wanted()
 
     running = True
     while running:
@@ -289,9 +301,12 @@ async def main():
         # 3) Çizim — oyun dünyası her ekranda arkada görünür. Bu karede adım oynanmadıysa (hızlı
         # ekranlarda olur) hiçbir şey değişmedi, yeniden çizmeye gerek yok
         if steps:
+            fps_meter.count()
+            # Telefon saniyede az kare gösteriyorsa (Düşük Güç Modu) menülerde ipucu çıkar
+            slow = WEB and fps_meter.slow
             draw_world(screen, background, level, player, camera)
             if state == "menu":
-                draw_menu(screen, high_score)
+                draw_menu(screen, high_score, slow)
             else:
                 # Puan ve canlar kameradan bağımsız: hep ekranın üst köşelerinde
                 score.draw(screen)
@@ -300,8 +315,8 @@ async def main():
                 if state == "playing":
                     touch.draw(screen)
                 if state == "game_over":
-                    draw_game_over(screen, score, high_score, new_record, game_over_timer == 0)
-            if fps_meter:
+                    draw_game_over(screen, score, high_score, new_record, game_over_timer == 0, slow)
+            if show_fps:
                 fps_meter.draw(screen)
             pygame.display.flip()
 
