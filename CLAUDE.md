@@ -87,16 +87,26 @@
   başındaki yükseklik rekoru, `new_record` = geçildi mi; `update(player)` rekor o an kırıldıysa True döner
   (main "powerup" sesi çalar) ve `toast` = `RECORD_TOAST_TIME` kare "YENİ REKOR!" (ilk oyunda, rekor 0 iken yok);
   `draw_record_line(screen, camera)` haritada rekor yüksekliğinde kesikli çizgi + "Rekor N m" (draw_world, gökten hemen sonra);
-  `draw_lives(screen, lives)` sağ üstte kalpler (kaybedilen can gri); `draw_powers(screen, player)` kalplerin
+  `draw_lives(screen, lives)` sağ üstte, durdur düğmesinin solunda kalpler (kaybedilen can gri); `draw_powers(screen, player)` kalplerin
   altında süren güçlendirmelerin simgesi + süre çubuğu (son `POWERUP_WARN_TIME` karede yanıp söner); `draw_text(screen, font, text,
   color, center=/topleft=...)` gölgeli yazı (her yerde bu kullanılır; resimleri `TEXT_CACHE`'te, her karede
-  yeniden yazılmaz); `load_record(kind)` / `save_record(kind, v)`, kind `RECORDS`'tan: "height" →
-  `bestheight.txt` / `BEST_HEIGHT_KEY` (asıl rekor), "score" → `highscore.txt` / `HIGHSCORE_KEY` (en yüksek puan);
-  dosyalar oyun klasöründe, git ve pygbag dışı; bozuk/yoksa 0, yazılamazsa sessiz;
-  web'de (`settings.WEB`, `sys.platform == "emscripten"`) tarayıcı hafızası: `platform.window.localStorage`.
-- `screens.py` — `draw_menu(screen, best_height, high_score)` ve `draw_game_over(screen, score, best_height,
-  high_score, new_record, ready)` (`new_record` = yükseklik rekoru): oyunun üstüne yarı saydam perde + ortalanmış
-  yazılar; büyük yazı yükseklik/rekor (m), puan küçük; yazı tipleri önbellekte.
+  yeniden yazılmaz).
+- `storage.py` — kalıcı kayıtlar, `STORES` = tür → (dosya, localStorage adı): "height" (`bestheight.txt`, asıl
+  rekor), "score" (`highscore.txt`, en yüksek puan), "stats" (`stats.json`: games/climbed/coins/enemies toplamları),
+  "options" (`options.json`: muted, difficulty). `load_record/save_record` (sayı), `load_dict(kind, defaults)/save_dict`
+  (JSON; eksik/bozuk/yanlış tipli değer → default). Dosyalar oyun klasöründe, git ve pygbag dışı; okunamazsa
+  default, yazılamazsa sessiz; web'de (`settings.WEB`, `sys.platform == "emscripten"`) `platform.window.localStorage`.
+- `ui.py` — `Buttons(actions, top, gap)`: alt alta ortalı düğmeler; `handle_event(event)` basılan düğmenin adını
+  döndürür (dokunma `FINGERDOWN`, sol tık, klavye ↑↓/W-S + Enter/Boşluk; `MOUSEMOTION` ile seçili olan değişir;
+  `focus` = seçili); `draw(screen, labels)`. `take_click()`: `BUTTON_CLICK_GAP` ms içindeki ikinci tıklama sayılmaz
+  (telefonda bir dokunuş hem parmak hem fare olayı gelebilir; ör. menüden dönünce alttaki düğmeye de basılıyordu).
+  `PauseButton` oyunda sağ üstte ⏸ (`clicked(event)`). Düğme renk/boyları settings "Menü düğmeleri".
+- `screens.py` — her ekranın `Buttons`'ı (`MAIN_BUTTONS` play/difficulty/howto/records/sound, `BACK_BUTTON`,
+  `PAUSE_BUTTONS` resume/sound/menu, `GAME_OVER_BUTTONS` again/menu), `LABELS` sabit yazılar (değişenleri main
+  verir); `draw_main_menu` (başlık, "Rekor: N m", düğmeler, web'de HEP `draw_slow_hint` — kullanıcı isteği),
+  `draw_howto` (kontroller + `HOWTO_ROWS`: oyundaki resimlerle her şeyin açıklaması — yeni öğe eklenince buraya da
+  ekle), `draw_records(best_height, high_score, stats)`, `draw_pause`, `draw_game_over(...)` (düğmeler `ready` olunca).
+  Oyunun üstüne yarı saydam perde; büyük yazı yükseklik/rekor (m), puan küçük.
 - Can sistemi `Player`'da: `lives`, `invincible` (kalan kare; `visible` ile yanıp söner), `hurt()`
   (can −1, dokunulmazlık, küçük sıçrama), `bounce(power)`, `check_springs(springs)` (ayak şeridi yaya
   değiyor ve yükselmiyorsa `SPRING_POWER` ile fırlar; main ve check_chunks ikisi de player.update'ten
@@ -116,12 +126,17 @@
   (iPhone Düşük Güç Modu 30 Hz) oyun yarı hızda akıyordu. `FpsMeter`: saniyedeki çizilen kare (üst orta);
   `SHOW_FPS` veya web'de adres sonu `#fps` (ör. .../platform/#fps) ile açılır — telefonda akıcılık testi.
   Kullanıcı iPhone'da doğruladı: Düşük Güç Modu açıkken 30, kapalıyken 60 kare/sn (oyunun elinde değil).
-  `FpsMeter.count()` her çizilen karede sayar; `slow` = 2 sn üst üste `LOW_FPS_LIMIT` altı → web'de menü ve
-  kaybettin ekranının altında `screens.draw_slow_hint` ("Düşük Güç Modu'nu kapat"); oyun sırasında gösterilmez. Ekran durumu `state`: "menu" → (Boşluk/Enter/tıklama) → "playing" → (can biter) →
-  "game_over" (`GAME_OVER_DELAY` kare tuş çalışmaz; yükseklik ve puan rekorları kırıldıysa hemen kaydedilir) → tuşla
-  `new_game()` + "playing". `update_game(...)` oyun mantığı, `draw_world(...)` dünyayı çizer (her
-  ekranda arkada görünür). ESC her yerde oyundan çıkar (web'de hariç). `main()` `async`: döngü sonunda
-  `await asyncio.sleep(0)` (web için şart), en altta `asyncio.run(main())`.
+  `FpsMeter.count()` her çizilen karede sayar; `slow` = 2 sn üst üste `LOW_FPS_LIMIT` altı → web'de
+  kaybettin ekranının altında `screens.draw_slow_hint` ("Düşük Güç Modu'nu kapat"; ana menüde web'de hep var).
+  `Game` sınıfı tüm durumu tutar: rekorlar, `stats`, `options` (açılışta yüklenir; muted ise ses kapalı başlar),
+  `level/player/camera/score`; `state`: "menu" (ana menü) ↔ "howto"/"records" (Geri/ESC); menü "play" →
+  `start()` → "playing" ↔ "paused" (⏸ düğmesi, ESC veya P; durunca Devam/Ses/Ana Menü); can biter → "game_over"
+  (`GAME_OVER_DELAY` kare düğme yok) → Tekrar Oyna (`start()`) / Ana Menü (`to_menu()`). `finish()` oyun bitince
+  (kaybedince VE durdurup ana menüye dönünce) rekorları + istatistikleri kaydeder. `handle_event`, `update(steps, touch)`,
+  `draw(...)`. M tuşu her yerde `toggle_sound()` (kaydedilir). ESC ana menüde oyundan çıkar (web'de hariç).
+  `next_difficulty()` Kolay→Orta→Zor (`DIFFICULTY_NAMES`), şimdilik sadece kaydediliyor, oyuna etkisi YOK (sıradaki iş).
+  `update_game(...)` oyun mantığı, `draw_world(...)` dünyayı çizer (her ekranda arkada görünür).
+  `main()` `async`: döngü sonunda `await asyncio.sleep(0)` (web için şart), en altta `asyncio.run(main())`.
   `new_game(best_height)` yeni rastgele bölüm + karakter + kamera + puan kurar; altınlar
   `spritecollide(player, level.coins, True)` ile toplanır. Düşmana değince `player.old_bottom <= enemy.old_top`
   ise düşman ölür (`STOMP_BOUNCE`); kalkan (`player.powers["shield"]`) varken değdiği düşman zıplamadan ölür;
@@ -189,6 +204,7 @@ Açık depoda çalışma durumu girişsiz bakılabilir: https://api.github.com/r
   yükselen lav. Kullanıcı oynayıp lav/düşman hızı için geri bildirim verecek (sayılar settings.py'de).
   Kolay/orta/zor MODLARI sonra, ana menüyle birlikte (her modun ayrı rekoru olsun).
 - Sonra belki: başka güçlendirmeler (ör. jetpack), başka düşman türleri.
-- İleride ANA MENÜ yapılacak (kullanıcı isteği): orada "Daha akıcı oyun için Düşük Güç Modu'nu kapat" bilgisi
-  sabit yazsın. Şu anki otomatik ipucu (`draw_slow_hint`) kullanıcının iPhone'unda Düşük Güç Modu'nda ÇIKMADI
-  (tarayıcı testinde çıkıyordu; sebep bulunamadı, belki eski sürüm önbellekteydi).
+- ANA MENÜ yapıldı (Oyna, Zorluk, Nasıl Oynanır, Rekorlar, Ses + oyunda durdur). Web'de menüde "Düşük Güç Modu'nu
+  kapat" sabit yazıyor (otomatik ipucu kullanıcının iPhone'unda çıkmamıştı).
+- SIRADAKİ: Zorluk düğmesinin etkisi (kolay/orta/zor modlar): settings "Zorluk" + lav + can sayılarının mod başına
+  takımı; her modun ayrı rekoru olsun (storage'da tür adına mod eklenebilir).
