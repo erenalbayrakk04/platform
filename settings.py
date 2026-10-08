@@ -66,8 +66,8 @@ DIFFICULTIES = {
         "lava_delay": 300, "lava_speed": 0.25, "lava_speed_max": 0.65,
         "enemy_speed": 1.2, "enemy_speed_max": 2.2,
         "flyer_speed": 1.0, "flyer_speed_max": 1.9,
-        "extra_enemy_chance": 0.15, "extra_enemy_chance_max": 0.3,
-        "extra_flyer_chance": 0.04, "extra_flyer_chance_max": 0.12,
+        "extra_enemy_chance": 0.05, "extra_enemy_chance_max": 0.09,
+        "extra_flyer_chance": 0.01, "extra_flyer_chance_max": 0.04,
         "heart_chance": 0.07, "heart_chance_min": 0.03,
     },
     "normal": {
@@ -76,8 +76,8 @@ DIFFICULTIES = {
         "lava_delay": 180, "lava_speed": 0.4, "lava_speed_max": 0.9,
         "enemy_speed": 1.5, "enemy_speed_max": 3,
         "flyer_speed": 1.2, "flyer_speed_max": 2.6,
-        "extra_enemy_chance": 0.25, "extra_enemy_chance_max": 0.5,
-        "extra_flyer_chance": 0.07, "extra_flyer_chance_max": 0.25,
+        "extra_enemy_chance": 0.08, "extra_enemy_chance_max": 0.15,
+        "extra_flyer_chance": 0.02, "extra_flyer_chance_max": 0.08,
         "heart_chance": 0.05, "heart_chance_min": 0.015,
     },
     "hard": {
@@ -86,8 +86,8 @@ DIFFICULTIES = {
         "lava_delay": 120, "lava_speed": 0.55, "lava_speed_max": 1.0,
         "enemy_speed": 2, "enemy_speed_max": 3.3,
         "flyer_speed": 1.6, "flyer_speed_max": 2.9,
-        "extra_enemy_chance": 0.35, "extra_enemy_chance_max": 0.6,
-        "extra_flyer_chance": 0.12, "extra_flyer_chance_max": 0.3,
+        "extra_enemy_chance": 0.11, "extra_enemy_chance_max": 0.19,
+        "extra_flyer_chance": 0.035, "extra_flyer_chance_max": 0.09,
         "heart_chance": 0.03, "heart_chance_min": 0.012,
     },
     # Baştan en zor: Orta'nın en zor hâliyle başlar, oradan da zorlaşır. Tek can, kalp nadir, lav beklemez
@@ -97,8 +97,8 @@ DIFFICULTIES = {
         "lava_delay": 0, "lava_speed": 0.9, "lava_speed_max": 1.15,
         "enemy_speed": 3, "enemy_speed_max": 3.6,
         "flyer_speed": 2.6, "flyer_speed_max": 3.2,
-        "extra_enemy_chance": 0.5, "extra_enemy_chance_max": 0.65,
-        "extra_flyer_chance": 0.25, "extra_flyer_chance_max": 0.35,
+        "extra_enemy_chance": 0.15, "extra_enemy_chance_max": 0.21,
+        "extra_flyer_chance": 0.08, "extra_flyer_chance_max": 0.11,
         "heart_chance": 0.015, "heart_chance_min": 0.008,
     },
 }

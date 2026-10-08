@@ -93,7 +93,8 @@
   `pick_item(t)` kalp ihtimali `heart_chance`→`heart_chance_min`.
   EK RASTGELE DÜŞMANLAR (kullanıcı "daha fazla düşman" istedi): `add_extra_enemies(rows, t)` her parçada (başlangıç hariç)
   satırların kopyasına 'E'/'F' yazar: `walker_spots`'taki her platforma `extra_enemy_chance`, `flyer_spots`'taki her
-  satıra `extra_flyer_chance` ihtimalle (t ile `_max`'a artar). Orta'da parça başı düşman ~0,55 → ~1,4-1,55.
+  satıra `extra_flyer_chance` ihtimalle (t ile `_max`'a artar). Orta'da parça başı düşman: eklerden önce ~0,57,
+  ilk hâli ~1,35-1,47 (kullanıcı fazla buldu) → şimdi ~0,83-0,86 (arası, eskiye yakın — kullanıcı isteği).
   DÜŞMAN TÜRLERİ: her E/F yeri `pick_enemy(kinds, t, banned)` ile settings `WALKER_KINDS` (walker/slime/spiky/cannon) /
   `FLYER_KINDS` (bat/bee) ağırlıklarıyla (başta, en zorda) bir türe dönüşür. KULLANICI KARARI: düşman ORANI (sayısı) böyle
   kalsın — yeni tür eklenince sayı artmaz, var olan yerlerin türü değişir. Sümük: platformun iki üstünde katı varsa gelmez.
