@@ -90,6 +90,20 @@ FLYER_BOB = 6  # uçarken kaç piksel aşağı-yukarı süzülür
 FLYER_BOB_SPEED = 15  # süzülmenin yavaşlığı (büyürse daha yavaş)
 FLYER_FLAP_SPEED = 6  # kanat çırpma: her resim kaç kare ekranda kalır
 
+# Lav — aşağıdan yükselir; değersen bir can gider (kalkan korumaz), son durduğun yere dönersin
+LAVA_SPEED = 0.4  # başta her karede kaç piksel yükselir (0.4 ≈ saniyede 0,6 blok)
+LAVA_SPEED_MAX = 0.9  # en zorda (HARD_HEIGHT) kaç piksel yükselir (0.9 ≈ saniyede 1,35 blok)
+LAVA_DELAY = 180  # oyun başlayınca kaç kare bekler (60 kare = 1 saniye)
+LAVA_START_GAP = 80  # başta zeminin kaç piksel altında
+LAVA_MAX_GAP = 160  # ekranın altından en fazla bu kadar aşağıda kalır (hızlı tırmansan da peşini bırakmaz)
+LAVA_PUSHBACK = 240  # değince lav, döndüğün yerin bu kadar altına çekilir (hemen yine yanma diye)
+LAVA_HIT_DEPTH = 10  # ayağın lavın bu kadar içine girince yanarsın (kenarına sürtmek affedilir)
+LAVA_WARN_DISTANCE = 240  # lav ekranın bu kadar altındayken ekranın dibi kızarır (yaklaşıyor uyarısı)
+LAVA_ANIM_SPEED = 6  # dalga animasyonu: her resim kaç kare ekranda kalır
+LAVA_COLOR = (225, 70, 20)  # lavın kendisi (turuncu-kırmızı)
+LAVA_TOP_COLOR = (255, 210, 80)  # dalgaların parlak tepesi
+LAVA_GLOW_COLOR = (255, 80, 20)  # lav yaklaşırken ekranın dibindeki kızıllık
+
 # Can
 PLAYER_LIVES = 3  # oyun kaç canla başlar
 INVINCIBLE_TIME = 90  # can kaybedince kaç kare dokunulmaz kalır (60 kare = 1 saniye), bu sürede yanıp söner

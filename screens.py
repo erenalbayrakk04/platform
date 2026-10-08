@@ -14,6 +14,7 @@ from settings import (
     RECORD_COLOR,
     HINT_COLOR,
     SLOW_HINT_COLOR,
+    LAVA_TOP_COLOR,
     MUTE_KEY,
 )
 from score import draw_text
@@ -59,6 +60,7 @@ def draw_menu(screen, high_score, slow=False):
     if blink_on():
         draw_text(screen, font(MENU_FONT_SIZE), "Başlamak için Boşluk / dokun", center=(CENTER_X, 450))
     small = font(MENU_SMALL_FONT_SIZE)
+    draw_text(screen, small, "Lav yükseliyor, acele et!", LAVA_TOP_COLOR, center=(CENTER_X, 515))
     draw_text(screen, small, "Ok tuşları / A-D: yürü", HINT_COLOR, center=(CENTER_X, 560))
     draw_text(screen, small, "Boşluk / Yukarı / W: zıpla", HINT_COLOR, center=(CENTER_X, 588))
     draw_text(screen, small, "Düşmanların üstüne zıpla!", HINT_COLOR, center=(CENTER_X, 616))

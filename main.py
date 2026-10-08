@@ -25,10 +25,12 @@ from settings import (
     MAGNET_COLOR,
     SHIELD_COLOR,
     POWERUP_WARN_TIME,
+    LAVA_COLOR,
     WEB,
 )
 from player import Player
 from level import Level
+from lava import Lava
 from camera import Camera
 from score import Score, draw_lives, draw_powers, draw_text, load_high_score, save_high_score
 from screens import draw_menu, draw_game_over
@@ -121,6 +123,8 @@ def new_game():
     score = Score(level.player_start[1])
     # Saçılan parçacıklar (effects.py) — dünyada dururlar, kamerayla birlikte çizilirler
     level.effects = pygame.sprite.Group()
+    # Aşağıdan yükselen lav (lava.py) — zeminin altından başlar
+    level.lava = Lava()
     return level, player, camera, score
 
 
@@ -185,6 +189,15 @@ def update_game(level, player, camera, score, controls, sounds):
             sounds.play("hurt")
             burst(level.effects, player.rect.center, PLAYER_COLOR)
 
+    # Lav yükselir; değdiyse (kalkan olsa da) bir can gider, son durduğu yerden devam eder, lav geri çekilir
+    level.lava.update(camera.bottom)
+    if level.lava.touches(player.rect):
+        burst(level.effects, player.rect.center, LAVA_COLOR)
+        player.hurt()
+        player.respawn()
+        level.lava.push_back(player.rect.bottom)
+        sounds.play("hurt")
+
     # Silinmiş bölgeye kadar düştüyse bir can gider, son durduğu yerden devam eder
     if player.rect.top > level.bottom:
         player.hurt()
@@ -216,6 +229,8 @@ def draw_world(screen, background, level, player, camera):
         screen_pos = camera.apply(getattr(sprite, "draw_rect", sprite.rect))
         if screen_pos.colliderect(screen_rect):  # sadece ekranda görüneni çiz
             screen.blit(sprite.image, screen_pos)
+    # Lav her şeyin önünde (içine düşen kaybolur)
+    level.lava.draw(screen, camera)
     # Kalkan: karakterin etrafında baloncuk; bitmesine az kalınca yanıp söner
     shield = player.powers["shield"]
     if shield and (shield > POWERUP_WARN_TIME or (shield // 8) % 2 == 0):

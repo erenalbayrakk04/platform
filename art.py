@@ -1,6 +1,7 @@
 # Piksel sanatı: tüm resimler burada harflerle "çizilir" (chunks.py'deki haritalar gibi).
 # Her harf bir renk, '.' saydam. Her kare ekranda PIXEL_SCALE x PIXEL_SCALE piksel olur.
 # Renkler settings.py'den gelir; açık/koyu tonlar o renklerden otomatik üretilir.
+import math
 import random
 
 import pygame
@@ -31,6 +32,10 @@ from settings import (
     LIFE_EMPTY_COLOR,
     MAGNET_COLOR,
     SHIELD_COLOR,
+    LAVA_COLOR,
+    LAVA_TOP_COLOR,
+    LAVA_GLOW_COLOR,
+    LAVA_WARN_DISTANCE,
     SCREEN_WIDTH,
     SCREEN_HEIGHT,
     SKY_THEMES,
@@ -368,6 +373,39 @@ def shield_bubble(radius):
     pygame.draw.circle(image, (*SHIELD_COLOR, 170), center, radius, 3)
     # Sol üstte küçük bir parlama
     pygame.draw.circle(image, (*WHITE, 150), (radius * 2 // 3, radius * 2 // 3), PIXEL_SCALE)
+    return image
+
+
+LAVA_WAVE_ROWS = 8  # dalga şeridinin yüksekliği (piksel sanatı karesi)
+LAVA_WAVE_LENGTH = 25  # bir dalganın genişliği (kare)
+
+
+def lava_frames(count=8):
+    # Lavın üst kenarı: yana kayan dalgalar. Her resimde dalga biraz ilerler; sırayla gösterilince akar.
+    # Tepeler 0-3. satır arasında oynar; altı düz lav rengi (main.py'de altı ayrıca doldurulur)
+    palette = {"Y": LAVA_TOP_COLOR, "y": tint(LAVA_COLOR, 0.45), "O": LAVA_COLOR}
+    cols = SCREEN_WIDTH // PIXEL_SCALE
+    frames = []
+    for f in range(count):
+        phase = 2 * math.pi * f / count
+        crests = [round(1.5 + 1.5 * math.sin(2 * math.pi * c / LAVA_WAVE_LENGTH + phase)) for c in range(cols)]
+        rows = []
+        for r in range(LAVA_WAVE_ROWS):
+            row = ""
+            for crest in crests:
+                row += "." if r < crest else "Y" if r == crest else "y" if r == crest + 1 else "O"
+            rows.append(row)
+        frames.append(render(rows, palette))
+    return frames
+
+
+def lava_glow():
+    # Lav ekranın hemen altındayken ekranın dibinde beliren kızıllık (aşağıya doğru koyulaşır)
+    image = pygame.Surface((SCREEN_WIDTH, LAVA_WARN_DISTANCE // 3), pygame.SRCALPHA)
+    height = image.get_height()
+    for y in range(height):
+        alpha = round(140 * (y / (height - 1)) ** 2)
+        pygame.draw.line(image, (*LAVA_GLOW_COLOR, alpha), (0, y), (SCREEN_WIDTH, y))
     return image
 
 
