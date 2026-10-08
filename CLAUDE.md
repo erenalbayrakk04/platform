@@ -104,7 +104,8 @@
   en fazla `MAX_CATCH_UP`); tam sayıya 0,1 adımdan yakın süreler yuvarlanır (titreme olmasın); adım yoksa
   çizim yapılmaz. Tüm "kare" sayan ayarlar aslında adım sayar. Sebep: telefonda kare hızı düşünce
   (iPhone Düşük Güç Modu 30 Hz) oyun yarı hızda akıyordu. `FpsMeter`: saniyedeki çizilen kare (üst orta);
-  `SHOW_FPS` veya web'de adres sonu `#fps` (ör. .../platform/#fps) ile açılır — telefonda akıcılık testi. Ekran durumu `state`: "menu" → (Boşluk/Enter/tıklama) → "playing" → (can biter) →
+  `SHOW_FPS` veya web'de adres sonu `#fps` (ör. .../platform/#fps) ile açılır — telefonda akıcılık testi.
+  Kullanıcı iPhone'da doğruladı: Düşük Güç Modu açıkken 30, kapalıyken 60 kare/sn (oyunun elinde değil). Ekran durumu `state`: "menu" → (Boşluk/Enter/tıklama) → "playing" → (can biter) →
   "game_over" (`GAME_OVER_DELAY` kare tuş çalışmaz; rekor kırıldıysa hemen kaydedilir) → tuşla
   `new_game()` + "playing". `update_game(...)` oyun mantığı, `draw_world(...)` dünyayı çizer (her
   ekranda arkada görünür). ESC her yerde oyundan çıkar (web'de hariç). `main()` `async`: döngü sonunda
