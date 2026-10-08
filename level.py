@@ -8,6 +8,7 @@ from settings import (
     TILE_SIZE,
     COIN_SPIN_SPEED,
     HEART_CHANCE,
+    HEART_CHANCE_MIN,
     MAGNET_CHANCE,
     SHIELD_CHANCE,
     MAGNET_RADIUS,
@@ -20,13 +21,26 @@ from settings import (
     GENERATE_AHEAD,
     REMOVE_BELOW,
     DIFFICULTY_STEP,
+    HARD_HEIGHT,
+    HARD_CHUNK_BIAS,
+    ENEMY_SPEED,
+    ENEMY_SPEED_MAX,
+    FLYER_SPEED,
+    FLYER_SPEED_MAX,
 )
 from chunks import START_CHUNK, CHUNKS, platform_run, moving_platforms, free_span
 from enemy import Enemy, FlyingEnemy
 import art
 
-# Altın karesine nadiren altın yerine bunlar gelir: (tür, ihtimal)
-PICKUP_CHANCES = (("heart", HEART_CHANCE), ("magnet", MAGNET_CHANCE), ("shield", SHIELD_CHANCE))
+
+def hardness(height):
+    # Ne kadar zorlaştı: 0 = oyunun başı, 1 = HARD_HEIGHT kadar tırmanıldı (en zor). height piksel, yukarı artı
+    return min(1.0, max(0.0, height / HARD_HEIGHT))
+
+
+def blend(easy, hard, t):
+    # Kolay ve en zor sayı arasında, zorluk (t) kadar ilerlemiş değer
+    return easy + (hard - easy) * t
 
 # Resimler bir kere hazırlanır, aynı türdeki her parça aynı resmi kullanır (art.py)
 IMAGES = {}
@@ -174,7 +188,7 @@ class Coin(pygame.sprite.Sprite):
 
 
 class Pickup(pygame.sprite.Sprite):
-    # Altın yerine nadiren çıkan toplanabilir (PICKUP_CHANCES): kind = "heart" (1 can) veya
+    # Altın yerine nadiren çıkan toplanabilir (Level.pick_item): kind = "heart" (1 can) veya
     # bir güçlendirme ("magnet", "shield"). Ne işe yaradığına main.py bakar
     def __init__(self, x, y, kind):
         super().__init__()
@@ -240,6 +254,7 @@ class Level:
         # Parçayı şu anki tepenin hemen üstüne yerleştir
         rows = chunk["rows"]
         top = self.top - len(rows) * TILE_SIZE
+        t = hardness(-top)  # yükseklerdeki parçada düşmanlar hızlı, kalpler seyrek
         sprites = []
         for row_index, row in enumerate(rows):
             for col_index, cell in enumerate(row):
@@ -255,7 +270,7 @@ class Level:
                     self.crumblers.add(crumbler)
                 elif cell == "C":
                     # Altın; nadiren de kalp veya güçlendirme
-                    kind = self.pick_item()
+                    kind = self.pick_item(t)
                     if kind != "coin":
                         item = Pickup(x, y, kind)
                         sprites.append(item)
@@ -272,7 +287,11 @@ class Level:
                     # Altındaki platformun kenarları arasında yürüsün
                     left, right = platform_run(rows, row_index, col_index)
                     enemy = Enemy(
-                        x + TILE_SIZE // 2, y + TILE_SIZE, left * TILE_SIZE, (right + 1) * TILE_SIZE
+                        x + TILE_SIZE // 2,
+                        y + TILE_SIZE,
+                        left * TILE_SIZE,
+                        (right + 1) * TILE_SIZE,
+                        blend(ENEMY_SPEED, ENEMY_SPEED_MAX, t),
                     )
                     sprites.append(enemy)
                     self.enemies.add(enemy)
@@ -280,7 +299,11 @@ class Level:
                     # Satırında duvara veya kenara kadar uçsun
                     left, right = free_span(row, col_index, col_index)
                     flyer = FlyingEnemy(
-                        x + TILE_SIZE // 2, y + TILE_SIZE // 2, left * TILE_SIZE, (right + 1) * TILE_SIZE
+                        x + TILE_SIZE // 2,
+                        y + TILE_SIZE // 2,
+                        left * TILE_SIZE,
+                        (right + 1) * TILE_SIZE,
+                        blend(FLYER_SPEED, FLYER_SPEED_MAX, t),
                     )
                     sprites.append(flyer)
                     self.enemies.add(flyer)
@@ -302,10 +325,16 @@ class Level:
         self.top = top
         self.exit_side = chunk["exit"]
 
-    def pick_item(self):
-        # Altın karesine ne gelecek: çoğunlukla "coin", nadiren PICKUP_CHANCES'tan biri
+    def pick_item(self, t=0.0):
+        # Altın karesine ne gelecek: çoğunlukla "coin", nadiren kalp veya güçlendirme.
+        # Kalpler zorluk (t) arttıkça seyrekleşir
+        chances = (
+            ("heart", blend(HEART_CHANCE, HEART_CHANCE_MIN, t)),
+            ("magnet", MAGNET_CHANCE),
+            ("shield", SHIELD_CHANCE),
+        )
         roll = self.random.random()
-        for kind, chance in PICKUP_CHANCES:
+        for kind, chance in chances:
             if roll < chance:
                 return kind
             roll -= chance
@@ -317,7 +346,10 @@ class Level:
         # Yükseldikçe daha zor parçalar da seçilebilir
         max_difficulty = 1 + int(-self.top // DIFFICULTY_STEP)
         options = [c for c in CHUNKS if c["entry"] == entry and c["difficulty"] <= max_difficulty]
-        return self.random.choice(options)
+        # Çok yükseklerde kolay parçalar seyrekleşir, zorlar sıklaşır
+        t = hardness(-self.top)
+        weights = [1 + t * HARD_CHUNK_BIAS * (c["difficulty"] - 1) for c in options]
+        return self.random.choices(options, weights)[0]
 
     def update(self, view_top, view_bottom):
         # Ekranın yukarısı için yeterince parça hazır olsun

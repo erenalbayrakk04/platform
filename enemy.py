@@ -58,10 +58,11 @@ class Enemy(Patrol):
     speed = ENEMY_SPEED
     color = ENEMY_COLOR  # ölünce saçılan parçacıkların rengi
 
-    def __init__(self, center_x, bottom, left, right):
+    def __init__(self, center_x, bottom, left, right, speed=ENEMY_SPEED):
         if not FRAMES:
             FRAMES.extend(enemy_frames())
         super().__init__(FRAMES[0][1], left, right, midbottom=(center_x, bottom))
+        self.speed = speed  # yükseklerde daha hızlı (level.py)
 
     def update(self):
         self.patrol()
@@ -75,10 +76,11 @@ class FlyingEnemy(Patrol):
     speed = FLYER_SPEED
     color = FLYER_COLOR
 
-    def __init__(self, center_x, center_y, left, right):
+    def __init__(self, center_x, center_y, left, right, speed=FLYER_SPEED):
         if not FLYER_FRAMES:
             FLYER_FRAMES.extend(flyer_frames())
         super().__init__(FLYER_FRAMES[0], left, right, center=(center_x, center_y))
+        self.speed = speed
         self.center_y = center_y
         self.anim_time = center_x % 60  # hepsi aynı anda kanat çırpmasın
 

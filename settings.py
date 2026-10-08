@@ -40,6 +40,11 @@ GENERATE_AHEAD = SCREEN_HEIGHT  # ekranın bu kadar yukarısına kadar parçalar
 REMOVE_BELOW = SCREEN_HEIGHT  # ekranın bu kadar altında kalan parçalar silinir (piksel)
 DIFFICULTY_STEP = 1200  # her bu kadar piksel (30 kare) tırmanınca daha zor parçalar da gelir
 
+# Zorluk — oyun tırmandıkça yavaş yavaş zorlaşır. Başlangıçta aşağıdaki "kolay" sayılar (ör. ENEMY_SPEED),
+# HARD_HEIGHT kadar tırmanınca "en zor" sayılar (ör. ENEMY_SPEED_MAX) geçerli olur; arası karışık
+HARD_HEIGHT = 8000  # bu kadar piksel (200 blok) tırmanınca oyun en zor hâline gelir
+HARD_CHUNK_BIAS = 3  # en zorda zor parçalar ne kadar sık gelsin (0 = hepsi eşit; 3 = en zor parça kolaydan 7 kat sık)
+
 # Bloklar (zemin ve platformlar)
 TILE_SIZE = 40  # her bloğun kenar uzunluğu (piksel)
 TILE_COLOR = (120, 80, 50)  # toprak kahvesi
@@ -73,12 +78,14 @@ ENEMY_WIDTH = 32
 ENEMY_HEIGHT = 28
 ENEMY_COLOR = (220, 60, 60)  # kırmızı
 ENEMY_EYE_COLOR = WHITE
-ENEMY_SPEED = 1.5  # her karede kaç piksel yürür
+ENEMY_SPEED = 1.5  # her karede kaç piksel yürür (oyunun başında)
+ENEMY_SPEED_MAX = 3  # en zorda (HARD_HEIGHT) kaç piksel yürür
 STOMP_BOUNCE = 10  # düşmanın üstüne basınca karakter ne kadar sıçrar
 
 # Uçan düşmanlar (haritada 'F') — havada kendi satırında sağa-sola uçar; üstüne basılınca ölür
 FLYER_COLOR = (150, 90, 220)  # mor yarasa
-FLYER_SPEED = 1.2  # her karede kaç piksel uçar
+FLYER_SPEED = 1.2  # her karede kaç piksel uçar (oyunun başında)
+FLYER_SPEED_MAX = 2.6  # en zorda kaç piksel uçar
 FLYER_BOB = 6  # uçarken kaç piksel aşağı-yukarı süzülür
 FLYER_BOB_SPEED = 15  # süzülmenin yavaşlığı (büyürse daha yavaş)
 FLYER_FLAP_SPEED = 6  # kanat çırpma: her resim kaç kare ekranda kalır
@@ -90,6 +97,7 @@ HURT_BOUNCE = 7  # düşman çarpınca karakter ne kadar sıçrar
 LIFE_COLOR = (230, 50, 70)  # sağ üstteki dolu kalpler
 LIFE_EMPTY_COLOR = (80, 80, 100)  # kaybedilen can
 HEART_CHANCE = 0.05  # haritadaki her altının kalbe dönüşme ihtimali (0.05 = %5); kalp 1 can verir
+HEART_CHANCE_MIN = 0.015  # en zorda kalp ihtimali (yükseldikçe kalpler seyrekleşir)
 
 # Güçlendirmeler — kalp gibi altınların yerine nadiren çıkar; alınca bir süre işe yarar
 POWERUP_WARN_TIME = 120  # bitmesine bu kadar kare kala sağ üstteki simgesi yanıp söner
