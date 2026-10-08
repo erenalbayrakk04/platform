@@ -71,9 +71,14 @@
   can doluysa `score.add_bonus(HEART_POINTS)`; kind "magnet"/"shield" güçlendirme → `player.power_up(kind)`;
   `Coin.attract(target)` mıknatısla `MAGNET_RADIUS` içindeyse `MAGNET_PULL` hızla uçar) ve `Level(seed)`: y=0 zeminin altı, yukarı çıktıkça
   y EKSİ. `add_chunk`, `pick_chunk` (giriş = önceki çıkışın tersi, zorluk ≤ 1 + yükseklik //
-  `DIFFICULTY_STEP`), `update(view_top, view_bottom)` (`GENERATE_AHEAD` kadar yukarıyı doldurur,
+  `DIFFICULTY_STEP`; `random.choices` ağırlığı `1 + t·HARD_CHUNK_BIAS·(zorluk−1)` → yukarıda zor parçalar sık), `update(view_top, view_bottom)` (`GENERATE_AHEAD` kadar yukarıyı doldurur,
   `REMOVE_BELOW`'dan aşağıdaki parçaları siler). `tiles` = çarpılan her şey, `coins` = altınlar,
-  `enemies` = düşmanlar (katı değiller; parça silinince onunkiler de silinir). Tile/Platform/Coin resimleri `level.image()`
+  `enemies` = düşmanlar (katı değiller; parça silinince onunkiler de silinir).
+  YÜKSELDİKÇE ZORLAŞMA: `hardness(height)` = 0 (başlangıç) → 1 (`HARD_HEIGHT` px tırmanınca), `blend(easy, hard, t)`.
+  `add_chunk` parçanın yüksekliğinden `t` hesaplar: düşman hızı `ENEMY_SPEED`→`ENEMY_SPEED_MAX`
+  (`Enemy(..., speed)`, `FlyingEnemy(..., speed)`), `pick_item(t)` kalp ihtimali `HEART_CHANCE`→`HEART_CHANCE_MIN`.
+  Zorluk sayıları settings.py "Zorluk" bölümünde ve `*_MAX`/`*_MIN` çiftleri → ileride kolay/orta/zor modları
+  bu sayıların farklı takımları olacak. Tile/Platform/Coin resimleri `level.image()`
   ile bir kere hazırlanıp paylaşılır; `Coin.update()` dönme animasyonu., `bottom` = en alttaki parçanın altı, `width` piksel.
 - `score.py` — `Score(start_y)`: `height` = üstüne basılan en yüksek yer (blok, sadece `on_ground`
   iken sayılır, düşünce azalmaz), `coins`, `enemies`, `total` = height × `HEIGHT_POINTS` + coins × `COIN_POINTS`
@@ -118,6 +123,12 @@
   değilse dokunulmaz değilken `hurt()`. `level.bottom`'ın altına düşerse (kalkan olsa da) `hurt()` +
   `respawn()`. Mıknatıs varken her karede `coin.attract(player.rect.center)`. Kalkan sürerken `draw_world`
   karakterin etrafına `art.shield_bubble` çizer. Düşmanın `color`'ı ölünce saçılan parçacıkların rengi.
+- `lava.py` — `Lava()`: aşağıdan yükselen lav, `level.lava`'da (new_game kurar). `y` = yüzey; `LAVA_DELAY`
+  bekler, sonra `blend(LAVA_SPEED, LAVA_SPEED_MAX, hardness(-camera.bottom))` hızla yükselir; ekranın en fazla
+  `LAVA_MAX_GAP` altında kalır (< `REMOVE_BELOW` → düşen önce lava değer). `update(camera_bottom)`, `touches(rect)`
+  (ayak `LAVA_HIT_DEPTH` içerideyse) → main: kalkan olsa da `hurt()` + `respawn()` + `push_back(ayak)` (lav
+  `LAVA_PUSHBACK` aşağı çekilir). `draw(screen, camera)` her şeyin önünde (`art.lava_frames()` dalga şeridi + düz dolgu);
+  ekranın altındayken `LAVA_WARN_DISTANCE` içinde `art.lava_glow()` kızıllık. check_chunks lavı hesaba katmaz.
 - `check_chunks.py` — çıkılabilirlik testi: `python check_chunks.py` (~20 sn, çok çekirdekli).
   Gerçek `Player` fiziğiyle (sahte `Controls`) BFS: her parçanın girişinden (başlangıçta P) tepesine
   ve her geçerli birleşmede (alt parçanın üst 4 satırı + üst parçanın alt 5 satırı) girişe
@@ -169,6 +180,9 @@ YAYINDA: https://erenalbayrakk04.github.io/platform/ (depo herkese açık, Pages
 `.github/workflows/web.yml` her push'ta: check_chunks.py → pygbag derleme → Pages'e yükleme (~4 dk);
 yani her commit+push oyunu internette de günceller. Parça testi geçmezse yayına çıkmaz.
 Açık depoda çalışma durumu girişsiz bakılabilir: https://api.github.com/repos/erenalbayrakk04/platform/actions/runs
+- Zorlaştırma yapıldı (kullanıcı seçti: düşmanlar kolaydı, acele yoktu, çok kalp vardı): yükseldikçe zorlaşma +
+  yükselen lav. Kullanıcı oynayıp lav/düşman hızı için geri bildirim verecek (sayılar settings.py'de).
+  Kolay/orta/zor MODLARI sonra, ana menüyle birlikte (her modun ayrı rekoru olsun).
 - Sonra belki: başka güçlendirmeler (ör. jetpack), başka düşman türleri.
 - İleride ANA MENÜ yapılacak (kullanıcı isteği): orada "Daha akıcı oyun için Düşük Güç Modu'nu kapat" bilgisi
   sabit yazsın. Şu anki otomatik ipucu (`draw_slow_hint`) kullanıcının iPhone'unda Düşük Güç Modu'nda ÇIKMADI
