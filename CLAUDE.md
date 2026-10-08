@@ -178,9 +178,7 @@
   "menu" (ana menü) ↔ "sound"/"howto"/"records" (Geri/ESC);
   ses çubuğu oynayınca `change_volume` (ses kapalıysa açar, kaydeder, efektte örnek "coin" sesi çalar); menü "play" →
   `start()` → "playing" ↔ "paused" (⏸ düğmesi, ESC veya P; durunca Devam/Ses/Ana Menü); can biter → "game_over"
-  (`GAME_OVER_DELAY` kare düğme yok) → Tekrar Oyna (`start()`) / Ana Menü (`to_menu()`). MÜZİK: açılışta ve
-  `to_menu()`'de `play_music("title")` (açılış müziği: giriş ekranı + menüler), `start()`'ta `play_music("game")`,
-  kaybedince `stop_music()` + "game_over" sesi. `finish()` oyun bitince
+  (`GAME_OVER_DELAY` kare düğme yok) → Tekrar Oyna (`start()`) / Ana Menü (`to_menu()`). `finish()` oyun bitince
   (kaybedince VE durdurup ana menüye dönünce) rekorları + istatistikleri kaydeder. `handle_event`, `update(steps, touch)`,
   `draw(...)`. M tuşu her yerde `toggle_sound()` (kaydedilir). ESC ana menüde oyundan çıkar (web'de hariç).
   `next_difficulty()` Kolay→Orta→Zor→Ultra Zor (`DIFFICULTY_NAMES`), kaydeder ve `reset()` (arkadaki bölüm yeni moda göre).
@@ -238,18 +236,10 @@
   Yerleşim sabitleri dosyanın başında; ayarlar settings "Oyunun adı (logo)" ve "Giriş ekranı".
 - `sound.py` — `pre_init()` (pygame.init'ten önce; 22050 Hz mono 16 bit; tampon masaüstünde 512,
   web'de `WEB_AUDIO_BUFFER` = 2048 — tarayıcı 512'de cızırdıyordu; tarayıcı frekansı kendisi seçer, 48000), `Sounds()`: efektler
-  (jump, coin, stomp, hurt, start, game_over, life, spring, crumble, shoot, powerup, powerdown) ve iki döngü müzik
-  `array` ile üretilir (numpy YOK): `musics["game"]` oyun müziği (`MELODY`/`BASS`, 8 ölçü, `MUSIC_TEMPO` 140,
-  13,7 sn) ve `musics["title"]` açılış müziği (kullanıcı istedi; La minör, Lam-Fa-Do-Sol | Lam-Fa-Rem-Mi, `TITLE_TEMPO`
-  120, 16 sn: `TITLE_MELODY` (nota, kaç sekizlik) + `TITLE_CHORDS`'tan arpej (`ARPEGGIO` sırası, kare dalga) ve bas).
-  `song(voices, tempo, cache)`: her ses = (notalar [(nota, sekizlik)], dalga, yükseklik); aynı nota bir kere üretilir
-  (`note`: `wave_samples` liste olarak + uzunluğa göre önbellekli zarf, doğrudan 16 bit ölçeğinde `FULL`), sesler
-  `map(operator.add)` ile toplanır (sesler aynı uzunlukta ve yükseklikler toplamı ≤ 1 olmalı, yoksa açılışta hata).
-  HIZ: tarayıcıda karıştırıcı 48000 Hz → sesler yarı hızda (`rate` 24000) üretilip `repeat` = 2 kez yazılır
-  (`make_sound`; stereo da orada). Açılış hızı: eskiden tek müzikle tarayıcı hızında ~515 ms, şimdi iki müzikle ~290 ms
-  (masaüstünde 22050 Hz'de ~260 ms). `play(name)`, `play_music(name)` (aynısı çalıyorsa baştan başlamaz; ses kapalıysa
-  duraklatılmış başlar), `stop_music`, `toggle_mute`, `set_levels(music, effects)` (0-1 çarpan; tam =
-  `MUSIC_VOLUME`/`SOUND_VOLUME`) (M). Mixer yoksa/biçim farklıysa `enabled=False`, her şey sessizce çalışır.
+  (jump, coin, stomp, hurt, start, game_over, life, spring, crumble, shoot, powerup, powerdown) ve 8 ölçülük döngü müzik (`MELODY`/`BASS` nota
+  numaraları) `array` ile üretilir (numpy YOK); `play(name)`, `start_music/stop_music`, `toggle_mute`,
+  `set_levels(music, effects)` (0-1 çarpan; tam = `MUSIC_VOLUME`/`SOUND_VOLUME`)
+  (M). Mixer yoksa/biçim farklıysa `enabled=False`, her şey sessizce çalışır. Stereo da desteklenir.
 - `controls.py` — `Controls(left, right, jump)`; `TouchButtons`: sol altta ←→, sağ altta zıpla,
   çoklu dokunma (`FINGER*` olayları, parmak yoksa farenin sol tuşu), `handle_event`, `update`,
   `draw` (sadece oyun sırasında); `read_controls(touch)` klavye + butonları birleştirir.
@@ -291,6 +281,8 @@ Açık depoda çalışma durumu girişsiz bakılabilir: https://api.github.com/r
 - GİRİŞ EKRANI yapıldı (kullanıcı: "başlamak için ekrana dokun yerine daha güzel bir şey"): oyunun içinde (title.py,
   masaüstünde de var) + web'de yeni yükleme ekranı + ses kilidi (web.tmpl). Ana menünün başlığı da aynı piksel logo oldu.
   Kullanıcı iPhone'da doğruladı: "Dokun ve Başla"ya basınca müzik geliyor (ses kilidi çalışıyor).
-- AÇILIŞ MÜZİĞİ yapıldı (kullanıcı istedi): giriş ekranı ve menülerde ayrı müzik, "Oyna"da oyun müziğine geçer.
-  Telefonda tarayıcı ilk dokunuştan önce ses çaldırmaz → açılış müziği "Dokun ve Başla"yla başlar, menüde sürer
-  (bilgisayarda oyun açılınca hemen çalar). Kullanıcı dinleyip geri bildirim verecek (hız, hava: notalar sound.py'de).
+- AYRI AÇILIŞ MÜZİĞİ denendi ve GERİ ALINDI (kullanıcı kararı: "yok eski müziği geri getir"). Giriş ekranı ve menülerde
+  yine tek oyun müziği çalıyor (eskisi gibi). Kullanıcı kendisi istemedikçe yeni müzik önerme. Denenen hâli f7d2a8f'de
+  (La minör, 120 vuruş). O denemedeki ses üretimini hızlandırma (notalar liste olarak, sesler `map(operator.add)` ile
+  toplanır; tarayıcıda 48000 Hz yerine yarı hızda üretip her örneği iki kez yazmak) de onunla geri alındı. Telefonda
+  açılış yavaş gelirse oradan alınabilir.
