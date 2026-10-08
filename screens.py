@@ -5,7 +5,6 @@ import pygame
 from settings import (
     SCREEN_WIDTH,
     SCREEN_HEIGHT,
-    TITLE,
     OVERLAY_ALPHA,
     TITLE_FONT_SIZE,
     MENU_FONT_SIZE,
@@ -22,6 +21,7 @@ from settings import (
     DIFFICULTY_NAMES,
 )
 from score import draw_text
+from title import draw_logo
 from ui import Buttons, Slider, take_click, ACTIVATE_KEYS, UP_KEYS, DOWN_KEYS
 import art
 
@@ -75,10 +75,8 @@ def draw_title(screen, text, y, color=TITLE_COLOR):
 
 def draw_main_menu(screen, best_height, labels, web=False):
     draw_overlay(screen)
-    # Oyun adı iki satır: "Platform" / "Oyunu"
-    first, _, rest = TITLE.partition(" ")
-    draw_title(screen, first, 130)
-    draw_title(screen, rest, 185)
+    # Oyunun adı (piksel harfli logo): giriş ekranındakiyle aynı yerde — geçişte yerinden oynamaz
+    draw_logo(screen)
     # Asıl hedef: yükseklik rekoru
     draw_text(screen, font(MENU_FONT_SIZE + 10), f"Rekor: {best_height} m", RECORD_COLOR, center=(CENTER_X, 260))
     MAIN_BUTTONS.draw(screen, {**LABELS, **labels})

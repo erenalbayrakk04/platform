@@ -40,6 +40,7 @@ from camera import Camera
 from score import Score, draw_lives, draw_powers, draw_text
 from storage import load_record, save_record, load_dict, save_dict
 import screens
+from title import TitleScreen
 from ui import PauseButton
 from art import Background, shield_bubble
 from controls import TouchButtons, read_controls
@@ -98,6 +99,16 @@ def fps_wanted():
         except Exception:
             return False
     return False
+
+
+def hide_web_loader():
+    # Web: oyunun ilk karesi çizildi → sayfanın yükleme ekranı (web.tmpl) yavaşça kaybolsun
+    try:
+        from platform import window
+
+        window.loader_done()
+    except Exception:
+        pass
 
 
 class FpsMeter:
@@ -286,8 +297,8 @@ def draw_world(screen, background, level, player, camera, score):
 
 class Game:
     # Oyunun bütün durumu: hangi ekrandayız, rekorlar, seçenekler ve şu an oynanan bölüm.
-    # Ekranlar (state): "menu" (ana menü), "sound" (ses ayarları), "howto" (nasıl oynanır), "records" (rekorlar),
-    # "playing" (oyun), "paused" (durdu), "game_over" (kaybettin)
+    # Ekranlar (state): "title" (giriş ekranı, oyun bununla açılır), "menu" (ana menü), "sound" (ses ayarları),
+    # "howto" (nasıl oynanır), "records" (rekorlar), "playing" (oyun), "paused" (durdu), "game_over" (kaybettin)
     def __init__(self, sounds):
         self.sounds = sounds
         # Rekorlar her zorluk modunun ayrı: asıl hedef en yüksek tırmanış (blok), ayrıca en yüksek puan
@@ -306,7 +317,8 @@ class Game:
             self.options[key] = max(0, min(VOLUME_STEPS, self.options[key]))
             sliders[name].value = self.options[key]
         self.apply_volume()
-        self.state = "menu"
+        self.state = "title"
+        self.title = TitleScreen(WEB)  # menüye geçiş bitince silinir
         self.game_over_timer = 0  # kaybettin ekranında düğmeler çıkana kadar kalan kare
         self.new_record = False
         self.pause_button = PauseButton()
@@ -401,7 +413,13 @@ class Game:
     def handle_event(self, event):
         # Ekrana göre tuş / dokunuş / tıklama. Oyundan çıkılacaksa False döner
         key = event.key if event.type == pygame.KEYDOWN else None
-        if self.state == "menu":
+        if self.state == "title":
+            if key == pygame.K_ESCAPE and not WEB:
+                return False
+            if self.title.handle_event(event):  # dokunuldu: karakter fırlar, ana menü belirir
+                self.sounds.play("spring")
+
+        elif self.state == "menu":
             if key == pygame.K_ESCAPE and not WEB:
                 return False  # tarayıcıda çıkış yok (sayfa kapatılır)
             action = screens.MAIN_BUTTONS.handle_event(event)
@@ -469,12 +487,25 @@ class Game:
                     break
         elif self.state == "game_over":
             self.game_over_timer = max(0, self.game_over_timer - steps)
+        elif self.state == "title":
+            for _ in range(steps):
+                self.title.update()
+            if self.title.done:  # menüye geçiş bitti
+                self.state = "menu"
+                self.title = None
+                screens.MAIN_BUTTONS.focus = 0
 
     def draw(self, screen, background, touch, slow):
-        # Oyun dünyası her ekranda arkada görünür
+        # Giriş ekranının kendi sahnesi var; dokununca altında ana menü çizilir, giriş ekranı üstünde silinir
+        if self.state == "title" and not self.title.leaving:
+            self.title.draw(screen, background)
+            return
+        # Oyun dünyası diğer her ekranda arkada görünür
         draw_world(screen, background, self.level, self.player, self.camera, self.score)
-        if self.state == "menu":
+        if self.state in ("menu", "title"):
             screens.draw_main_menu(screen, self.best_height, self.labels(), WEB)
+            if self.state == "title":
+                self.title.draw_fading(screen, background)
         elif self.state == "sound":
             screens.SOUND_MENU.draw(screen, self.labels(), self.sounds.muted)
         elif self.state == "howto":
@@ -521,6 +552,7 @@ async def main():
     timer = StepTimer()
     fps_meter = FpsMeter()
     show_fps = fps_wanted()
+    first_frame = True
 
     running = True
     while running:
@@ -548,6 +580,9 @@ async def main():
             if show_fps:
                 fps_meter.draw(screen)
             pygame.display.flip()
+            if first_frame and WEB:
+                hide_web_loader()
+            first_frame = False
 
         # Bilgisayarda döngü saniyede FPS kez döner. Tarayıcıda hızı tarayıcı belirler (ekran her
         # yenilendiğinde bir tur); orada beklemek tarayıcıyı meşgul eder, kare kaçırtır

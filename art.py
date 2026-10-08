@@ -8,6 +8,8 @@ import pygame
 
 from settings import (
     PIXEL_SCALE,
+    LOGO_PIXEL,
+    LOGO_OUTLINE_COLOR,
     WHITE,
     PLAYER_WIDTH,
     PLAYER_HEIGHT,
@@ -61,6 +63,11 @@ def shade(color, amount):
 def tint(color, amount):
     # Rengi açıklaştır (amount 0-1: 0 = aynı renk, 1 = beyaz)
     return tuple(int(c + (255 - c) * amount) for c in color)
+
+
+def mix(color, other, amount):
+    # İki rengin arası (amount 0-1: 0 = ilk renk, 1 = ikinci renk)
+    return tuple(round(a + (b - a) * amount) for a, b in zip(color, other))
 
 
 def render(rows, palette, size=None):
@@ -421,6 +428,34 @@ def platform_image():
     return render(PLATFORM_ROWS, palette, (TILE_SIZE, PLATFORM_HEIGHT))
 
 
+# --- Uçan adacık (giriş ekranı): üstü çimen, altı sivrilen toprak (renkleri blokla aynı) ---
+ISLAND_ROWS = [
+    "GGGGGGGGGGGGGGGGGGGGGGGG",
+    "GGgGGGGGgGGGGGGgGGGGGgGG",
+    "gDgDDgDDgDDgDgDDgDDgDDgD",
+    "DDDDDDsDDDDDDDDDDDDdDDDD",
+    ".DdDDDDDDDDDdDDDsDDDDDD.",
+    ".DDDDsDDDDDDDDDDDDDDdDD.",
+    "..dDDDDDDDdDDDDDsDDDDd..",
+    "...DDDDsDDDDDDDDDDDDD...",
+    ".....dDDDDDDDDdDDDd.....",
+    ".......ddDDsDDDdd.......",
+    ".........dddddd.........",
+    "...........dd...........",
+]
+
+
+def island_image():
+    palette = {
+        "G": TILE_TOP_COLOR,
+        "g": shade(TILE_TOP_COLOR, 0.7),
+        "D": TILE_COLOR,
+        "d": shade(TILE_COLOR, 0.7),
+        "s": tint(TILE_COLOR, 0.25),
+    }
+    return render(ISLAND_ROWS, palette)
+
+
 # --- Kırılan platform: çatlak taş; ikinci resim kırılmak üzereyken (çatlaklar büyür), üçüncüsü silik ---
 CRUMBLE_ROWS = [
     ["hhhhhhhhhh", "WWkWWWWkWW", "kkWkkkkWkk"],
@@ -605,3 +640,59 @@ class Background:
         shift = -camera_top * STAR_PARALLAX
         for x, y, size, color in self.stars:
             screen.fill(color, (x, (y + shift) % SCREEN_HEIGHT, size, size))
+
+
+# --- Oyunun adı (giriş ekranı ve ana menüdeki logo): kalın piksel harfler ---
+# Her harfin çizgisi 2 kare kalın. Oyunun adı (settings.TITLE) değişirse eksik harfler buraya eklenmeli
+LOGO_FONT = {
+    "A": [".####.", "######", "##..##", "##..##", "######", "######", "##..##", "##..##"],
+    "F": ["######", "######", "##....", "#####.", "#####.", "##....", "##....", "##...."],
+    "L": ["##....", "##....", "##....", "##....", "##....", "##....", "######", "######"],
+    "M": ["##...##", "###.###", "#######", "##.#.##", "##...##", "##...##", "##...##", "##...##"],
+    "N": ["##...##", "###..##", "####.##", "##.####", "##..###", "##...##", "##...##", "##...##"],
+    "O": [".####.", "######", "##..##", "##..##", "##..##", "##..##", "######", ".####."],
+    "P": ["#####.", "######", "##..##", "##..##", "######", "#####.", "##....", "##...."],
+    "R": ["#####.", "######", "##..##", "##..##", "#####.", "####..", "##.##.", "##..##"],
+    "T": ["######", "######", "..##..", "..##..", "..##..", "..##..", "..##..", "..##.."],
+    "U": ["##..##", "##..##", "##..##", "##..##", "##..##", "##..##", "######", ".####."],
+    "Y": ["##..##", "##..##", "##..##", "######", ".####.", "..##..", "..##..", "..##.."],
+}
+LOGO_DEPTH = 2  # harflerin altındaki kalınlık (3B görünüm), ince kare
+LOGO_SPACING = 2  # harfler arası boşluk, ince kare (harflerin koyu kenarları tam birbirine değer)
+
+
+def logo_letters(text, top_color, bottom_color):
+    # Yazının her harfi ayrı resim (ekranda tek tek dalgalanabilsinler). Harf haritasındaki her kare 2x2
+    # "ince kareye" bölünür (her ince kare LOGO_PIXEL piksel): koyu kenar çizgisi ve alttaki kalınlık harften
+    # ince olur. İçi yukarıdan aşağı top_color'dan bottom_color'a geçer, çizgilerin üst kenarı parlak.
+    # Döner: [(resim, parıltı, x)] — parıltı = harfin içi beyaz ve yarı saydam (üstünden ışık geçerken),
+    # x = harfin yazıdaki yeri (piksel)
+    size = LOGO_PIXEL
+    depth_color = shade(bottom_color, 0.5)
+    letters = []
+    x = 0
+    for char in text:
+        if char not in LOGO_FONT:
+            raise ValueError(f"Logo yazı tipinde '{char}' harfi yok (art.py, LOGO_FONT)")
+        fine = ["".join(cell * 2 for cell in row) for row in LOGO_FONT[char] for _ in range(2)]
+        height = len(fine)
+        # Harfin kareleri (kenar çizgisine yer kalsın diye 1 kare içeriden), altındaki kalınlık, çevresindeki kenar
+        fill = {(r + 1, c + 1) for r, row in enumerate(fine) for c, cell in enumerate(row) if cell == "#"}
+        depth = {(r + d, c) for r, c in fill for d in range(1, LOGO_DEPTH + 1)} - fill
+        body = fill | depth
+        outline = {(r + dr, c + dc) for r, c in body for dr in (-1, 0, 1) for dc in (-1, 0, 1)} - body
+        image_size = ((len(fine[0]) + 2) * size, (height + 2 + LOGO_DEPTH) * size)
+        image = pygame.Surface(image_size, pygame.SRCALPHA)
+        shine = pygame.Surface(image_size, pygame.SRCALPHA)
+        for cells, color in ((outline, LOGO_OUTLINE_COLOR), (depth, depth_color)):
+            for r, c in cells:
+                image.fill(color, (c * size, r * size, size, size))
+        for r, c in fill:
+            color = mix(top_color, bottom_color, (r - 1) / (height - 1))
+            if (r - 1, c) not in fill:  # çizginin üst kenarı
+                color = tint(color, 0.5)
+            image.fill(color, (c * size, r * size, size, size))
+            shine.fill((*WHITE, 150), (c * size, r * size, size, size))
+        letters.append((image, shine, x))
+        x += (len(fine[0]) + LOGO_SPACING) * size
+    return letters

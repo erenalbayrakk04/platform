@@ -19,8 +19,23 @@
   sayfadaki Python'a komut gönderilebilir (sonuç bazen bir kare sonra gelir → `platform.window.probe`'a yazdırıp
   JS'ten birkaç kez yokla; `gc.get_objects()` ile Player/Level bulunur). Hız testi: CDP
   `Emulation.setCPUThrottlingRate` ile işlemci yavaşlatılır (telefon taklidi); görünmez Chrome ekranı ~240 Hz yeniler.
+  CDP'ye Python `websocket-client` ile bağlanırken `suppress_origin=True` (yoksa 403); yavaş internet taklidi
+  `Network.emulateNetworkConditions`; dokunuş `Emulation.setTouchEmulationEnabled` + `Input.dispatchTouchEvent`.
   pygbag döngüyü tarayıcının ekran yenilemesine bağlar (her yenilemede bir tur) ve `clock.tick()` tarayıcıda
   ~16 ms MEŞGUL BEKLER (tarayıcıyı kilitler, kare kaçırtır) → web'de çağrılmaz.
+- `web.tmpl`'in giriş ekranıyla gelen kısımları: pygbag'in "Başlamak için ekrana dokun" beklemesi (`MM.UME`)
+  KALDIRILDI — oyun hemen açılır, ilk ekran oyunun kendi giriş ekranı (title.py). SES KİLİDİ: tarayıcı ilk dokunuşa
+  kadar ses çalmaz; SDL açılışta AudioContext'i "suspended" kurar → şablon `window.AudioContext`'i `TrackedAudioContext`
+  alt sınıfıyla değiştirip kurulanları tutar, `touchend/pointerup/mousedown/click/keydown` olayında (window, capture)
+  `resume()` + boş ses çalar (iPhone'da dokunma olayının İÇİNDE olmalı; emscripten'in kendi touchstart dinleyicisi
+  iPhone'da yetmez). Askıda kalırken SDL ses karıştırmaz → müzik dokununca baştan başlar. Görünmez Chrome'da
+  doğrulandı (dokunmadan suspended → dokununca running). YÜKLEME EKRANI `#loader`: oyunla aynı oranda kutu, ilk gök
+  renkleri, dönen piksel altın (art.py COIN_ROWS'un JS kopyası), "Yükleniyor..." + pygbag'in gizli `#progress`'inden
+  indirme çubuğu (sadece ilk/yavaş indirmede görünür); Python başlayınca `loader_say("Haz&#305;rlan&#305;yor")`.
+  main.py ilk kareyi çizince `hide_web_loader()` → JS `loader_done()`: önce `window_resize()` (pygbag oranı oyun
+  ekranı kurulmadan hesaplarsa kare sanıp 400x400 BASIK çiziyordu), sonra solarak kaybolur. DİKKAT: şablondaki
+  `config = {...}` noktalı virgülsüz biter → arkasına `(function...)` yazılırsa hiç çalışmaz (TypeError) → yeni JS
+  ayrı `<script>` bloğunda.
 
 ## Çalışma kuralları
 - Her aşama sonunda oyun çalışır durumda olmalı.
@@ -129,7 +144,7 @@
   ve "back" düğmeleri; ↑↓ seçer, ←→ çubuğu ayarlar; `handle_event` → "music"/"effects"/"sound"/"back"),
   her ekranın `Buttons`'ı (`MAIN_BUTTONS` play/difficulty/howto/records/sound_menu, `BACK_BUTTON`,
   `PAUSE_BUTTONS` resume/sound/menu, `GAME_OVER_BUTTONS` again/menu), `LABELS` sabit yazılar (değişenleri main
-  verir); `draw_main_menu` (başlık, "Rekor: N m", düğmeler, web'de HEP `draw_slow_hint` — kullanıcı isteği),
+  verir); `draw_main_menu` (logo = `title.draw_logo`, "Rekor: N m", düğmeler, web'de HEP `draw_slow_hint` — kullanıcı isteği),
   `draw_howto` (kontroller + `HOWTO_ROWS`: oyundaki resimlerle her şeyin açıklaması — yeni öğe eklenince buraya da
   ekle; 13 satır `HOWTO_TOP`/`HOWTO_GAP` ile sığıyor, daha fazlası için aralık daralt; `HOWTO_WARN_ROWS` sarı yazı), `draw_records(best_heights, high_scores, stats, current)` (her modun tırmanış + puan rekoru, seçili mod sarı; altında
   tüm modların toplamları), `draw_pause`, `draw_game_over(screen, score, mode_name, ...)` (başlık altında "Zorluk: ...";
@@ -158,7 +173,9 @@
   kaybettin ekranının altında `screens.draw_slow_hint` ("Düşük Güç Modu'nu kapat"; ana menüde web'de hep var).
   `Game` sınıfı tüm durumu tutar: rekorlar (`best_heights`/`high_scores` = mod → değer; `mode`, `best_height`,
   `high_score` = seçili modunki), `stats` (tüm modların toplamı), `options` (açılışta yüklenir; muted ise ses kapalı başlar),
-  `level/player/camera/score`; `state`: "menu" (ana menü) ↔ "sound"/"howto"/"records" (Geri/ESC);
+  `level/player/camera/score`; `state`: "title" (giriş ekranı, oyun bununla açılır; `title` = `TitleScreen`, dokununca
+  "spring" sesi, geçiş bitince "menu" ve `title = None`; geçişte menü çizilip üstüne `title.draw_fading`) →
+  "menu" (ana menü) ↔ "sound"/"howto"/"records" (Geri/ESC);
   ses çubuğu oynayınca `change_volume` (ses kapalıysa açar, kaydeder, efektte örnek "coin" sesi çalar); menü "play" →
   `start()` → "playing" ↔ "paused" (⏸ düğmesi, ESC veya P; durunca Devam/Ses/Ana Menü); can biter → "game_over"
   (`GAME_OVER_DELAY` kare düğme yok) → Tekrar Oyna (`start()`) / Ana Menü (`to_menu()`). `finish()` oyun bitince
@@ -167,6 +184,7 @@
   `next_difficulty()` Kolay→Orta→Zor→Ultra Zor (`DIFFICULTY_NAMES`), kaydeder ve `reset()` (arkadaki bölüm yeni moda göre).
   `update_game(...)` oyun mantığı, `draw_world(...)` dünyayı çizer (her ekranda arkada görünür).
   `main()` `async`: döngü sonunda `await asyncio.sleep(0)` (web için şart), en altta `asyncio.run(main())`.
+  Web'de ilk kare çizilince `hide_web_loader()` (sayfanın yükleme ekranını kaldırır, bkz. web.tmpl).
   `new_game(best_height, mode)` yeni rastgele bölüm + karakter + kamera + puan kurar; altınlar
   `spritecollide(player, level.coins, True)` ile toplanır. Düşmana değince `player.old_bottom <= enemy.old_top`
   ise (ve `enemy.spiky` değilse — kirpiye basan yanar) düşman ölür (`STOMP_BOUNCE`); topçu ateş edince (level.shots
@@ -195,13 +213,27 @@
   için bir üst platform tam tepede olmasın; yana kaydırılmış olsun ki zıplayıp üstüne çıkılabilsin.
 - `art.py` — piksel sanatı: harf haritası + palet → `render(rows, palette, size)` (her harf
   `PIXEL_SCALE` px, çizim alta-ortaya yaslı; hiç `.` yoksa ve ekran açıksa `convert()` = saydamsız → tarayıcıda
-  ~5 kat hızlı çizilir), `shade`/`tint` ile tonlar; `player_frames()`,
+  ~5 kat hızlı çizilir), `shade`/`tint`/`mix` ile tonlar; `player_frames()`,
   `enemy_frames()` ({1: sağ, -1: sol} çiftleri), `flyer_frames()` (kanat çırpma), `slime_frames()` (walk1/walk2/squash/jump),
   `spiky_frames()`, `cannon_frames()` ([normal, kızarmış]; `CANNON_MUZZLE_Y` namlu yüksekliği), `fireball_frames()`,
   `bee_frames()`, `crumble_frames()`
   (sağlam, çatlak, silik), `magnet_image()`, `shield_image()`, `shield_bubble(r)`, `coin_frames()` (dönme), `tile_image()`,
   `platform_image()`, `heart_images()`, `Background` (`SKY_THEMES` gökleri, her `SKY_CHANGE_HEIGHT` px tırmanışta sıradakine
-  `SKY_BLEND_HEIGHT` boyunca saydamlıkla geçer, döngüsel; + `STAR_PARALLAX` ile kayan yıldızlar).
+  `SKY_BLEND_HEIGHT` boyunca saydamlıkla geçer, döngüsel; + `STAR_PARALLAX` ile kayan yıldızlar), `island_image()`
+  (giriş ekranındaki uçan adacık), logo: `LOGO_FONT` (kalın piksel harfler, çizgi 2 kare; şimdilik sadece "PLATFORM
+  OYUNU"nun harfleri — `TITLE` değişirse eksik harf eklenmeli, yoksa açılışta hata) + `logo_letters(text, üst, alt)`
+  (her kare 2x2 "ince kareye" bölünür, ince kare `LOGO_PIXEL` px: koyu kenar 1, alttaki 3B kalınlık `LOGO_DEPTH` ince
+  kare; içi renk geçişli, çizgilerin üst kenarı parlak; harf başına (resim, parıltı, x)).
+- `title.py` — GİRİŞ EKRANI (kullanıcı isteği: düz "Başlamak için ekrana dokun" kutusu yerine güzel bir ekran):
+  `TitleScreen(web)`: gök + parlayan yıldızlar, logo (harfler `DROP_*` ile sırayla yukarıdan düşüp `bounce` ile sekerek
+  oturur), uçan adacıkta gezinip arada zıplayan karakter (`TITLE_SCALE` kat büyük), iki yanda dönen altınlar, uçan yarasa,
+  dipte lav + kıvılcımlar (`embers`), logonun altında "Lavdan kaç, en yükseğe tırman!", nefes alan "Dokun ve Başla"
+  (masaüstünde "Tıkla ve Başla") düğmesi. `handle_event` dokunma/tık/tuş (+ `take_click`) → True; `leaving`: karakter
+  `TITLE_LAUNCH_POWER` ile fırlar, `TITLE_LEAVE_TIME` adımda ana menü belirir (`draw_fading`: giriş ekranı `layer`'a
+  çizilip altta çizilmiş menünün üstünde silinir), `done` bitti mi. `Logo`/`draw_logo(screen, drop)`: oyunun adı
+  (`TITLE.upper().split()` → satırlar, `LOGO_COLORS`), her harf ayrı resim, `LOGO_WAVE` dalgalanma + her `LOGO_SHINE_TIME`
+  sn'de çapraz parıltı; zaman `get_ticks` → ana menüdeki logo aynı yerde ve aynı dalgada, geçişte kıpırdamaz.
+  Yerleşim sabitleri dosyanın başında; ayarlar settings "Oyunun adı (logo)" ve "Giriş ekranı".
 - `sound.py` — `pre_init()` (pygame.init'ten önce; 22050 Hz mono 16 bit; tampon masaüstünde 512,
   web'de `WEB_AUDIO_BUFFER` = 2048 — tarayıcı 512'de cızırdıyordu; tarayıcı frekansı kendisi seçer, 48000), `Sounds()`: efektler
   (jump, coin, stomp, hurt, start, game_over, life, spring, crumble, shoot, powerup, powerdown) ve 8 ölçülük döngü müzik (`MELODY`/`BASS` nota
@@ -246,3 +278,7 @@ Açık depoda çalışma durumu girişsiz bakılabilir: https://api.github.com/r
 - ZORLUK MODLARI yapıldı: Kolay / Orta / Zor / Ultra Zor (kullanıcı Ultra Zor'u istedi), her modun ayrı rekoru.
   Kullanıcı oynayıp sayılar için geri bildirim verecek (settings `DIFFICULTIES`). Ultra'da kıpırdamayan oyuncuya
   lav ~2,4 sn'de yetişir (lav beklemez — kullanıcı seçimi; çok sert gelirse `lava_delay` artırılır).
+- GİRİŞ EKRANI yapıldı (kullanıcı: "başlamak için ekrana dokun yerine daha güzel bir şey"): oyunun içinde (title.py,
+  masaüstünde de var) + web'de yeni yükleme ekranı + ses kilidi (web.tmpl). Ana menünün başlığı da aynı piksel logo oldu.
+  Kullanıcı telefonda deneyecek — özellikle iPhone'da müzik ilk dokunuşta başlıyor mu (görünmez Chrome'da doğrulandı,
+  iPhone'da denenemedi; ses gelmezse web.tmpl'deki ses kilidine bak).

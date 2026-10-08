@@ -28,6 +28,10 @@ async def custom_site():
     platform.window.transfer.hidden = true
     platform.window.canvas.style.visibility = "visible"
 
+    # Indirme bitti, Python calisiyor: yukleme ekraninda artik "Hazirlaniyor" yazsin. Python'dan tarayiciya
+    # giden yazida Turkce harfler bozuluyor: yazi sadece ASCII, harfler HTML koduyla (&#305; = noktasiz i)
+    platform.window.loader_say("Haz&#305;rlan&#305;yor")
+
 
     bundle = "{{cookiecutter.archive}}"
 
@@ -59,25 +63,8 @@ async def custom_site():
 
     main = appdir / "assets" / "main.py"
 
-    # TODO: test for window.webkitAudioContext and block aio loop until gesture if accessing media manager play
-    # before a gesture is recorded ( touch or click )
-
-    # test/wait user media interaction
-    if not platform.window.MM.UME:
-
-        # now that apk is mounted we have access to font cache
-        # but we need to fill __file__ that is not yet set
-        __import__(__name__).__file__ = main
-
-        # now make a prompt
-        # "Baslamak icin ekrana dokun": Python'dan tarayiciya giden yazida Turkce harfler bozuluyor,
-        # o yuzden yazi sadece ASCII, harfler HTML koduyla (&#351; = s-cedilla, &#231; = c-cedilla)
-        msg  = "Ba&#351;lamak i&#231;in ekrana dokun"
-        platform.window.infobox.innerHTML = msg
-        print("\n"*4, f"    * Waiting for media user engagement. {msg} *" , "\n"*4)
-
-        while not platform.window.MM.UME:
-            await asyncio.sleep(.1)
+    # Oyun "ekrana dokun" beklemeden hemen acilir; ilk ekran oyunun kendi giris ekrani (title.py).
+    # Tarayici sesi ancak ilk dokunusta acar: o dokunusu asagidaki "Ses kilidi" kodu yakalar.
 
     # start async top level machinery if not started and add a console in any case if requested.
     await TopLevel_async_handler.start_toplevel(platform.shell, console=window.python.config.debug)
@@ -88,14 +75,14 @@ async def custom_site():
 
 
     def ui_callback(pkg):
-        platform.window.infobox.innerText = f"installing {pkg}"
+        print(f"installing {pkg}")
 
     await shell.source(main, callback=ui_callback)
 
     # if you don't reach that step
     # your main.py has an infinite sync loop somewhere !
 
-    platform.window.infobox.style.display = "none"
+    # Yukleme ekranini oyun kendisi kaldirir: ilk karesini cizince (main.py, hide_web_loader)
     platform.window.config.gui_divider = 1
     platform.window.window_resize()
     print("default.tmpl: done")
@@ -163,20 +150,47 @@ config = {
     fb_height : "{{cookiecutter.height}}"
 }
 
-function show_infobox() {
-    infobox.style.display = "block";
+</script>
 
-    // Measure box
-    const w = infobox.offsetWidth;
-    const h = infobox.offsetHeight;
+<script type="application/javascript">
+// Ses kilidi: tarayici, kullanici sayfaya dokunmadan ses calmaz. Oyunun ses motoru (SDL) acilista bir
+// AudioContext kurar, o da "askida" baslar. Ilk dokunusta / tiklamada / tusta burada uyandirilir — iPhone'da
+// bu ancak dokunma olayinin tam icinde yapilirsa olur. Ses sonradan yine askiya alinirsa (ornegin telefonda
+// baska uygulamaya gecip donunce) sonraki dokunusta yine acilir.
+(function () {
+    const Base = window.AudioContext || window.webkitAudioContext
+    if (!Base)
+        return
+    const contexts = []
+    // Oyunun kurdugu her AudioContext'i aklimizda tutalim
+    class TrackedAudioContext extends Base {
+        constructor(...args) {
+            super(...args)
+            contexts.push(this)
+        }
+    }
+    window.AudioContext = TrackedAudioContext
+    if (window.webkitAudioContext)
+        window.webkitAudioContext = TrackedAudioContext
 
-    // Center in viewport
-    const left = (window.innerWidth - w) / 2;
-    const top = (window.innerHeight - h) / 2;
-
-    infobox.style.left = left + "px";
-    infobox.style.top = top + "px";
-}
+    function unlock() {
+        for (const ctx of contexts) {
+            if (ctx.state === "running" || ctx.state === "closed")
+                continue
+            ctx.resume().catch(() => {})
+            // Eski iPhone'larda ayrica bos bir ses calmak gerekiyor
+            try {
+                const source = ctx.createBufferSource()
+                source.buffer = ctx.createBuffer(1, 1, 22050)
+                source.connect(ctx.destination)
+                source.start(0)
+            } catch (error) {}
+        }
+    }
+    // true = olay oyuna ulasmadan once yakalanir
+    for (const name of ["touchend", "pointerup", "mousedown", "click", "keydown"])
+        window.addEventListener(name, unlock, true)
+})()
 
 </script>
 
@@ -184,7 +198,9 @@ function show_infobox() {
     <meta charset="UTF-8">
     <!--
         Web surumunun sayfa sablonu (pygbag 0.9.3 default.tmpl'den). Degisenler: koyu arka plan,
-        Turkce yazilar (sayfa kodlamasi ne olursa olsun bozulmasin diye chr ile), pikseller keskin,
+        yukleme ekrani (donen altin; oyun ilk karesini cizince kaybolur), "ekrana dokun" beklemesi yok
+        (oyunun kendi giris ekrani var, title.py), ses kilidi (ilk dokunusta sesi acar),
+        Turkce yazilar HTML koduyla (sayfa kodlamasi ne olursa olsun bozulmasin), pikseller keskin,
         telefonda kaydirma/yakinlastirma kapali, ekran orani oyunun boyutundan (fb_ar).
         pygbag burada sadece {{ cookiecutter.xxx }} yerlerini doldurur.
     -->
@@ -211,17 +227,66 @@ function show_infobox() {
             width: 300px;
         }
 
-        #infobox {
-            position: fixed; /* center relative to viewport */
-            background: #2a1f55;
-            color: #ffd228;
-            border: 3px solid #ffd228;
-            border-radius: 12px;
-            font-size: 20px;
-            font-weight: bold;
-            padding: 14px 26px;
- /*           display: none; */
+        /* Yukleme ekrani: oyunla ayni oranda kutu, oyunun ilk gokyuzu renkleriyle (settings.SKY_THEMES);
+           ortada donen altin, "Yukleniyor" yazisi ve indirme cubugu. Oyun ilk karesini cizince kaybolur */
+        #loader {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
             z-index: 999999;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: #0c0c20;
+            transition: opacity 0.5s;
+        }
+
+        #loader.done {
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        #loader_box {
+            width: min(100vw, calc(100vh * {{cookiecutter.width}} / {{cookiecutter.height}}));
+            height: min(100vh, calc(100vw * {{cookiecutter.height}} / {{cookiecutter.width}}));
+            background: linear-gradient(#0c0c20, #322254);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 18px;
+        }
+
+        #loader_coin {
+            width: 40px;
+            height: 40px;
+            image-rendering: pixelated;
+            image-rendering: crisp-edges;
+        }
+
+        #loader_text {
+            color: #ffd228;
+            font: bold 22px arial, sans-serif;
+            text-shadow: 2px 2px 0 #000000;
+        }
+
+        #loader_bar {
+            width: 160px;
+            height: 10px;
+            border: 2px solid #968cd2;
+            border-radius: 7px;
+            background: #282450;
+            overflow: hidden;
+            visibility: hidden;
+        }
+
+        #loader_fill {
+            width: 0%;
+            height: 100%;
+            background: #ffd228;
+            transition: width 0.3s;
         }
         div.emscripten { text-align: center; }
         div.emscripten_border { border: 1px solid black; }
@@ -331,7 +396,80 @@ height="{{cookiecutter.height}}px"
     oncontextmenu="event.preventDefault()" tabindex=1 hidden>
     </canvas>
 
-    <div id="infobox">Y&uuml;kleniyor, l&uuml;tfen bekle...</div>
+    <div id="loader">
+        <div id="loader_box">
+            <canvas id="loader_coin" width="5" height="5"></canvas>
+            <div id="loader_text">Y&uuml;kleniyor</div>
+            <div id="loader_bar"><div id="loader_fill"></div></div>
+        </div>
+    </div>
+
+    <script type="application/javascript">
+    // Yukleme ekrani: donen altin (oyundaki altinin aynisi, art.py COIN_ROWS), noktalari artan yazi ve
+    // indirme cubugu (pygbag'in gizli #progress cubugundan okunur). Oyun ilk karesini cizince Python
+    // loader_done()'u cagirir (main.py, hide_web_loader); ekran yavasca kaybolur.
+    (function () {
+        const coin_rows = [
+            [".KKK.", "KYhYK", "KYYYK", "KYyYK", ".KKK."],
+            ["..K..", ".KhK.", ".KYK.", ".KyK.", "..K.."],
+            ["..K..", "..K..", "..K..", "..K..", "..K.."],
+        ]
+        const coin_colors = { K: "#c88c14", Y: "#ffd228", y: "#d8b222", h: "#fff1be" }
+        const coin_frames = [0, 1, 2, 1]
+        const coin = document.getElementById("loader_coin").getContext("2d")
+        const text = document.getElementById("loader_text")
+        const bar = document.getElementById("loader_bar")
+        const fill = document.getElementById("loader_fill")
+        let word = "Y&uuml;kleniyor"
+        let tick = 0
+        let downloaded = 0
+
+        const timer = setInterval(function () {
+            coin.clearRect(0, 0, 5, 5)
+            coin_rows[coin_frames[tick % coin_frames.length]].forEach((row, y) => {
+                for (let x = 0; x < row.length; x++) {
+                    if (row[x] !== ".") {
+                        coin.fillStyle = coin_colors[row[x]]
+                        coin.fillRect(x, y, 1, 1)
+                    }
+                }
+            })
+            // Sonundaki noktalar 0-3 arasi artar (yazi kaymasin diye eksik noktalar gorunmez)
+            const dots = Math.floor(tick / 3) % 4
+            text.innerHTML = word + ".".repeat(dots) + '<span style="visibility: hidden">' + ".".repeat(3 - dots) + "</span>"
+            // Indirme ilerlemesi (ilk acilista uzun surer; sonra tarayici hatirlar)
+            const progress = document.getElementById("progress")
+            if (progress && progress.value > downloaded) {
+                downloaded = Math.min(100, progress.value)
+                bar.style.visibility = "visible"
+                fill.style.width = downloaded + "%"
+            }
+            tick++
+        }, 120)
+
+        // Python yaziyi degistirir (Turkce harfler HTML koduyla gelir)
+        window.loader_say = function (html) {
+            word = html
+            if (downloaded > 0)
+                fill.style.width = "100%"
+        }
+
+        window.loader_done = function () {
+            // Oyun ekrani artik gercek boyunda: sayfadaki yeri ve orani simdi yeniden hesaplansin (pygbag bunu
+            // oyun ekrani kurulmadan yaparsa kare sanip basik cizebiliyor), sonra yukleme ekrani kaybolsun
+            if (window.window_resize)
+                window.window_resize()
+            const loader = document.getElementById("loader")
+            setTimeout(function () {
+                loader.classList.add("done")
+            }, 200)
+            setTimeout(function () {
+                clearInterval(timer)
+                loader.remove()
+            }, 800)
+        }
+    })()
+    </script>
 
     <div id=html></div>
 
@@ -406,8 +544,6 @@ frameborder="1"
         transfer.hidden = debug_hidden
         info.hidden = debug_hidden
         box.hidden =  debug_hidden
-
-        show_infobox()
     }
 
     function custom_prerun(){

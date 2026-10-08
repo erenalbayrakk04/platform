@@ -258,6 +258,28 @@ HINT_COLOR = (180, 180, 200)  # soluk bilgi yazıları
 SLOW_HINT_COLOR = (255, 210, 40)  # "Düşük Güç Modu'nu kapat" ipucu (sarı, dikkat çeksin)
 GAME_OVER_DELAY = 60  # kaybettin ekranında tuşların kaç kare sonra çalışacağı (yanlışlıkla geçilmesin)
 
+# Oyunun adı (logo): giriş ekranında ve ana menüde aynı yerde, kalın piksel harflerle (art.py, LOGO_FONT)
+LOGO_PIXEL = 3  # harflerin her ince karesi kaç piksel (büyürse logo büyür)
+LOGO_TOP = 84  # logonun üst kenarı (y)
+LOGO_LINE_GAP = 10  # iki satır arası (piksel)
+LOGO_COLORS = [  # her satırın (üst rengi, alt rengi): ilk satır altın, ikinci satır lav gibi
+    ((255, 240, 150), (250, 160, 30)),
+    ((255, 205, 100), (235, 85, 35)),
+]
+LOGO_OUTLINE_COLOR = (40, 18, 48)  # harflerin koyu kenarı
+LOGO_WAVE = 3  # harfler kaç piksel aşağı yukarı dalgalanır
+LOGO_WAVE_TIME = 1.6  # bir dalga kaç saniye sürer
+LOGO_SHINE_TIME = 4  # kaç saniyede bir logonun üstünden parıltı geçer
+
+# Giriş ekranı (oyun açılınca ilk ekran; dokununca ana menü gelir)
+TITLE_SCALE = 2  # karakter, adacık ve altınlar kaç kat büyük çizilir
+TITLE_WALK_SPEED = 1  # karakter adacıkta her karede kaç piksel yürür
+TITLE_HOP_TIME = 110  # karakter kaç karede bir zıplar (60 kare = 1 saniye)
+TITLE_HOP_POWER = 9  # zıplama gücü
+TITLE_LAUNCH_POWER = 22  # dokununca karakter bu güçle yukarı fırlar
+TITLE_LEAVE_TIME = 40  # dokunduktan sonra ana menünün belirmesi kaç kare sürer
+TITLE_EMBER_CHANCE = 0.35  # her karede lavdan kıvılcım çıkma ihtimali
+
 # Görünüş — resimler art.py'de kodla piksel piksel çiziliyor (renkleri yukarıdaki ayarlardan alır)
 PIXEL_SCALE = 4  # piksel sanatındaki her kare ekranda kaç piksel (büyürse daha "kaba" görünür)
 ANIMATION_SPEED = 8  # yürüme ve düşman animasyonunda her resim kaç kare ekranda kalır
