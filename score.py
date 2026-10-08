@@ -1,8 +1,6 @@
 # Yükseklik (asıl hedef, büyük yazı) ve puan: tırmanılan yükseklik + altınlar + yenilen düşmanlar.
 # Ekranın sol üstünde, kameradan bağımsız çizilir. Canlar (kalpler) sağ üstte.
-# Rekorlar (en yüksek tırmanış ve en yüksek puan) dosyada / tarayıcı hafızasında saklanır.
-import os
-
+# Rekorların saklanması storage.py'de.
 import pygame
 
 from art import heart_images, magnet_image, shield_image
@@ -17,13 +15,9 @@ from settings import (
     SCORE_SMALL_FONT_SIZE,
     SCREEN_WIDTH,
     PLAYER_LIVES,
-    HIGHSCORE_FILE,
-    HIGHSCORE_KEY,
-    BEST_HEIGHT_FILE,
-    BEST_HEIGHT_KEY,
+    PAUSE_BUTTON_SIZE,
     RECORD_TOAST_TIME,
     RECORD_COLOR,
-    WEB,
     POWERUP_WARN_TIME,
 )
 
@@ -124,59 +118,18 @@ def draw_text(screen, font, text, color=SCORE_COLOR, **position):
     screen.blit(image, rect)
 
 
-# Rekor türleri: (bilgisayardaki dosya, tarayıcı hafızasındaki ad)
-RECORDS = {
-    "height": (BEST_HEIGHT_FILE, BEST_HEIGHT_KEY),  # en yüksek tırmanış (blok)
-    "score": (HIGHSCORE_FILE, HIGHSCORE_KEY),  # en yüksek puan
-}
-
-
-def record_path(kind):
-    # Dosya, oyunun klasöründe dursun (oyun nereden çalıştırılırsa çalıştırılsın)
-    return os.path.join(os.path.dirname(os.path.abspath(__file__)), RECORDS[kind][0])
-
-
-# Tarayıcıda dosyaya yazılan şey sayfa kapanınca kaybolur; orada rekor tarayıcının kendi
-# hafızasında (localStorage) saklanır. pygbag, tarayıcıya platform.window ile eriştirir.
-
-
-def load_record(kind):
-    # Kayıt yoksa veya bozuksa 0
-    try:
-        if WEB:
-            from platform import window
-
-            return int(window.localStorage.getItem(RECORDS[kind][1]) or 0)
-        with open(record_path(kind), encoding="utf-8") as f:
-            return int(f.read().strip())
-    except Exception:
-        return 0
-
-
-def save_record(kind, value):
-    try:
-        if WEB:
-            from platform import window
-
-            window.localStorage.setItem(RECORDS[kind][1], str(value))
-            return
-        with open(record_path(kind), "w", encoding="utf-8") as f:
-            f.write(str(value))
-    except Exception:
-        pass  # kaydedilemese de oyun çalışmaya devam etsin
-
-
 HEART_IMAGES = {}
 
 
 def draw_lives(screen, lives):
-    # Sağ üstte PLAYER_LIVES kadar kalp: kalan canlar dolu, kaybedilenler gri
+    # Sağ üstte (durdur düğmesinin solunda) PLAYER_LIVES kadar kalp: kalan canlar dolu, kaybedilenler gri
     if not HEART_IMAGES:  # ilk çizimde bir kere hazırla
         HEART_IMAGES.update(heart_images())
     width = HEART_IMAGES["full"].get_width() + 6
+    right = SCREEN_WIDTH - 12 - PAUSE_BUTTON_SIZE - 6
     for i in range(PLAYER_LIVES):
         image = HEART_IMAGES["full" if i < lives else "empty"]
-        screen.blit(image, (SCREEN_WIDTH - 12 - (PLAYER_LIVES - i) * width, 14))
+        screen.blit(image, (right - (PLAYER_LIVES - i) * width, 14))
 
 
 POWER_ICONS = {}

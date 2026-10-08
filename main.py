@@ -26,14 +26,18 @@ from settings import (
     SHIELD_COLOR,
     POWERUP_WARN_TIME,
     LAVA_COLOR,
+    DIFFICULTY_NAMES,
+    DEFAULT_DIFFICULTY,
     WEB,
 )
 from player import Player
 from level import Level
 from lava import Lava
 from camera import Camera
-from score import Score, draw_lives, draw_powers, draw_text, load_record, save_record
-from screens import draw_menu, draw_game_over
+from score import Score, draw_lives, draw_powers, draw_text
+from storage import load_record, save_record, load_dict, save_dict
+import screens
+from ui import PauseButton
 from art import Background, shield_bubble
 from controls import TouchButtons, read_controls
 from effects import burst
@@ -44,8 +48,11 @@ PICKUP_COLORS = {"heart": LIFE_COLOR, "magnet": MAGNET_COLOR, "shield": SHIELD_C
 # Kalkan sürerken karakterin etrafındaki baloncuk
 SHIELD_BUBBLE = []
 
-# Menüde ve kaybettin ekranında oyunu başlatan tuşlar (fare tıklaması da çalışır)
-START_KEYS = (pygame.K_SPACE, pygame.K_RETURN, pygame.K_KP_ENTER)
+# Saklanan istatistikler ve seçenekler (storage.py), ilk açılıştaki değerleriyle
+STATS_DEFAULTS = {"games": 0, "climbed": 0, "coins": 0, "enemies": 0}
+OPTIONS_DEFAULTS = {"muted": False, "difficulty": DEFAULT_DIFFICULTY}
+# Oyun sırasında durduran tuşlar
+PAUSE_KEYS = (pygame.K_ESCAPE, pygame.K_p)
 
 
 class StepTimer:
@@ -243,6 +250,175 @@ def draw_world(screen, background, level, player, camera, score):
         screen.blit(bubble, bubble.get_rect(center=camera.apply(player.rect).center))
 
 
+class Game:
+    # Oyunun bütün durumu: hangi ekrandayız, rekorlar, seçenekler ve şu an oynanan bölüm.
+    # Ekranlar (state): "menu" (ana menü), "howto" (nasıl oynanır), "records" (rekorlar),
+    # "playing" (oyun), "paused" (durdu), "game_over" (kaybettin)
+    def __init__(self, sounds):
+        self.sounds = sounds
+        # Rekorlar: asıl hedef en yüksek tırmanış (blok), ayrıca en yüksek puan
+        self.best_height = load_record("height")
+        self.high_score = load_record("score")
+        self.stats = load_dict("stats", STATS_DEFAULTS)
+        self.options = load_dict("options", OPTIONS_DEFAULTS)
+        if self.options["difficulty"] not in DIFFICULTY_NAMES:
+            self.options["difficulty"] = DEFAULT_DIFFICULTY
+        if self.options["muted"]:
+            sounds.toggle_mute()
+        self.state = "menu"
+        self.game_over_timer = 0  # kaybettin ekranında düğmeler çıkana kadar kalan kare
+        self.new_record = False
+        self.pause_button = PauseButton()
+        self.reset()
+
+    def reset(self):
+        # Yeni bölüm kur (menünün arkasında da bu görünür)
+        self.level, self.player, self.camera, self.score = new_game(self.best_height)
+
+    def labels(self):
+        # Yazısı değişen düğmeler
+        return {
+            "sound": "Ses: Kapalı" if self.sounds.muted else "Ses: Açık",
+            "difficulty": f"Zorluk: {DIFFICULTY_NAMES[self.options['difficulty']]}",
+        }
+
+    def save_options(self):
+        self.options["muted"] = self.sounds.muted
+        save_dict("options", self.options)
+
+    def toggle_sound(self):
+        self.sounds.toggle_mute()
+        self.save_options()
+
+    def next_difficulty(self):
+        # Kolay → Orta → Zor → Kolay ...
+        names = list(DIFFICULTY_NAMES)
+        index = names.index(self.options["difficulty"])
+        self.options["difficulty"] = names[(index + 1) % len(names)]
+        self.save_options()
+
+    def start(self):
+        # Yeni oyuna başla
+        self.reset()
+        self.state = "playing"
+        self.sounds.play("start")
+        self.sounds.start_music()
+
+    def to_menu(self):
+        if self.state == "game_over":
+            self.sounds.start_music()  # kaybedince durmuştu
+        self.reset()
+        self.state = "menu"
+
+    def finish(self):
+        # Oyun bitti (kaybetti ya da yarıda ana menüye döndü): rekorları ve toplamları kaydet
+        score = self.score
+        self.new_record = score.new_record  # yükseklik rekoru
+        if self.new_record:
+            self.best_height = score.height
+            save_record("height", self.best_height)
+        if score.total > self.high_score:
+            self.high_score = score.total
+            save_record("score", self.high_score)
+        self.stats["games"] += 1
+        self.stats["climbed"] += score.height
+        self.stats["coins"] += score.coins
+        self.stats["enemies"] += score.enemies
+        save_dict("stats", self.stats)
+
+    def handle_event(self, event):
+        # Ekrana göre tuş / dokunuş / tıklama. Oyundan çıkılacaksa False döner
+        key = event.key if event.type == pygame.KEYDOWN else None
+        if self.state == "menu":
+            if key == pygame.K_ESCAPE and not WEB:
+                return False  # tarayıcıda çıkış yok (sayfa kapatılır)
+            action = screens.MAIN_BUTTONS.handle_event(event)
+            if action == "play":
+                self.start()
+            elif action == "difficulty":
+                self.next_difficulty()
+            elif action == "sound":
+                self.toggle_sound()
+            elif action in ("howto", "records"):
+                self.state = action
+                screens.BACK_BUTTON.focus = 0
+
+        elif self.state in ("howto", "records"):
+            if key == pygame.K_ESCAPE or screens.BACK_BUTTON.handle_event(event) == "back":
+                self.state = "menu"
+
+        elif self.state == "playing":
+            if key in PAUSE_KEYS or self.pause_button.clicked(event):
+                self.state = "paused"
+                screens.PAUSE_BUTTONS.focus = 0
+
+        elif self.state == "paused":
+            action = screens.PAUSE_BUTTONS.handle_event(event)
+            if key in PAUSE_KEYS or action == "resume":
+                self.state = "playing"
+            elif action == "sound":
+                self.toggle_sound()
+            elif action == "menu":
+                self.finish()
+                self.to_menu()
+
+        elif self.state == "game_over" and self.game_over_timer == 0:
+            action = screens.GAME_OVER_BUTTONS.handle_event(event)
+            if action == "again":
+                self.start()
+            elif action == "menu" or key == pygame.K_ESCAPE:
+                self.to_menu()
+        return True
+
+    def update(self, steps, touch):
+        # Oyun, geçen süre kadar adım ilerler (StepTimer)
+        if self.state == "playing":
+            controls = read_controls(touch)
+            for _ in range(steps):
+                update_game(self.level, self.player, self.camera, self.score, controls, self.sounds)
+                # Can bitti → kaybettin ekranı; rekor kırıldıysa hemen kaydet
+                if self.player.lives <= 0:
+                    self.state = "game_over"
+                    self.game_over_timer = GAME_OVER_DELAY
+                    screens.GAME_OVER_BUTTONS.focus = 0
+                    self.sounds.stop_music()
+                    self.sounds.play("game_over")
+                    self.finish()
+                    break
+        elif self.state == "game_over":
+            self.game_over_timer = max(0, self.game_over_timer - steps)
+
+    def draw(self, screen, background, touch, slow):
+        # Oyun dünyası her ekranda arkada görünür
+        draw_world(screen, background, self.level, self.player, self.camera, self.score)
+        if self.state == "menu":
+            screens.draw_main_menu(screen, self.best_height, self.labels(), WEB)
+        elif self.state == "howto":
+            screens.draw_howto(screen)
+        elif self.state == "records":
+            screens.draw_records(screen, self.best_height, self.high_score, self.stats)
+        else:
+            # Puan ve canlar kameradan bağımsız: hep ekranın üst köşelerinde
+            self.score.draw(screen)
+            draw_lives(screen, self.player.lives)
+            draw_powers(screen, self.player)
+            if self.state == "playing":
+                touch.draw(screen)
+                self.pause_button.draw(screen)
+            elif self.state == "paused":
+                screens.draw_pause(screen, self.labels())
+            elif self.state == "game_over":
+                screens.draw_game_over(
+                    screen,
+                    self.score,
+                    self.best_height,
+                    self.high_score,
+                    self.new_record,
+                    self.game_over_timer == 0,
+                    slow,
+                )
+
+
 async def main():
     sound.pre_init()  # ses ayarı pygame.init()'ten önce yapılmalı
     pygame.init()
@@ -255,14 +431,7 @@ async def main():
     touch = TouchButtons()
     mute_key = pygame.key.key_code(MUTE_KEY)
 
-    # Rekorlar: asıl hedef en yüksek tırmanış (blok), ayrıca en yüksek puan
-    best_height = load_record("height")
-    high_score = load_record("score")
-    level, player, camera, score = new_game(best_height)
-    # Hangi ekrandayız: "menu" (başlangıç), "playing" (oyun), "game_over" (kaybettin)
-    state = "menu"
-    game_over_timer = 0  # kaybettin ekranında tuşlar çalışana kadar kalan kare
-    new_record = False
+    game = Game(sounds)
     sounds.start_music()
     timer = StepTimer()
     fps_meter = FpsMeter()
@@ -270,77 +439,27 @@ async def main():
 
     running = True
     while running:
-        # 1) Olaylar: pencere kapatma, tuşa basma vb.
-        start_pressed = False
+        # 1) Olaylar: pencere kapatma, tuşa basma, dokunma vb.
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 running = False
-            elif event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE and not WEB:
-                running = False  # tarayıcıda çıkış yok (sayfa kapatılır)
             elif event.type == pygame.KEYDOWN and event.key == mute_key:
-                sounds.toggle_mute()
-            elif event.type == pygame.KEYDOWN and event.key in START_KEYS:
-                start_pressed = True
-            elif event.type in (pygame.MOUSEBUTTONDOWN, pygame.FINGERDOWN):
-                start_pressed = True
+                game.toggle_sound()
+            elif not game.handle_event(event):
+                running = False
             touch.handle_event(event)  # ekrana dokunan parmakları takip et
         touch.update()
 
-        # 2) Güncelleme: hangi ekrandaysak onun işi. Oyun, geçen süre kadar adım ilerler
+        # 2) Güncelleme: hangi ekrandaysak onun işi
         steps = timer.steps()
-        if state == "menu":
-            if start_pressed:
-                state = "playing"
-                sounds.play("start")
+        game.update(steps, touch)
 
-        elif state == "playing":
-            controls = read_controls(touch)
-            for _ in range(steps):
-                update_game(level, player, camera, score, controls, sounds)
-                # Can bitti → kaybettin ekranı; rekor kırıldıysa hemen kaydet
-                if player.lives <= 0:
-                    state = "game_over"
-                    game_over_timer = GAME_OVER_DELAY
-                    sounds.stop_music()
-                    sounds.play("game_over")
-                    new_record = score.new_record  # yükseklik rekoru
-                    if new_record:
-                        best_height = score.height
-                        save_record("height", best_height)
-                    if score.total > high_score:
-                        high_score = score.total
-                        save_record("score", high_score)
-                    break
-
-        elif state == "game_over":
-            if game_over_timer > 0:
-                game_over_timer = max(0, game_over_timer - steps)
-            elif start_pressed:
-                level, player, camera, score = new_game(best_height)
-                state = "playing"
-                sounds.play("start")
-                sounds.start_music()
-
-        # 3) Çizim — oyun dünyası her ekranda arkada görünür. Bu karede adım oynanmadıysa (hızlı
-        # ekranlarda olur) hiçbir şey değişmedi, yeniden çizmeye gerek yok
+        # 3) Çizim. Bu karede adım oynanmadıysa (hızlı ekranlarda olur) hiçbir şey değişmedi,
+        # yeniden çizmeye gerek yok
         if steps:
             fps_meter.count()
-            # Telefon saniyede az kare gösteriyorsa (Düşük Güç Modu) menülerde ipucu çıkar
-            slow = WEB and fps_meter.slow
-            draw_world(screen, background, level, player, camera, score)
-            if state == "menu":
-                draw_menu(screen, best_height, high_score, slow)
-            else:
-                # Puan ve canlar kameradan bağımsız: hep ekranın üst köşelerinde
-                score.draw(screen)
-                draw_lives(screen, player.lives)
-                draw_powers(screen, player)
-                if state == "playing":
-                    touch.draw(screen)
-                if state == "game_over":
-                    draw_game_over(
-                        screen, score, best_height, high_score, new_record, game_over_timer == 0, slow
-                    )
+            # Telefon saniyede az kare gösteriyorsa (Düşük Güç Modu) kaybettin ekranında ipucu çıkar
+            game.draw(screen, background, touch, WEB and fps_meter.slow)
             if show_fps:
                 fps_meter.draw(screen)
             pygame.display.flip()

@@ -139,6 +139,26 @@ HIGHSCORE_KEY = "platform-oyunu-rekor"  # web sürümünde en yüksek puanın ta
 BEST_HEIGHT_FILE = "bestheight.txt"
 BEST_HEIGHT_KEY = "platform-oyunu-yukseklik-rekor"
 RECORD_TOAST_TIME = 120  # rekoru geçince "YENİ REKOR!" yazısı kaç kare görünür
+# İstatistikler (oynanan oyun, toplam altın...) ve seçenekler (ses, zorluk) — aynı şekilde saklanır
+STATS_FILE = "stats.json"
+STATS_KEY = "platform-oyunu-istatistik"
+OPTIONS_FILE = "options.json"
+OPTIONS_KEY = "platform-oyunu-secenekler"
+
+# Zorluk seçimi (ana menüde): kayıttaki adı → ekranda görünen adı
+DIFFICULTY_NAMES = {"easy": "Kolay", "normal": "Orta", "hard": "Zor"}
+DEFAULT_DIFFICULTY = "normal"
+
+# Menü düğmeleri
+BUTTON_WIDTH = 250
+BUTTON_HEIGHT = 52
+BUTTON_FONT_SIZE = 32
+BUTTON_COLOR = (40, 36, 80)  # düğmenin içi
+BUTTON_FOCUS_COLOR = (90, 70, 150)  # seçili (klavyeyle üstüne gelinen / fareyle üstünde) düğme
+BUTTON_BORDER_COLOR = (150, 140, 210)
+BUTTON_FOCUS_BORDER_COLOR = (255, 210, 40)
+BUTTON_CLICK_GAP = 250  # iki tıklama arası en az kaç milisaniye (telefonda bir dokunuş iki kez sayılmasın)
+PAUSE_BUTTON_SIZE = 36  # oyun sırasında sağ üstteki durdur düğmesi (piksel)
 
 # Menü ve "Kaybettin" ekranı
 OVERLAY_ALPHA = 170  # oyunun üstüne serilen karanlık perdenin koyuluğu (0 = yok, 255 = simsiyah)
