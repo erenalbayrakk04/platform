@@ -14,7 +14,6 @@ from settings import (
     SCORE_FONT_SIZE,
     SCORE_SMALL_FONT_SIZE,
     SCREEN_WIDTH,
-    PLAYER_LIVES,
     PAUSE_BUTTON_SIZE,
     RECORD_TOAST_TIME,
     RECORD_COLOR,
@@ -121,15 +120,15 @@ def draw_text(screen, font, text, color=SCORE_COLOR, **position):
 HEART_IMAGES = {}
 
 
-def draw_lives(screen, lives):
-    # Sağ üstte (durdur düğmesinin solunda) PLAYER_LIVES kadar kalp: kalan canlar dolu, kaybedilenler gri
+def draw_lives(screen, lives, max_lives):
+    # Sağ üstte (durdur düğmesinin solunda) max_lives kadar kalp: kalan canlar dolu, kaybedilenler gri
     if not HEART_IMAGES:  # ilk çizimde bir kere hazırla
         HEART_IMAGES.update(heart_images())
     width = HEART_IMAGES["full"].get_width() + 6
     right = SCREEN_WIDTH - 12 - PAUSE_BUTTON_SIZE - 6
-    for i in range(PLAYER_LIVES):
+    for i in range(max_lives):
         image = HEART_IMAGES["full" if i < lives else "empty"]
-        screen.blit(image, (right - (PLAYER_LIVES - i) * width, 14))
+        screen.blit(image, (right - (max_lives - i) * width, 14))
 
 
 POWER_ICONS = {}

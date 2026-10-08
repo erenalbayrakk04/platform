@@ -59,8 +59,8 @@
   `check_chunk` yanlış parçada oyun açılırken hata verir. Yeni parça eklerken her iki giriş
   tarafı için her zorlukta parça olsun.
 - `enemy.py` — ortak `Patrol` (`patrol()`: `left`-`right` piksel arasında gidip gelir, ondalıklı `pos_x`,
-  `old_top` = önceki karedeki üst kenar); `Enemy(center_x, bottom, left, right)` yürür (`ENEMY_SPEED`),
-  `FlyingEnemy(center_x, center_y, left, right)` yarasa: `FLYER_SPEED` ile uçar, `FLYER_BOB` kadar süzülür.
+  `old_top` = önceki karedeki üst kenar); `Enemy(center_x, bottom, left, right, speed)` yürür,
+  `FlyingEnemy(center_x, center_y, left, right, speed)` yarasa: uçar, `FLYER_BOB` kadar süzülür (hızları level.py moda göre verir).
   İkisi de `level.enemies`'te; tile'larla çarpışma yok (sınırlar parçadan hesaplanır).
 - `level.py` — `Tile`, `Platform`, `Coin`, `Pickup`, `Spring` (`level.springs`; `Spring.squash()` basık resim), `MovingPlatform` (`level.movers` VE
   `level.tiles`; `move()` kaydığı pikseli döndürür; `unsafe = True`), `CrumblingPlatform` (`level.crumblers`;
@@ -69,16 +69,20 @@
   geri gelir, son `GHOST_TIME` karede `ghost` = silik çizilir; `unsafe = True`) sprite'ları (her `C` için `pick_item()`: `PICKUP_CHANCES`
   ihtimalleriyle altın yerine `Pickup(x, y, kind)` olur → `level.pickups`; kind "heart": `player.heal()` +1 can,
   can doluysa `score.add_bonus(HEART_POINTS)`; kind "magnet"/"shield" güçlendirme → `player.power_up(kind)`;
-  `Coin.attract(target)` mıknatısla `MAGNET_RADIUS` içindeyse `MAGNET_PULL` hızla uçar) ve `Level(seed)`: y=0 zeminin altı, yukarı çıktıkça
-  y EKSİ. `add_chunk`, `pick_chunk` (giriş = önceki çıkışın tersi, zorluk ≤ 1 + yükseklik //
-  `DIFFICULTY_STEP`; `random.choices` ağırlığı `1 + t·HARD_CHUNK_BIAS·(zorluk−1)` → yukarıda zor parçalar sık), `update(view_top, view_bottom)` (`GENERATE_AHEAD` kadar yukarıyı doldurur,
+  `Coin.attract(target)` mıknatısla `MAGNET_RADIUS` içindeyse `MAGNET_PULL` hızla uçar) ve `Level(mode, seed)` (mode = `DIFFICULTIES[...]` sözlüğü): y=0 zeminin altı, yukarı çıktıkça
+  y EKSİ. `add_chunk`, `pick_chunk` (giriş = önceki çıkışın tersi; yükseklik = tırmanılan + `map_head_start`,
+  zorluk ≤ 1 + yükseklik // `DIFFICULTY_STEP`; `random.choices` ağırlığı `1 + t·HARD_CHUNK_BIAS·(zorluk−1)` → yukarıda zor parçalar sık), `update(view_top, view_bottom)` (`GENERATE_AHEAD` kadar yukarıyı doldurur,
   `REMOVE_BELOW`'dan aşağıdaki parçaları siler). `tiles` = çarpılan her şey, `coins` = altınlar,
   `enemies` = düşmanlar (katı değiller; parça silinince onunkiler de silinir).
-  YÜKSELDİKÇE ZORLAŞMA: `hardness(height)` = 0 (başlangıç) → 1 (`HARD_HEIGHT` px tırmanınca), `blend(easy, hard, t)`.
-  `add_chunk` parçanın yüksekliğinden `t` hesaplar: düşman hızı `ENEMY_SPEED`→`ENEMY_SPEED_MAX`
-  (`Enemy(..., speed)`, `FlyingEnemy(..., speed)`), `pick_item(t)` kalp ihtimali `HEART_CHANCE`→`HEART_CHANCE_MIN`.
-  Zorluk sayıları settings.py "Zorluk" bölümünde ve `*_MAX`/`*_MIN` çiftleri → ileride kolay/orta/zor modları
-  bu sayıların farklı takımları olacak. Tile/Platform/Coin resimleri `level.image()`
+  ZORLUK MODLARI: settings `DIFFICULTIES` = mod → sayılar sözlüğü ("easy" Kolay, "normal" Orta = eski oyunun
+  sayıları, "hard" Zor, "ultra" Ultra Zor; `DIFFICULTY_NAMES` ekrandaki adlar). Anahtarlar: `lives`/`max_lives`,
+  `hard_height`, `map_head_start` (harita parçaları baştan o kadar yukarıdaymış gibi), `lava_delay`, `lava_speed(_max)`,
+  `enemy_speed(_max)`, `flyer_speed(_max)`, `heart_chance(_min)`. Ultra Zor (kullanıcı kararı): baştan en zor
+  (sayıları Orta'nın en zor hâlinden başlar, zor parçalar hemen), lav beklemez ve hızlı, 1 canla başlar (kalp nadir,
+  en fazla 3), kalkan/mıknatıs normal çıkar. Güçlendirme ihtimalleri modlara göre değişmez.
+  YÜKSELDİKÇE ZORLAŞMA: `hardness(height, mode)` = 0 (başlangıç) → 1 (modun `hard_height` px tırmanınca), `blend(easy, hard, t)`.
+  `add_chunk` parçanın yüksekliğinden `t` hesaplar: düşman hızı `enemy_speed`→`enemy_speed_max`,
+  `pick_item(t)` kalp ihtimali `heart_chance`→`heart_chance_min`. Tile/Platform/Coin resimleri `level.image()`
   ile bir kere hazırlanıp paylaşılır; `Coin.update()` dönme animasyonu., `bottom` = en alttaki parçanın altı, `width` piksel.
 - `score.py` — `Score(start_y, record)`: `height` = üstüne basılan en yüksek yer (blok = ekranda "m", sadece `on_ground`
   iken sayılır, düşünce azalmaz), `coins`, `enemies`, `total` = height × `HEIGHT_POINTS` + coins × `COIN_POINTS`
@@ -87,12 +91,14 @@
   başındaki yükseklik rekoru, `new_record` = geçildi mi; `update(player)` rekor o an kırıldıysa True döner
   (main "powerup" sesi çalar) ve `toast` = `RECORD_TOAST_TIME` kare "YENİ REKOR!" (ilk oyunda, rekor 0 iken yok);
   `draw_record_line(screen, camera)` haritada rekor yüksekliğinde kesikli çizgi + "Rekor N m" (draw_world, gökten hemen sonra);
-  `draw_lives(screen, lives)` sağ üstte, durdur düğmesinin solunda kalpler (kaybedilen can gri); `draw_powers(screen, player)` kalplerin
+  `draw_lives(screen, lives, max_lives)` sağ üstte, durdur düğmesinin solunda kalpler (kaybedilen can gri); `draw_powers(screen, player)` kalplerin
   altında süren güçlendirmelerin simgesi + süre çubuğu (son `POWERUP_WARN_TIME` karede yanıp söner); `draw_text(screen, font, text,
   color, center=/topleft=...)` gölgeli yazı (her yerde bu kullanılır; resimleri `TEXT_CACHE`'te, her karede
   yeniden yazılmaz).
 - `storage.py` — kalıcı kayıtlar, `STORES` = tür → (dosya, localStorage adı): "height" (`bestheight.txt`, asıl
-  rekor), "score" (`highscore.txt`, en yüksek puan), "stats" (`stats.json`: games/climbed/coins/enemies toplamları),
+  rekor), "score" (`highscore.txt`, en yüksek puan) — rekorlar HER MODUN AYRI: `load_record/save_record(..., mode)`,
+  `names(kind, mode)`: Orta eski adları kullanır, diğerlerinde ada `-easy`/`-hard`/`-ultra` eklenir (ör.
+  `bestheight-ultra.txt`; .gitignore ve pygbag.ini'de de var), "stats" (`stats.json`: games/climbed/coins/enemies toplamları),
   "options" (`options.json`: muted, difficulty, music_volume, effects_volume). `load_record/save_record` (sayı), `load_dict(kind, defaults)/save_dict`
   (JSON; eksik/bozuk/yanlış tipli değer → default). Dosyalar oyun klasöründe, git ve pygbag dışı; okunamazsa
   default, yazılamazsa sessiz; web'de (`settings.WEB`, `sys.platform == "emscripten"`) `platform.window.localStorage`.
@@ -108,9 +114,11 @@
   `PAUSE_BUTTONS` resume/sound/menu, `GAME_OVER_BUTTONS` again/menu), `LABELS` sabit yazılar (değişenleri main
   verir); `draw_main_menu` (başlık, "Rekor: N m", düğmeler, web'de HEP `draw_slow_hint` — kullanıcı isteği),
   `draw_howto` (kontroller + `HOWTO_ROWS`: oyundaki resimlerle her şeyin açıklaması — yeni öğe eklenince buraya da
-  ekle), `draw_records(best_height, high_score, stats)`, `draw_pause`, `draw_game_over(...)` (düğmeler `ready` olunca).
+  ekle), `draw_records(best_heights, high_scores, stats, current)` (her modun tırmanış + puan rekoru, seçili mod sarı; altında
+  tüm modların toplamları), `draw_pause`, `draw_game_over(screen, score, mode_name, ...)` (başlık altında "Zorluk: ...";
+  düğmeler `ready` olunca).
   Oyunun üstüne yarı saydam perde; büyük yazı yükseklik/rekor (m), puan küçük.
-- Can sistemi `Player`'da: `lives`, `invincible` (kalan kare; `visible` ile yanıp söner), `hurt()`
+- Can sistemi `Player`'da: `Player(x, y, level_width, lives, max_lives)` (moddan), `lives`, `max_lives` (kalp sınırı), `invincible` (kalan kare; `visible` ile yanıp söner), `hurt()`
   (can −1, dokunulmazlık, küçük sıçrama), `bounce(power)`, `check_springs(springs)` (ayak şeridi yaya
   değiyor ve yükselmiyorsa `SPRING_POWER` ile fırlar; main ve check_chunks ikisi de player.update'ten
   sonra çağırır), `heal()`, güçlendirmeler: `powers` {tür: kalan kare} (`POWER_TIME`), `power_up(kind)`,
@@ -131,24 +139,25 @@
   Kullanıcı iPhone'da doğruladı: Düşük Güç Modu açıkken 30, kapalıyken 60 kare/sn (oyunun elinde değil).
   `FpsMeter.count()` her çizilen karede sayar; `slow` = 2 sn üst üste `LOW_FPS_LIMIT` altı → web'de
   kaybettin ekranının altında `screens.draw_slow_hint` ("Düşük Güç Modu'nu kapat"; ana menüde web'de hep var).
-  `Game` sınıfı tüm durumu tutar: rekorlar, `stats`, `options` (açılışta yüklenir; muted ise ses kapalı başlar),
+  `Game` sınıfı tüm durumu tutar: rekorlar (`best_heights`/`high_scores` = mod → değer; `mode`, `best_height`,
+  `high_score` = seçili modunki), `stats` (tüm modların toplamı), `options` (açılışta yüklenir; muted ise ses kapalı başlar),
   `level/player/camera/score`; `state`: "menu" (ana menü) ↔ "sound"/"howto"/"records" (Geri/ESC);
   ses çubuğu oynayınca `change_volume` (ses kapalıysa açar, kaydeder, efektte örnek "coin" sesi çalar); menü "play" →
   `start()` → "playing" ↔ "paused" (⏸ düğmesi, ESC veya P; durunca Devam/Ses/Ana Menü); can biter → "game_over"
   (`GAME_OVER_DELAY` kare düğme yok) → Tekrar Oyna (`start()`) / Ana Menü (`to_menu()`). `finish()` oyun bitince
   (kaybedince VE durdurup ana menüye dönünce) rekorları + istatistikleri kaydeder. `handle_event`, `update(steps, touch)`,
   `draw(...)`. M tuşu her yerde `toggle_sound()` (kaydedilir). ESC ana menüde oyundan çıkar (web'de hariç).
-  `next_difficulty()` Kolay→Orta→Zor (`DIFFICULTY_NAMES`), şimdilik sadece kaydediliyor, oyuna etkisi YOK (sıradaki iş).
+  `next_difficulty()` Kolay→Orta→Zor→Ultra Zor (`DIFFICULTY_NAMES`), kaydeder ve `reset()` (arkadaki bölüm yeni moda göre).
   `update_game(...)` oyun mantığı, `draw_world(...)` dünyayı çizer (her ekranda arkada görünür).
   `main()` `async`: döngü sonunda `await asyncio.sleep(0)` (web için şart), en altta `asyncio.run(main())`.
-  `new_game(best_height)` yeni rastgele bölüm + karakter + kamera + puan kurar; altınlar
+  `new_game(best_height, mode)` yeni rastgele bölüm + karakter + kamera + puan kurar; altınlar
   `spritecollide(player, level.coins, True)` ile toplanır. Düşmana değince `player.old_bottom <= enemy.old_top`
   ise düşman ölür (`STOMP_BOUNCE`); kalkan (`player.powers["shield"]`) varken değdiği düşman zıplamadan ölür;
   değilse dokunulmaz değilken `hurt()`. `level.bottom`'ın altına düşerse (kalkan olsa da) `hurt()` +
   `respawn()`. Mıknatıs varken her karede `coin.attract(player.rect.center)`. Kalkan sürerken `draw_world`
   karakterin etrafına `art.shield_bubble` çizer. Düşmanın `color`'ı ölünce saçılan parçacıkların rengi.
-- `lava.py` — `Lava()`: aşağıdan yükselen lav, `level.lava`'da (new_game kurar). `y` = yüzey; `LAVA_DELAY`
-  bekler, sonra `blend(LAVA_SPEED, LAVA_SPEED_MAX, hardness(-camera.bottom))` hızla yükselir; ekranın en fazla
+- `lava.py` — `Lava(mode)`: aşağıdan yükselen lav, `level.lava`'da (new_game kurar). `y` = yüzey; `lava_delay`
+  bekler, sonra `blend(lava_speed, lava_speed_max, hardness(-camera.bottom, mode))` hızla yükselir; ekranın en fazla
   `LAVA_MAX_GAP` altında kalır (< `REMOVE_BELOW` → düşen önce lava değer). `update(camera_bottom)`, `touches(rect)`
   (ayak `LAVA_HIT_DEPTH` içerideyse) → main: kalkan olsa da `hurt()` + `respawn()` + `push_back(ayak)` (lav
   `LAVA_PUSHBACK` aşağı çekilir). `draw(screen, camera)` her şeyin önünde (`art.lava_frames()` dalga şeridi + düz dolgu);
@@ -211,5 +220,6 @@ Açık depoda çalışma durumu girişsiz bakılabilir: https://api.github.com/r
 - Sonra belki: başka güçlendirmeler (ör. jetpack), başka düşman türleri.
 - ANA MENÜ yapıldı (Oyna, Zorluk, Nasıl Oynanır, Rekorlar, Ses Ayarları (müzik/efekt seviyesi) + oyunda durdur). Web'de menüde "Düşük Güç Modu'nu
   kapat" sabit yazıyor (otomatik ipucu kullanıcının iPhone'unda çıkmamıştı).
-- SIRADAKİ: Zorluk düğmesinin etkisi (kolay/orta/zor modlar): settings "Zorluk" + lav + can sayılarının mod başına
-  takımı; her modun ayrı rekoru olsun (storage'da tür adına mod eklenebilir).
+- ZORLUK MODLARI yapıldı: Kolay / Orta / Zor / Ultra Zor (kullanıcı Ultra Zor'u istedi), her modun ayrı rekoru.
+  Kullanıcı oynayıp sayılar için geri bildirim verecek (settings `DIFFICULTIES`). Ultra'da kıpırdamayan oyuncuya
+  lav ~2,4 sn'de yetişir (lav beklemez — kullanıcı seçimi; çok sert gelirse `lava_delay` artırılır).

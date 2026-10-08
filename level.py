@@ -7,8 +7,6 @@ import pygame
 from settings import (
     TILE_SIZE,
     COIN_SPIN_SPEED,
-    HEART_CHANCE,
-    HEART_CHANCE_MIN,
     MAGNET_CHANCE,
     SHIELD_CHANCE,
     MAGNET_RADIUS,
@@ -21,21 +19,17 @@ from settings import (
     GENERATE_AHEAD,
     REMOVE_BELOW,
     DIFFICULTY_STEP,
-    HARD_HEIGHT,
     HARD_CHUNK_BIAS,
-    ENEMY_SPEED,
-    ENEMY_SPEED_MAX,
-    FLYER_SPEED,
-    FLYER_SPEED_MAX,
 )
 from chunks import START_CHUNK, CHUNKS, platform_run, moving_platforms, free_span
 from enemy import Enemy, FlyingEnemy
 import art
 
 
-def hardness(height):
-    # Ne kadar zorlaştı: 0 = oyunun başı, 1 = HARD_HEIGHT kadar tırmanıldı (en zor). height piksel, yukarı artı
-    return min(1.0, max(0.0, height / HARD_HEIGHT))
+def hardness(height, mode):
+    # Ne kadar zorlaştı: 0 = oyunun başı, 1 = zorluk modunun (settings.DIFFICULTIES) hard_height'ı kadar
+    # tırmanıldı (en zor). height piksel, yukarı artı
+    return min(1.0, max(0.0, height / mode["hard_height"]))
 
 
 def blend(easy, hard, t):
@@ -224,7 +218,9 @@ class Spring(pygame.sprite.Sprite):
 
 class Level:
     # Koordinatlar: en alttaki zeminin altı y = 0; yukarı çıktıkça y eksiye iner.
-    def __init__(self, seed=LEVEL_SEED):
+    def __init__(self, mode, seed=LEVEL_SEED):
+        # mode = zorluk modunun sayıları (settings.DIFFICULTIES): düşman hızı, kalp ihtimali, parça seçimi
+        self.mode = mode
         # Aynı seed (sayı) hep aynı haritayı üretir; None ise her oyun farklı
         self.random = random.Random(seed)
         # Karakterin çarptığı her şey (bloklar ve ince platformlar)
@@ -254,7 +250,8 @@ class Level:
         # Parçayı şu anki tepenin hemen üstüne yerleştir
         rows = chunk["rows"]
         top = self.top - len(rows) * TILE_SIZE
-        t = hardness(-top)  # yükseklerdeki parçada düşmanlar hızlı, kalpler seyrek
+        mode = self.mode
+        t = hardness(-top, mode)  # yükseklerdeki parçada düşmanlar hızlı, kalpler seyrek
         sprites = []
         for row_index, row in enumerate(rows):
             for col_index, cell in enumerate(row):
@@ -291,7 +288,7 @@ class Level:
                         y + TILE_SIZE,
                         left * TILE_SIZE,
                         (right + 1) * TILE_SIZE,
-                        blend(ENEMY_SPEED, ENEMY_SPEED_MAX, t),
+                        blend(mode["enemy_speed"], mode["enemy_speed_max"], t),
                     )
                     sprites.append(enemy)
                     self.enemies.add(enemy)
@@ -303,7 +300,7 @@ class Level:
                         y + TILE_SIZE // 2,
                         left * TILE_SIZE,
                         (right + 1) * TILE_SIZE,
-                        blend(FLYER_SPEED, FLYER_SPEED_MAX, t),
+                        blend(mode["flyer_speed"], mode["flyer_speed_max"], t),
                     )
                     sprites.append(flyer)
                     self.enemies.add(flyer)
@@ -329,7 +326,7 @@ class Level:
         # Altın karesine ne gelecek: çoğunlukla "coin", nadiren kalp veya güçlendirme.
         # Kalpler zorluk (t) arttıkça seyrekleşir
         chances = (
-            ("heart", blend(HEART_CHANCE, HEART_CHANCE_MIN, t)),
+            ("heart", blend(self.mode["heart_chance"], self.mode["heart_chance_min"], t)),
             ("magnet", MAGNET_CHANCE),
             ("shield", SHIELD_CHANCE),
         )
@@ -343,11 +340,12 @@ class Level:
     def pick_chunk(self):
         # Girişi, alttaki parçanın çıkışının karşı tarafında olan parçalardan rastgele seç
         entry = "R" if self.exit_side == "L" else "L"
-        # Yükseldikçe daha zor parçalar da seçilebilir
-        max_difficulty = 1 + int(-self.top // DIFFICULTY_STEP)
+        # Yükseldikçe daha zor parçalar da seçilebilir. Zor modlarda harita baştan yukarıdaymış gibi seçilir
+        height = -self.top + self.mode["map_head_start"]
+        max_difficulty = 1 + int(height // DIFFICULTY_STEP)
         options = [c for c in CHUNKS if c["entry"] == entry and c["difficulty"] <= max_difficulty]
         # Çok yükseklerde kolay parçalar seyrekleşir, zorlar sıklaşır
-        t = hardness(-self.top)
+        t = hardness(height, self.mode)
         weights = [1 + t * HARD_CHUNK_BIAS * (c["difficulty"] - 1) for c in options]
         return self.random.choices(options, weights)[0]
 

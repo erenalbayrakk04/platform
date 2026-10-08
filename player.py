@@ -6,7 +6,6 @@ from settings import (
     GRAVITY,
     JUMP_POWER,
     MAX_FALL_SPEED,
-    PLAYER_LIVES,
     INVINCIBLE_TIME,
     HURT_BOUNCE,
     ANIMATION_SPEED,
@@ -21,7 +20,8 @@ class Player(pygame.sprite.Sprite):
     # Güçlendirmeler kaç kare sürer
     POWER_TIME = {"magnet": MAGNET_TIME, "shield": SHIELD_TIME}
 
-    def __init__(self, x, y, level_width):
+    def __init__(self, x, y, level_width, lives=1, max_lives=1):
+        # lives / max_lives: kaç canla başlar / kalplerle en fazla kaç can (zorluk moduna göre, main.py verir)
         super().__init__()
         # Resimler (art.py): "idle" duruyor, "walk1"/"walk2" yürüyor, "jump" havada; her biri sağa/sola
         self.frames = player_frames()
@@ -33,7 +33,8 @@ class Player(pygame.sprite.Sprite):
         # En son güvenle üstünde durduğu yer — düşünce buradan devam eder
         self.safe_pos = (x, y)
         self.level_width = level_width
-        self.lives = PLAYER_LIVES
+        self.lives = lives
+        self.max_lives = max_lives
         self.invincible = 0  # dokunulmazlığın bitmesine kaç kare kaldı (0 = dokunulabilir)
         # Güçlendirmelerin bitmesine kaç kare kaldı (0 = yok); expired = bu karede bitenler (ses için)
         self.powers = dict.fromkeys(self.POWER_TIME, 0)
@@ -59,8 +60,8 @@ class Player(pygame.sprite.Sprite):
         self.velocity_y = -HURT_BOUNCE
 
     def heal(self):
-        # Bir can kazan (en fazla PLAYER_LIVES). Can zaten doluysa False döner
-        if self.lives >= PLAYER_LIVES:
+        # Bir can kazan (en fazla max_lives). Can zaten doluysa False döner
+        if self.lives >= self.max_lives:
             return False
         self.lives += 1
         return True

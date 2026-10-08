@@ -1,4 +1,4 @@
-# Kalıcı kayıtlar: rekorlar, istatistikler, seçenekler (ses, zorluk).
+# Kalıcı kayıtlar: rekorlar (her zorluk modunun ayrı), istatistikler, seçenekler (ses, zorluk).
 # Bilgisayarda oyun klasöründeki dosyalarda; tarayıcıda dosyaya yazılan şey sayfa kapanınca kaybolduğu için
 # tarayıcının kendi hafızasında (localStorage) saklanır. pygbag, tarayıcıya platform.window ile eriştirir.
 import json
@@ -14,6 +14,7 @@ from settings import (
     STATS_KEY,
     OPTIONS_FILE,
     OPTIONS_KEY,
+    DEFAULT_DIFFICULTY,
 )
 
 # Kayıt türleri: (bilgisayardaki dosya, tarayıcı hafızasındaki ad)
@@ -25,47 +26,57 @@ STORES = {
 }
 
 
-def path(kind):
+def names(kind, mode=None):
+    # (dosya adı, tarayıcı hafızasındaki ad). Rekorlar her zorluk modunun ayrı: Orta eski adları kullanır
+    # (ilk rekorlar o moddaydı), diğer modlarda adın sonuna mod eklenir (ör. bestheight-ultra.txt)
+    file, key = STORES[kind]
+    if mode and mode != DEFAULT_DIFFICULTY:
+        stem, ext = os.path.splitext(file)
+        return f"{stem}-{mode}{ext}", f"{key}-{mode}"
+    return file, key
+
+
+def path(kind, mode=None):
     # Dosya, oyunun klasöründe dursun (oyun nereden çalıştırılırsa çalıştırılsın)
-    return os.path.join(os.path.dirname(os.path.abspath(__file__)), STORES[kind][0])
+    return os.path.join(os.path.dirname(os.path.abspath(__file__)), names(kind, mode)[0])
 
 
-def load_text(kind):
+def load_text(kind, mode=None):
     # Kayıt yoksa veya okunamazsa None
     try:
         if WEB:
             from platform import window
 
-            return window.localStorage.getItem(STORES[kind][1])
-        with open(path(kind), encoding="utf-8") as f:
+            return window.localStorage.getItem(names(kind, mode)[1])
+        with open(path(kind, mode), encoding="utf-8") as f:
             return f.read()
     except Exception:
         return None
 
 
-def save_text(kind, text):
+def save_text(kind, text, mode=None):
     try:
         if WEB:
             from platform import window
 
-            window.localStorage.setItem(STORES[kind][1], text)
+            window.localStorage.setItem(names(kind, mode)[1], text)
             return
-        with open(path(kind), "w", encoding="utf-8") as f:
+        with open(path(kind, mode), "w", encoding="utf-8") as f:
             f.write(text)
     except Exception:
         pass  # kaydedilemese de oyun çalışmaya devam etsin
 
 
-def load_record(kind):
-    # Sayı olarak kayıt; yoksa veya bozuksa 0
+def load_record(kind, mode=None):
+    # Sayı olarak kayıt (mode = hangi zorluk modunun rekoru); yoksa veya bozuksa 0
     try:
-        return int(str(load_text(kind)).strip())
+        return int(str(load_text(kind, mode)).strip())
     except Exception:
         return 0
 
 
-def save_record(kind, value):
-    save_text(kind, str(value))
+def save_record(kind, value, mode=None):
+    save_text(kind, str(value), mode)
 
 
 def load_dict(kind, defaults):

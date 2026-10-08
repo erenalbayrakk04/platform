@@ -6,5 +6,7 @@ dist/
 .vscode/
 highscore.txt
 bestheight.txt
+highscore-*.txt
+bestheight-*.txt
 stats.json
 options.json

@@ -7,9 +7,7 @@ import pygame
 from settings import (
     ENEMY_COLOR,
     FLYER_COLOR,
-    ENEMY_SPEED,
     ANIMATION_SPEED,
-    FLYER_SPEED,
     FLYER_BOB,
     FLYER_BOB_SPEED,
     FLYER_FLAP_SPEED,
@@ -23,9 +21,7 @@ FLYER_FRAMES = []
 
 class Patrol(pygame.sprite.Sprite):
     # İki düşmanın ortak yanı: left-right piksel arasında gidip gelir
-    speed = 0
-
-    def __init__(self, image, left, right, **position):
+    def __init__(self, image, left, right, speed, **position):
         super().__init__()
         self.image = image
         self.rect = image.get_rect(**position)
@@ -33,6 +29,7 @@ class Patrol(pygame.sprite.Sprite):
         self.left = left
         self.right = right
         self.direction = 1  # 1 = sağa, -1 = sola
+        self.speed = speed  # her karede kaç piksel; zorluk moduna ve yüksekliğe göre (level.py)
         # Konumu ondalıklı tutuyoruz ki yavaş hızlar da çalışsın
         self.pos_x = float(self.rect.x)
         # Önceki karedeki üst kenarı — karakter üstüne mi bastı anlamak için (main.py)
@@ -55,14 +52,12 @@ class Patrol(pygame.sprite.Sprite):
 
 class Enemy(Patrol):
     # Yürüyen düşman: platformun kenarları arasında yürür
-    speed = ENEMY_SPEED
     color = ENEMY_COLOR  # ölünce saçılan parçacıkların rengi
 
-    def __init__(self, center_x, bottom, left, right, speed=ENEMY_SPEED):
+    def __init__(self, center_x, bottom, left, right, speed):
         if not FRAMES:
             FRAMES.extend(enemy_frames())
-        super().__init__(FRAMES[0][1], left, right, midbottom=(center_x, bottom))
-        self.speed = speed  # yükseklerde daha hızlı (level.py)
+        super().__init__(FRAMES[0][1], left, right, speed, midbottom=(center_x, bottom))
 
     def update(self):
         self.patrol()
@@ -73,14 +68,12 @@ class Enemy(Patrol):
 
 class FlyingEnemy(Patrol):
     # Uçan düşman (yarasa): havada uçar, bir yandan hafifçe aşağı-yukarı süzülür
-    speed = FLYER_SPEED
     color = FLYER_COLOR
 
-    def __init__(self, center_x, center_y, left, right, speed=FLYER_SPEED):
+    def __init__(self, center_x, center_y, left, right, speed):
         if not FLYER_FRAMES:
             FLYER_FRAMES.extend(flyer_frames())
-        super().__init__(FLYER_FRAMES[0], left, right, center=(center_x, center_y))
-        self.speed = speed
+        super().__init__(FLYER_FRAMES[0], left, right, speed, center=(center_x, center_y))
         self.center_y = center_y
         self.anim_time = center_x % 60  # hepsi aynı anda kanat çırpmasın
 

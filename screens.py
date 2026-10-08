@@ -19,6 +19,7 @@ from settings import (
     COIN_POINTS,
     MUTE_KEY,
     VOLUME_STEPS,
+    DIFFICULTY_NAMES,
 )
 from score import draw_text
 from ui import Buttons, Slider, take_click, ACTIVATE_KEYS, UP_KEYS, DOWN_KEYS
@@ -210,22 +211,32 @@ def draw_howto(screen):
     BACK_BUTTON.draw(screen, LABELS)
 
 
-def draw_records(screen, best_height, high_score, stats):
+def draw_records(screen, best_heights, high_scores, stats, current):
     draw_overlay(screen)
-    draw_title(screen, "Rekorlar", 90)
-    rows = (
-        ("En yüksek tırmanış", f"{best_height} m", RECORD_COLOR),
-        ("En yüksek puan", str(high_score), RECORD_COLOR),
-        ("Oynanan oyun", str(stats["games"]), None),
-        ("Toplam tırmanış", f"{stats['climbed']} m", None),
-        ("Toplam altın", str(stats["coins"]), None),
-        ("Yenilen düşman", str(stats["enemies"]), None),
-    )
+    draw_title(screen, "Rekorlar", 70)
     text_font = font(MENU_FONT_SIZE)
-    for i, (label, value, color) in enumerate(rows):
-        y = 180 + i * 62
-        draw_text(screen, font(MENU_SMALL_FONT_SIZE + 2), label, HINT_COLOR, midleft=(40, y))
-        draw_text(screen, text_font, value, color or (255, 255, 255), midright=(SCREEN_WIDTH - 40, y))
+    label_font = font(MENU_SMALL_FONT_SIZE + 2)
+    # Her zorluk modunun rekorları: en yüksek tırmanış (asıl hedef) ve en yüksek puan. Seçili mod sarı
+    height_x, score_x = 265, SCREEN_WIDTH - 40  # sütunların sağ kenarı
+    draw_text(screen, font(MENU_SMALL_FONT_SIZE), "Tırmanış", HINT_COLOR, midright=(height_x, 130))
+    draw_text(screen, font(MENU_SMALL_FONT_SIZE), "Puan", HINT_COLOR, midright=(score_x, 130))
+    for i, (mode, name) in enumerate(DIFFICULTY_NAMES.items()):
+        y = 170 + i * 44
+        color = RECORD_COLOR if mode == current else (255, 255, 255)
+        draw_text(screen, text_font, name, color, midleft=(40, y))
+        draw_text(screen, text_font, f"{best_heights[mode]} m", color, midright=(height_x, y))
+        draw_text(screen, text_font, str(high_scores[mode]), color, midright=(score_x, y))
+    # Bütün modların toplamı
+    rows = (
+        ("Oynanan oyun", str(stats["games"])),
+        ("Toplam tırmanış", f"{stats['climbed']} m"),
+        ("Toplam altın", str(stats["coins"])),
+        ("Yenilen düşman", str(stats["enemies"])),
+    )
+    for i, (label, value) in enumerate(rows):
+        y = 400 + i * 52
+        draw_text(screen, label_font, label, HINT_COLOR, midleft=(40, y))
+        draw_text(screen, text_font, value, midright=(score_x, y))
     BACK_BUTTON.draw(screen, LABELS)
 
 
@@ -235,9 +246,11 @@ def draw_pause(screen, labels):
     PAUSE_BUTTONS.draw(screen, {**LABELS, **labels})
 
 
-def draw_game_over(screen, score, best_height, high_score, new_record, ready, slow=False):
+def draw_game_over(screen, score, mode_name, best_height, high_score, new_record, ready, slow=False):
+    # mode_name = oynanan zorluk modu (rekorlar o modun rekorları)
     draw_overlay(screen)
     draw_title(screen, "Kaybettin!", 200, GAME_OVER_COLOR)
+    draw_text(screen, font(MENU_SMALL_FONT_SIZE), f"Zorluk: {mode_name}", HINT_COLOR, center=(CENTER_X, 243))
     # Büyük yazı: ne kadar tırmandın (asıl hedef). Puan ve ayrıntılar altında küçük
     draw_text(screen, font(TITLE_FONT_SIZE), f"{score.height} m", center=(CENTER_X, 290))
     small = font(MENU_SMALL_FONT_SIZE)

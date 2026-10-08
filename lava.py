@@ -3,9 +3,6 @@ from settings import (
     SCREEN_WIDTH,
     SCREEN_HEIGHT,
     PIXEL_SCALE,
-    LAVA_SPEED,
-    LAVA_SPEED_MAX,
-    LAVA_DELAY,
     LAVA_START_GAP,
     LAVA_MAX_GAP,
     LAVA_PUSHBACK,
@@ -22,10 +19,12 @@ IMAGES = {}
 
 
 class Lava:
-    def __init__(self, ground_y=0):
+    def __init__(self, mode, ground_y=0):
+        # mode = zorluk modunun sayıları (settings.DIFFICULTIES): lavın hızı ve bekleme süresi
+        self.mode = mode
         # y = lavın yüzeyi (bölümdeki konum; yukarı çıktıkça eksiye iner). Başta zeminin altında
         self.y = float(ground_y + LAVA_START_GAP)
-        self.wait = LAVA_DELAY  # yükselmeye başlamasına kaç kare kaldı
+        self.wait = mode["lava_delay"]  # yükselmeye başlamasına kaç kare kaldı
         self.time = 0  # dalga animasyonu için
 
     def update(self, camera_bottom):
@@ -34,7 +33,8 @@ class Lava:
         if self.wait > 0:
             self.wait -= 1
             return
-        self.y -= blend(LAVA_SPEED, LAVA_SPEED_MAX, hardness(-camera_bottom))
+        mode = self.mode
+        self.y -= blend(mode["lava_speed"], mode["lava_speed_max"], hardness(-camera_bottom, mode))
         self.y = min(self.y, camera_bottom + LAVA_MAX_GAP)
 
     def touches(self, rect):

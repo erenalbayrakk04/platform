@@ -40,10 +40,57 @@ GENERATE_AHEAD = SCREEN_HEIGHT  # ekranın bu kadar yukarısına kadar parçalar
 REMOVE_BELOW = SCREEN_HEIGHT  # ekranın bu kadar altında kalan parçalar silinir (piksel)
 DIFFICULTY_STEP = 1200  # her bu kadar piksel (30 kare) tırmanınca daha zor parçalar da gelir
 
-# Zorluk — oyun tırmandıkça yavaş yavaş zorlaşır. Başlangıçta aşağıdaki "kolay" sayılar (ör. ENEMY_SPEED),
-# HARD_HEIGHT kadar tırmanınca "en zor" sayılar (ör. ENEMY_SPEED_MAX) geçerli olur; arası karışık
-HARD_HEIGHT = 8000  # bu kadar piksel (200 blok) tırmanınca oyun en zor hâline gelir
 HARD_CHUNK_BIAS = 3  # en zorda zor parçalar ne kadar sık gelsin (0 = hepsi eşit; 3 = en zor parça kolaydan 7 kat sık)
+
+# Zorluk modları — ana menüdeki "Zorluk" düğmesiyle seçilir (Kolay → Orta → Zor → Ultra Zor); her modun
+# rekoru ayrı. Oyun tırmandıkça da zorlaşır: başta "lava_speed" gibi sayılar, "hard_height" kadar tırmanınca
+# "lava_speed_max" gibi "en zor" sayılar geçerli olur; arası karışık. Sayıların anlamı:
+#   lives / max_lives        oyun kaç canla başlar / kalp toplayarak en fazla kaç can olur
+#   hard_height              bu kadar piksel (40 piksel = 1 blok) tırmanınca oyun bu modun en zor hâline gelir
+#   map_head_start           harita parçaları baştan bu kadar piksel tırmanılmış gibi seçilir
+#                            (0 = kolay parçalarla başlar; hard_height kadar = en zor parçalar hemen ve sık gelir)
+#   lava_delay               oyun başlayınca lav kaç kare bekler (60 kare = 1 saniye)
+#   lava_speed               lav her karede kaç piksel yükselir (0.4 ≈ saniyede 0,6 blok)
+#   enemy_speed              yürüyen düşman her karede kaç piksel gider (karakter 5 gider)
+#   flyer_speed              yarasa her karede kaç piksel uçar
+#   heart_chance             haritadaki her altının kalbe dönüşme ihtimali (0.05 = %5; "_min" = en zordaki)
+DIFFICULTY_NAMES = {"easy": "Kolay", "normal": "Orta", "hard": "Zor", "ultra": "Ultra Zor"}
+DEFAULT_DIFFICULTY = "normal"
+DIFFICULTIES = {
+    "easy": {
+        "lives": 4, "max_lives": 4,
+        "hard_height": 12000, "map_head_start": 0,
+        "lava_delay": 300, "lava_speed": 0.25, "lava_speed_max": 0.65,
+        "enemy_speed": 1.2, "enemy_speed_max": 2.2,
+        "flyer_speed": 1.0, "flyer_speed_max": 1.9,
+        "heart_chance": 0.07, "heart_chance_min": 0.03,
+    },
+    "normal": {
+        "lives": 3, "max_lives": 3,
+        "hard_height": 8000, "map_head_start": 0,
+        "lava_delay": 180, "lava_speed": 0.4, "lava_speed_max": 0.9,
+        "enemy_speed": 1.5, "enemy_speed_max": 3,
+        "flyer_speed": 1.2, "flyer_speed_max": 2.6,
+        "heart_chance": 0.05, "heart_chance_min": 0.015,
+    },
+    "hard": {
+        "lives": 2, "max_lives": 3,
+        "hard_height": 6000, "map_head_start": 2400,
+        "lava_delay": 120, "lava_speed": 0.55, "lava_speed_max": 1.0,
+        "enemy_speed": 2, "enemy_speed_max": 3.3,
+        "flyer_speed": 1.6, "flyer_speed_max": 2.9,
+        "heart_chance": 0.03, "heart_chance_min": 0.012,
+    },
+    # Baştan en zor: Orta'nın en zor hâliyle başlar, oradan da zorlaşır. Tek can, kalp nadir, lav beklemez
+    "ultra": {
+        "lives": 1, "max_lives": 3,
+        "hard_height": 6000, "map_head_start": 6000,
+        "lava_delay": 0, "lava_speed": 0.9, "lava_speed_max": 1.15,
+        "enemy_speed": 3, "enemy_speed_max": 3.6,
+        "flyer_speed": 2.6, "flyer_speed_max": 3.2,
+        "heart_chance": 0.015, "heart_chance_min": 0.008,
+    },
+}
 
 # Bloklar (zemin ve platformlar)
 TILE_SIZE = 40  # her bloğun kenar uzunluğu (piksel)
@@ -73,27 +120,21 @@ SPRING_POWER = 24  # fırlatma gücü (zıplama 15; 24 ≈ 9 blok yükseğe)
 SPRING_COLOR = (80, 220, 120)  # yayın üst plakası (yeşil)
 SPRING_SQUASH_TIME = 10  # fırlatınca kaç kare basık görünür
 
-# Düşmanlar (haritada 'E') — platformun üstünde sağa-sola yürür
+# Düşmanlar (haritada 'E') — platformun üstünde sağa-sola yürür (hızları yukarıda, DIFFICULTIES içinde)
 ENEMY_WIDTH = 32
 ENEMY_HEIGHT = 28
 ENEMY_COLOR = (220, 60, 60)  # kırmızı
 ENEMY_EYE_COLOR = WHITE
-ENEMY_SPEED = 1.5  # her karede kaç piksel yürür (oyunun başında)
-ENEMY_SPEED_MAX = 3  # en zorda (HARD_HEIGHT) kaç piksel yürür
 STOMP_BOUNCE = 10  # düşmanın üstüne basınca karakter ne kadar sıçrar
 
-# Uçan düşmanlar (haritada 'F') — havada kendi satırında sağa-sola uçar; üstüne basılınca ölür
+# Uçan düşmanlar (haritada 'F') — havada kendi satırında sağa-sola uçar; üstüne basılınca ölür (hızı DIFFICULTIES'te)
 FLYER_COLOR = (150, 90, 220)  # mor yarasa
-FLYER_SPEED = 1.2  # her karede kaç piksel uçar (oyunun başında)
-FLYER_SPEED_MAX = 2.6  # en zorda kaç piksel uçar
 FLYER_BOB = 6  # uçarken kaç piksel aşağı-yukarı süzülür
 FLYER_BOB_SPEED = 15  # süzülmenin yavaşlığı (büyürse daha yavaş)
 FLYER_FLAP_SPEED = 6  # kanat çırpma: her resim kaç kare ekranda kalır
 
-# Lav — aşağıdan yükselir; değersen bir can gider (kalkan korumaz), son durduğun yere dönersin
-LAVA_SPEED = 0.4  # başta her karede kaç piksel yükselir (0.4 ≈ saniyede 0,6 blok)
-LAVA_SPEED_MAX = 0.9  # en zorda (HARD_HEIGHT) kaç piksel yükselir (0.9 ≈ saniyede 1,35 blok)
-LAVA_DELAY = 180  # oyun başlayınca kaç kare bekler (60 kare = 1 saniye)
+# Lav — aşağıdan yükselir; değersen bir can gider (kalkan korumaz), son durduğun yere dönersin.
+# Hızı ve bekleme süresi her zorluk modunda farklı (yukarıda, DIFFICULTIES)
 LAVA_START_GAP = 80  # başta zeminin kaç piksel altında
 LAVA_MAX_GAP = 160  # ekranın altından en fazla bu kadar aşağıda kalır (hızlı tırmansan da peşini bırakmaz)
 LAVA_PUSHBACK = 240  # değince lav, döndüğün yerin bu kadar altına çekilir (hemen yine yanma diye)
@@ -104,14 +145,11 @@ LAVA_COLOR = (225, 70, 20)  # lavın kendisi (turuncu-kırmızı)
 LAVA_TOP_COLOR = (255, 210, 80)  # dalgaların parlak tepesi
 LAVA_GLOW_COLOR = (255, 80, 20)  # lav yaklaşırken ekranın dibindeki kızıllık
 
-# Can
-PLAYER_LIVES = 3  # oyun kaç canla başlar
+# Can — kaç canla başlanacağı ve kalp ihtimali her zorluk modunda farklı (yukarıda, DIFFICULTIES)
 INVINCIBLE_TIME = 90  # can kaybedince kaç kare dokunulmaz kalır (60 kare = 1 saniye), bu sürede yanıp söner
 HURT_BOUNCE = 7  # düşman çarpınca karakter ne kadar sıçrar
 LIFE_COLOR = (230, 50, 70)  # sağ üstteki dolu kalpler
 LIFE_EMPTY_COLOR = (80, 80, 100)  # kaybedilen can
-HEART_CHANCE = 0.05  # haritadaki her altının kalbe dönüşme ihtimali (0.05 = %5); kalp 1 can verir
-HEART_CHANCE_MIN = 0.015  # en zorda kalp ihtimali (yükseldikçe kalpler seyrekleşir)
 
 # Güçlendirmeler — kalp gibi altınların yerine nadiren çıkar; alınca bir süre işe yarar
 POWERUP_WARN_TIME = 120  # bitmesine bu kadar kare kala sağ üstteki simgesi yanıp söner
@@ -144,10 +182,6 @@ STATS_FILE = "stats.json"
 STATS_KEY = "platform-oyunu-istatistik"
 OPTIONS_FILE = "options.json"
 OPTIONS_KEY = "platform-oyunu-secenekler"
-
-# Zorluk seçimi (ana menüde): kayıttaki adı → ekranda görünen adı
-DIFFICULTY_NAMES = {"easy": "Kolay", "normal": "Orta", "hard": "Zor"}
-DEFAULT_DIFFICULTY = "normal"
 
 # Menü düğmeleri
 BUTTON_WIDTH = 250

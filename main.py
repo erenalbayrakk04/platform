@@ -28,6 +28,7 @@ from settings import (
     LAVA_COLOR,
     DIFFICULTY_NAMES,
     DEFAULT_DIFFICULTY,
+    DIFFICULTIES,
     VOLUME_STEPS,
     WEB,
 )
@@ -126,11 +127,12 @@ class FpsMeter:
         draw_text(screen, self.font, self.text, center=(SCREEN_WIDTH // 2, 80))
 
 
-def new_game(best_height):
+def new_game(best_height, mode):
     # Yeni rastgele bölüm kur, karakteri başlangıç parçasındaki P noktasına koy.
-    # best_height = yükseklik rekoru (haritada "Rekor" çizgisi orada çizilir)
-    level = Level()
-    player = Player(*level.player_start, level.width)
+    # best_height = yükseklik rekoru (haritada "Rekor" çizgisi orada çizilir),
+    # mode = zorluk modunun sayıları (settings.DIFFICULTIES): can, lav, düşman hızı...
+    level = Level(mode)
+    player = Player(*level.player_start, level.width, mode["lives"], mode["max_lives"])
     camera = Camera()
     camera.follow(player.rect, level.bottom, instant=True)
     level.update(camera.top, camera.bottom)
@@ -138,7 +140,7 @@ def new_game(best_height):
     # Saçılan parçacıklar (effects.py) — dünyada dururlar, kamerayla birlikte çizilirler
     level.effects = pygame.sprite.Group()
     # Aşağıdan yükselen lav (lava.py) — zeminin altından başlar
-    level.lava = Lava()
+    level.lava = Lava(mode)
     return level, player, camera, score
 
 
@@ -262,9 +264,9 @@ class Game:
     # "playing" (oyun), "paused" (durdu), "game_over" (kaybettin)
     def __init__(self, sounds):
         self.sounds = sounds
-        # Rekorlar: asıl hedef en yüksek tırmanış (blok), ayrıca en yüksek puan
-        self.best_height = load_record("height")
-        self.high_score = load_record("score")
+        # Rekorlar her zorluk modunun ayrı: asıl hedef en yüksek tırmanış (blok), ayrıca en yüksek puan
+        self.best_heights = {mode: load_record("height", mode) for mode in DIFFICULTY_NAMES}
+        self.high_scores = {mode: load_record("score", mode) for mode in DIFFICULTY_NAMES}
         self.stats = load_dict("stats", STATS_DEFAULTS)
         self.options = load_dict("options", OPTIONS_DEFAULTS)
         if self.options["difficulty"] not in DIFFICULTY_NAMES:
@@ -284,9 +286,22 @@ class Game:
         self.pause_button = PauseButton()
         self.reset()
 
+    @property
+    def mode(self):
+        # Seçili zorluk modu: "easy", "normal", "hard", "ultra"
+        return self.options["difficulty"]
+
+    @property
+    def best_height(self):
+        return self.best_heights[self.mode]
+
+    @property
+    def high_score(self):
+        return self.high_scores[self.mode]
+
     def reset(self):
         # Yeni bölüm kur (menünün arkasında da bu görünür)
-        self.level, self.player, self.camera, self.score = new_game(self.best_height)
+        self.level, self.player, self.camera, self.score = new_game(self.best_height, DIFFICULTIES[self.mode])
 
     def labels(self):
         # Yazısı değişen düğmeler
@@ -321,11 +336,12 @@ class Game:
         self.save_options()
 
     def next_difficulty(self):
-        # Kolay → Orta → Zor → Kolay ...
+        # Kolay → Orta → Zor → Ultra Zor → Kolay ...
         names = list(DIFFICULTY_NAMES)
-        index = names.index(self.options["difficulty"])
+        index = names.index(self.mode)
         self.options["difficulty"] = names[(index + 1) % len(names)]
         self.save_options()
+        self.reset()  # menünün arkasındaki bölüm ve rekor çizgisi yeni moda göre olsun
 
     def start(self):
         # Yeni oyuna başla
@@ -341,15 +357,15 @@ class Game:
         self.state = "menu"
 
     def finish(self):
-        # Oyun bitti (kaybetti ya da yarıda ana menüye döndü): rekorları ve toplamları kaydet
+        # Oyun bitti (kaybetti ya da yarıda ana menüye döndü): bu modun rekorlarını ve toplamları kaydet
         score = self.score
         self.new_record = score.new_record  # yükseklik rekoru
         if self.new_record:
-            self.best_height = score.height
-            save_record("height", self.best_height)
+            self.best_heights[self.mode] = score.height
+            save_record("height", score.height, self.mode)
         if score.total > self.high_score:
-            self.high_score = score.total
-            save_record("score", self.high_score)
+            self.high_scores[self.mode] = score.total
+            save_record("score", score.total, self.mode)
         self.stats["games"] += 1
         self.stats["climbed"] += score.height
         self.stats["coins"] += score.coins
@@ -438,11 +454,11 @@ class Game:
         elif self.state == "howto":
             screens.draw_howto(screen)
         elif self.state == "records":
-            screens.draw_records(screen, self.best_height, self.high_score, self.stats)
+            screens.draw_records(screen, self.best_heights, self.high_scores, self.stats, self.mode)
         else:
             # Puan ve canlar kameradan bağımsız: hep ekranın üst köşelerinde
             self.score.draw(screen)
-            draw_lives(screen, self.player.lives)
+            draw_lives(screen, self.player.lives, self.player.max_lives)
             draw_powers(screen, self.player)
             if self.state == "playing":
                 touch.draw(screen)
@@ -453,6 +469,7 @@ class Game:
                 screens.draw_game_over(
                     screen,
                     self.score,
+                    DIFFICULTY_NAMES[self.mode],
                     self.best_height,
                     self.high_score,
                     self.new_record,
