@@ -386,11 +386,11 @@ class Game:
         self.reset()
         self.state = "playing"
         self.sounds.play("start")
-        self.sounds.start_music()
+        self.sounds.play_music("game")
 
     def to_menu(self):
-        if self.state == "game_over":
-            self.sounds.start_music()  # kaybedince durmuştu
+        # Oyundan (durdurup ya da kaybedip) ana menüye: açılış müziği yeniden başlar
+        self.sounds.play_music("title")
         self.reset()
         self.state = "menu"
 
@@ -548,7 +548,7 @@ async def main():
     mute_key = pygame.key.key_code(MUTE_KEY)
 
     game = Game(sounds)
-    sounds.start_music()
+    sounds.play_music("title")  # açılış müziği (web'de ilk dokunuşla duyulur, bkz. web.tmpl ses kilidi)
     timer = StepTimer()
     fps_meter = FpsMeter()
     show_fps = fps_wanted()
