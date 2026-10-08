@@ -16,7 +16,11 @@
   telefonda kaydırma/yakınlaştırma kapalı, `image-rendering: pixelated`). pygbag şablonda sadece
   `{{cookiecutter.x}}` doldurur (Jinja yorumu vb. çalışmaz). Tarayıcıda test: Chrome görünmez modda
   CDP ile denendi (Edge görünmez modu wasm'da çöküyor); `window.python.PyRun_SimpleString(code)` ile
-  sayfadaki Python'a komut gönderilebilir.
+  sayfadaki Python'a komut gönderilebilir (sonuç bazen bir kare sonra gelir → `platform.window.probe`'a yazdırıp
+  JS'ten birkaç kez yokla; `gc.get_objects()` ile Player/Level bulunur). Hız testi: CDP
+  `Emulation.setCPUThrottlingRate` ile işlemci yavaşlatılır (telefon taklidi); görünmez Chrome ekranı ~240 Hz yeniler.
+  pygbag döngüyü tarayıcının ekran yenilemesine bağlar (her yenilemede bir tur) ve `clock.tick()` tarayıcıda
+  ~16 ms MEŞGUL BEKLER (tarayıcıyı kilitler, kare kaçırtır) → web'de çağrılmaz.
 
 ## Çalışma kuralları
 - Her aşama sonunda oyun çalışır durumda olmalı.
@@ -76,7 +80,8 @@
   + enemies × `ENEMY_POINTS`; `draw(screen)` sol üstte gölgeli yazı (kameradan bağımsız);
   `draw_lives(screen, lives)` sağ üstte kalpler (kaybedilen can gri); `draw_powers(screen, player)` kalplerin
   altında süren güçlendirmelerin simgesi + süre çubuğu (son `POWERUP_WARN_TIME` karede yanıp söner); `draw_text(screen, font, text,
-  color, center=/topleft=...)` gölgeli yazı (her yerde bu kullanılır); `load_high_score()` /
+  color, center=/topleft=...)` gölgeli yazı (her yerde bu kullanılır; resimleri `TEXT_CACHE`'te, her karede
+  yeniden yazılmaz); `load_high_score()` /
   `save_high_score(v)` → `highscore.txt` (oyun klasöründe, git dışı; bozuk/yoksa 0, yazılamazsa sessiz);
   web'de (`settings.WEB`, `sys.platform == "emscripten"`) tarayıcı hafızası: `platform.window.localStorage`,
   anahtar `HIGHSCORE_KEY`.
@@ -94,7 +99,11 @@
   `CAMERA_PLAYER_Y` oranında durur; yukarısı sınırsız, aşağıda `level.bottom`'da durur;
   `follow(rect, level_bottom)`, `top`/`bottom`, `apply(rect)`. Tüm çizim `main.py`'de kamera üzerinden
   (sprite'ta `draw_rect` varsa çizim onunla yapılır).
-- `main.py` → ekran durumu `state`: "menu" → (Boşluk/Enter/tıklama) → "playing" → (can biter) →
+- `main.py` → `StepTimer`: oyun hızı kare hızından bağımsız. `timer.steps()` her karede gerçek geçen süre
+  kadar adım (1 adım = 1/`FPS` sn) verir, `update_game` o kadar kez çalışır (30 Hz'de 2, 120 Hz'de iki karede 1;
+  en fazla `MAX_CATCH_UP`); tam sayıya 0,1 adımdan yakın süreler yuvarlanır (titreme olmasın); adım yoksa
+  çizim yapılmaz. Tüm "kare" sayan ayarlar aslında adım sayar. Sebep: telefonda kare hızı düşünce
+  (iPhone Düşük Güç Modu 30 Hz) oyun yarı hızda akıyordu. Ekran durumu `state`: "menu" → (Boşluk/Enter/tıklama) → "playing" → (can biter) →
   "game_over" (`GAME_OVER_DELAY` kare tuş çalışmaz; rekor kırıldıysa hemen kaydedilir) → tuşla
   `new_game()` + "playing". `update_game(...)` oyun mantığı, `draw_world(...)` dünyayı çizer (her
   ekranda arkada görünür). ESC her yerde oyundan çıkar (web'de hariç). `main()` `async`: döngü sonunda
@@ -118,7 +127,8 @@
   tasarlarken basılan yüzeyler arası dikey fark en fazla 3 satır olsun. Platformlar katı olduğu
   için bir üst platform tam tepede olmasın; yana kaydırılmış olsun ki zıplayıp üstüne çıkılabilsin.
 - `art.py` — piksel sanatı: harf haritası + palet → `render(rows, palette, size)` (her harf
-  `PIXEL_SCALE` px, çizim alta-ortaya yaslı), `shade`/`tint` ile tonlar; `player_frames()`,
+  `PIXEL_SCALE` px, çizim alta-ortaya yaslı; hiç `.` yoksa ve ekran açıksa `convert()` = saydamsız → tarayıcıda
+  ~5 kat hızlı çizilir), `shade`/`tint` ile tonlar; `player_frames()`,
   `enemy_frames()` ({1: sağ, -1: sol} çiftleri), `flyer_frames()` (kanat çırpma), `crumble_frames()`
   (sağlam, çatlak, silik), `magnet_image()`, `shield_image()`, `shield_bubble(r)`, `coin_frames()` (dönme), `tile_image()`,
   `platform_image()`, `heart_images()`, `Background` (`SKY_THEMES` gökleri, her `SKY_CHANGE_HEIGHT` px tırmanışta sıradakine

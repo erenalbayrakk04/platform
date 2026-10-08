@@ -2,6 +2,7 @@
 # Web sürümü de bu dosyadan yapılır (pygbag); bu yüzden oyun döngüsü "async" çalışır.
 import asyncio
 import sys
+import time
 
 import pygame
 
@@ -10,6 +11,7 @@ from settings import (
     SCREEN_HEIGHT,
     TITLE,
     FPS,
+    MAX_CATCH_UP,
     STOMP_BOUNCE,
     GAME_OVER_DELAY,
     MUTE_KEY,
@@ -40,6 +42,29 @@ SHIELD_BUBBLE = []
 
 # Menüde ve kaybettin ekranında oyunu başlatan tuşlar (fare tıklaması da çalışır)
 START_KEYS = (pygame.K_SPACE, pygame.K_RETURN, pygame.K_KP_ENTER)
+
+
+class StepTimer:
+    # Oyun hızı ekranın kare hızına bağlı olmasın: her karede gerçekten geçen süre ölçülür ve oyun o
+    # kadar "adım" ilerletilir (1 adım = 1/FPS saniye). Telefon saniyede 30 kare gösterirse (ör. iPhone
+    # Düşük Güç Modu) her karede 2 adım, 120 Hz ekranda iki karede bir adım oynanır → oyun hep aynı hızda.
+    def __init__(self):
+        self.last = time.perf_counter()
+        self.lag = 0.0  # geçmiş ama henüz oynanmamış süre (adım cinsinden)
+
+    def steps(self):
+        now = time.perf_counter()
+        passed = (now - self.last) * FPS  # son kareden beri geçen süre, adım cinsinden
+        self.last = now
+        # Ekran düzenli yeniler ama ölçüm biraz oynar (16 ms, 17 ms...). Tam sayıya çok yakınsa tam
+        # sayı say; yoksa bazı karelerde 0, bazılarında 2 adım oynanır ve görüntü titrer
+        whole = round(passed)
+        if whole >= 1 and abs(passed - whole) < 0.1:
+            passed = whole
+        self.lag = min(self.lag + passed, MAX_CATCH_UP)
+        steps = int(self.lag)
+        self.lag -= steps
+        return steps
 
 
 def new_game():
@@ -175,6 +200,7 @@ async def main():
     game_over_timer = 0  # kaybettin ekranında tuşlar çalışana kadar kalan kare
     new_record = False
     sounds.start_music()
+    timer = StepTimer()
 
     running = True
     while running:
@@ -194,50 +220,59 @@ async def main():
             touch.handle_event(event)  # ekrana dokunan parmakları takip et
         touch.update()
 
-        # 2) Güncelleme: hangi ekrandaysak onun işi
+        # 2) Güncelleme: hangi ekrandaysak onun işi. Oyun, geçen süre kadar adım ilerler
+        steps = timer.steps()
         if state == "menu":
             if start_pressed:
                 state = "playing"
                 sounds.play("start")
 
         elif state == "playing":
-            update_game(level, player, camera, score, read_controls(touch), sounds)
-            # Can bitti → kaybettin ekranı; rekor kırıldıysa hemen kaydet
-            if player.lives <= 0:
-                state = "game_over"
-                game_over_timer = GAME_OVER_DELAY
-                sounds.stop_music()
-                sounds.play("game_over")
-                new_record = score.total > high_score
-                if new_record:
-                    high_score = score.total
-                    save_high_score(high_score)
+            controls = read_controls(touch)
+            for _ in range(steps):
+                update_game(level, player, camera, score, controls, sounds)
+                # Can bitti → kaybettin ekranı; rekor kırıldıysa hemen kaydet
+                if player.lives <= 0:
+                    state = "game_over"
+                    game_over_timer = GAME_OVER_DELAY
+                    sounds.stop_music()
+                    sounds.play("game_over")
+                    new_record = score.total > high_score
+                    if new_record:
+                        high_score = score.total
+                        save_high_score(high_score)
+                    break
 
         elif state == "game_over":
             if game_over_timer > 0:
-                game_over_timer -= 1
+                game_over_timer = max(0, game_over_timer - steps)
             elif start_pressed:
                 level, player, camera, score = new_game()
                 state = "playing"
                 sounds.play("start")
                 sounds.start_music()
 
-        # 3) Çizim — oyun dünyası her ekranda arkada görünür
-        draw_world(screen, background, level, player, camera)
-        if state == "menu":
-            draw_menu(screen, high_score)
-        else:
-            # Puan ve canlar kameradan bağımsız: hep ekranın üst köşelerinde
-            score.draw(screen)
-            draw_lives(screen, player.lives)
-            draw_powers(screen, player)
-            if state == "playing":
-                touch.draw(screen)
-            if state == "game_over":
-                draw_game_over(screen, score, high_score, new_record, game_over_timer == 0)
-        pygame.display.flip()
+        # 3) Çizim — oyun dünyası her ekranda arkada görünür. Bu karede adım oynanmadıysa (hızlı
+        # ekranlarda olur) hiçbir şey değişmedi, yeniden çizmeye gerek yok
+        if steps:
+            draw_world(screen, background, level, player, camera)
+            if state == "menu":
+                draw_menu(screen, high_score)
+            else:
+                # Puan ve canlar kameradan bağımsız: hep ekranın üst köşelerinde
+                score.draw(screen)
+                draw_lives(screen, player.lives)
+                draw_powers(screen, player)
+                if state == "playing":
+                    touch.draw(screen)
+                if state == "game_over":
+                    draw_game_over(screen, score, high_score, new_record, game_over_timer == 0)
+            pygame.display.flip()
 
-        clock.tick(FPS)
+        # Bilgisayarda döngü saniyede FPS kez döner. Tarayıcıda hızı tarayıcı belirler (ekran her
+        # yenilendiğinde bir tur); orada beklemek tarayıcıyı meşgul eder, kare kaçırtır
+        if not WEB:
+            clock.tick(FPS)
         await asyncio.sleep(0)  # tarayıcıya sıra ver — web sürümü bunsuz donar
 
     pygame.quit()

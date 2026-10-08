@@ -8,7 +8,10 @@ WEB = sys.platform == "emscripten"
 SCREEN_WIDTH = 400
 SCREEN_HEIGHT = 720
 TITLE = "Platform Oyunu"
-FPS = 60  # saniyedeki kare sayısı
+FPS = 60  # oyun saniyede kaç adım ilerler — telefon daha az kare gösterse de oyun hep bu hızda akar
+# Telefon bir an takılırsa bir karede en fazla kaç adım telafi edilir. Fazlası atlanır: oyun bir an
+# yavaşlar ama karakter ışınlanmaz (ör. sekme değiştirip dönünce)
+MAX_CATCH_UP = 4
 
 # Renkler (Kırmızı, Yeşil, Mavi) — her biri 0-255 arası
 BLACK = (0, 0, 0)

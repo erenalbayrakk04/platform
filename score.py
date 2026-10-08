@@ -67,12 +67,21 @@ class Score:
         )
 
 
+# Yazılan yazıların resimleri: aynı yazı her karede yeniden yazılmasın (tarayıcıda yavaş)
+TEXT_CACHE = {}
+
+
 def draw_text(screen, font, text, color=SCORE_COLOR, **position):
     # Gölgeli yazı: önce 2 piksel kaydırılmış gölge, sonra asıl yazı — her zeminde okunsun.
     # Konum rect gibi verilir: topleft=(x, y) veya center=(x, y) vb.
-    image = font.render(text, True, color)
+    key = (font, text, color)
+    if key not in TEXT_CACHE:
+        if len(TEXT_CACHE) > 100:  # eski puan yazıları birikmesin
+            TEXT_CACHE.clear()
+        TEXT_CACHE[key] = (font.render(text, True, color), font.render(text, True, SCORE_SHADOW_COLOR))
+    image, shadow = TEXT_CACHE[key]
     rect = image.get_rect(**position)
-    screen.blit(font.render(text, True, SCORE_SHADOW_COLOR), rect.move(2, 2))
+    screen.blit(shadow, rect.move(2, 2))
     screen.blit(image, rect)
 
 

@@ -66,6 +66,11 @@ def render(rows, palette, size=None):
             if cell != ".":
                 rect = (left + c * PIXEL_SCALE, top + r * PIXEL_SCALE, PIXEL_SCALE, PIXEL_SCALE)
                 image.fill(palette[cell], rect)
+    # Hiç saydam yeri olmayan resim (blok, platform) saydamlık hesabı yapılmadan çizilsin: tarayıcıda
+    # ~5 kat hızlı. convert() ancak ekran açıkken çalışır (check_chunks.py ekransız çalışır)
+    opaque = size == (width, height) and not any("." in row for row in rows)
+    if opaque and pygame.display.get_surface():
+        image = image.convert()
     return image
 
 
