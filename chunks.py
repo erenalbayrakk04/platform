@@ -637,6 +637,48 @@ def free_span(row, left, right):
     return left, right
 
 
+def walker_spots(rows):
+    # Fazladan yürüyen düşman konabilecek platformlar (Level.add_extra_enemies rastgele seçer):
+    # [(satır, düşmanın konabileceği boş sütunlar)]. Platform en az ENEMY_MIN_PLATFORM kare, sağlam,
+    # üstünde düşman/yay yok; satırda yarasa veya hareketli platform yok. Giriş/çıkış satırına konmaz
+    spots = []
+    for r in range(1, len(rows) - 2):
+        row = rows[r]
+        if "F" in row or "M" in row:
+            continue
+        c = 0
+        while c < WIDTH:
+            if rows[r + 1][c] not in STEADY or row[c] in SOLID:
+                c += 1
+                continue
+            left, right = platform_run(rows, r, c)
+            cells = row[left : right + 1]
+            free = [col for col in range(left, right + 1) if row[col] == "."]
+            if right - left + 1 >= ENEMY_MIN_PLATFORM and "E" not in cells and "S" not in cells and free:
+                spots.append((r, free))
+            c = right + 1
+    return spots
+
+
+def flyer_spots(rows):
+    # Fazladan yarasa konabilecek satırlar: [(satır, yarasanın başlayabileceği sütunlar)].
+    # Bir platformun hemen üstündeki satır (karakterin boyunda geçer); satırda düşman, yay veya
+    # hareketli platform yok; yolu en az FLYER_MIN_PATH kare. Giriş/çıkış satırına konmaz
+    spots = []
+    for r in range(1, len(rows) - 2):
+        row = rows[r]
+        if any(cell in row for cell in "EFMS") or not any(cell in SOLID for cell in rows[r + 1]):
+            continue
+        free = []
+        for c in range(WIDTH):
+            left, right = free_span(row, c, c)
+            if row[c] == "." and right - left + 1 >= FLYER_MIN_PATH:
+                free.append(c)
+        if free:
+            spots.append((r, free))
+    return spots
+
+
 def moving_platforms(rows):
     # Her satırdaki M grubu bir hareketli platform:
     # (satır, ilk sütun, genişlik, gidebildiği en sol sütun, en sağ sütun)

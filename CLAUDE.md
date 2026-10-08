@@ -51,7 +51,8 @@
   (satır, sol, genişlik, yol solu, yol sağı); yolun hemen üstü/altı boş, iki üstünde `#` yok; `E` düşman — aynı kural + altındaki platform en az `ENEMY_MIN_PLATFORM` (3) kare;
   `platform_run(rows, r, c)` düşmanın yürüyeceği sütun aralığını verir; `F` uçan düşman — satırında
   `free_span(row, left, right)` ile katı kareye/kenara kadar uçar, satırda tek F, M ile aynı satırda olmaz,
-  yol en az `FLYER_MIN_PATH` kare; en iyisi bir platformun hemen üstündeki satır). `mirror(chunk)` sağ-sol
+  yol en az `FLYER_MIN_PATH` kare; en iyisi bir platformun hemen üstündeki satır). `walker_spots(rows)` /
+  `flyer_spots(rows)` = ek rastgele düşman konabilecek yerler [(satır, boş sütunlar)] (kurallara uyan). `mirror(chunk)` sağ-sol
   aynası; `MIRRORED_CHUNKS` içindeki parçalar oyuna hem kendisi hem aynası olarak girer (yeni parçaları
   buraya ekle → iki giriş tarafı otomatik). Toplam 44 parça; 2 yaylı, 2 hareketli platformlu, 3 kırılan platformlu, 3 yarasalı tasarım (+aynaları). Birleşme kuralı: en alt satır boş, sondan ikinci satır giriş (sadece `-`, giriş
   tarafında; sol = sütun 0-4 ve 4 dolu, sağ = 5-9 ve 5 dolu), en üst satır çıkış (aynı kural). Çıkışı
@@ -77,12 +78,15 @@
   ZORLUK MODLARI: settings `DIFFICULTIES` = mod → sayılar sözlüğü ("easy" Kolay, "normal" Orta = eski oyunun
   sayıları, "hard" Zor, "ultra" Ultra Zor; `DIFFICULTY_NAMES` ekrandaki adlar). Anahtarlar: `lives`/`max_lives`,
   `hard_height`, `map_head_start` (harita parçaları baştan o kadar yukarıdaymış gibi), `lava_delay`, `lava_speed(_max)`,
-  `enemy_speed(_max)`, `flyer_speed(_max)`, `heart_chance(_min)`. Ultra Zor (kullanıcı kararı): baştan en zor
+  `enemy_speed(_max)`, `flyer_speed(_max)`, `extra_enemy_chance(_max)`, `extra_flyer_chance(_max)`, `heart_chance(_min)`. Ultra Zor (kullanıcı kararı): baştan en zor
   (sayıları Orta'nın en zor hâlinden başlar, zor parçalar hemen), lav beklemez ve hızlı, 1 canla başlar (kalp nadir,
   en fazla 3), kalkan/mıknatıs normal çıkar. Güçlendirme ihtimalleri modlara göre değişmez.
   YÜKSELDİKÇE ZORLAŞMA: `hardness(height, mode)` = 0 (başlangıç) → 1 (modun `hard_height` px tırmanınca), `blend(easy, hard, t)`.
   `add_chunk` parçanın yüksekliğinden `t` hesaplar: düşman hızı `enemy_speed`→`enemy_speed_max`,
-  `pick_item(t)` kalp ihtimali `heart_chance`→`heart_chance_min`. Tile/Platform/Coin resimleri `level.image()`
+  `pick_item(t)` kalp ihtimali `heart_chance`→`heart_chance_min`.
+  EK RASTGELE DÜŞMANLAR (kullanıcı "daha fazla düşman" istedi): `add_extra_enemies(rows, t)` her parçada (başlangıç hariç)
+  satırların kopyasına 'E'/'F' yazar: `walker_spots`'taki her platforma `extra_enemy_chance`, `flyer_spots`'taki her
+  satıra `extra_flyer_chance` ihtimalle (t ile `_max`'a artar). Orta'da parça başı düşman ~0,55 → ~1,4-1,55. Tile/Platform/Coin resimleri `level.image()`
   ile bir kere hazırlanıp paylaşılır; `Coin.update()` dönme animasyonu., `bottom` = en alttaki parçanın altı, `width` piksel.
 - `score.py` — `Score(start_y, record)`: `height` = üstüne basılan en yüksek yer (blok = ekranda "m", sadece `on_ground`
   iken sayılır, düşünce azalmaz), `coins`, `enemies`, `total` = height × `HEIGHT_POINTS` + coins × `COIN_POINTS`

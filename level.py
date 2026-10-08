@@ -21,7 +21,15 @@ from settings import (
     DIFFICULTY_STEP,
     HARD_CHUNK_BIAS,
 )
-from chunks import START_CHUNK, CHUNKS, platform_run, moving_platforms, free_span
+from chunks import (
+    START_CHUNK,
+    CHUNKS,
+    platform_run,
+    moving_platforms,
+    free_span,
+    walker_spots,
+    flyer_spots,
+)
 from enemy import Enemy, FlyingEnemy
 import art
 
@@ -251,7 +259,9 @@ class Level:
         rows = chunk["rows"]
         top = self.top - len(rows) * TILE_SIZE
         mode = self.mode
-        t = hardness(-top, mode)  # yükseklerdeki parçada düşmanlar hızlı, kalpler seyrek
+        t = hardness(-top, mode)  # yükseklerdeki parçada düşmanlar hızlı ve çok, kalpler seyrek
+        if chunk is not START_CHUNK:
+            rows = self.add_extra_enemies(rows, t)
         sprites = []
         for row_index, row in enumerate(rows):
             for col_index, cell in enumerate(row):
@@ -321,6 +331,27 @@ class Level:
         self.chunks.append((top, self.top, sprites))
         self.top = top
         self.exit_side = chunk["exit"]
+
+    def add_extra_enemies(self, rows, t):
+        # Elle çizilenlere ek, rastgele düşmanlar: düşmansız geniş her platforma extra_enemy_chance
+        # ihtimalle yürüyen düşman, platform üstündeki boş her satıra extra_flyer_chance ihtimalle yarasa.
+        # İhtimaller yükseldikçe (t) artar. Düşmanlar satırlara 'E'/'F' olarak yazılır; parçanın kendisi değişmez
+        mode = self.mode
+        rows = list(rows)
+
+        def put(r, cells, mark):
+            c = self.random.choice(cells)
+            rows[r] = rows[r][:c] + mark + rows[r][c + 1 :]
+
+        walker_chance = blend(mode["extra_enemy_chance"], mode["extra_enemy_chance_max"], t)
+        for r, cells in walker_spots(rows):
+            if self.random.random() < walker_chance:
+                put(r, cells, "E")
+        flyer_chance = blend(mode["extra_flyer_chance"], mode["extra_flyer_chance_max"], t)
+        for r, cells in flyer_spots(rows):  # yürüyen düşman konan satırlara yarasa gelmez
+            if self.random.random() < flyer_chance:
+                put(r, cells, "F")
+        return rows
 
     def pick_item(self, t=0.0):
         # Altın karesine ne gelecek: çoğunlukla "coin", nadiren kalp veya güçlendirme.

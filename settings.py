@@ -53,6 +53,9 @@ HARD_CHUNK_BIAS = 3  # en zorda zor parçalar ne kadar sık gelsin (0 = hepsi e�
 #   lava_speed               lav her karede kaç piksel yükselir (0.4 ≈ saniyede 0,6 blok)
 #   enemy_speed              yürüyen düşman her karede kaç piksel gider (karakter 5 gider)
 #   flyer_speed              yarasa her karede kaç piksel uçar
+#   extra_enemy_chance       parçalardaki düşmansız geniş her platforma fazladan yürüyen düşman gelme ihtimali
+#                            (0.25 = %25; "_max" = en zordaki)
+#   extra_flyer_chance       bir platformun hemen üstündeki her boş satıra fazladan yarasa gelme ihtimali
 #   heart_chance             haritadaki her altının kalbe dönüşme ihtimali (0.05 = %5; "_min" = en zordaki)
 DIFFICULTY_NAMES = {"easy": "Kolay", "normal": "Orta", "hard": "Zor", "ultra": "Ultra Zor"}
 DEFAULT_DIFFICULTY = "normal"
@@ -63,6 +66,8 @@ DIFFICULTIES = {
         "lava_delay": 300, "lava_speed": 0.25, "lava_speed_max": 0.65,
         "enemy_speed": 1.2, "enemy_speed_max": 2.2,
         "flyer_speed": 1.0, "flyer_speed_max": 1.9,
+        "extra_enemy_chance": 0.15, "extra_enemy_chance_max": 0.3,
+        "extra_flyer_chance": 0.04, "extra_flyer_chance_max": 0.12,
         "heart_chance": 0.07, "heart_chance_min": 0.03,
     },
     "normal": {
@@ -71,6 +76,8 @@ DIFFICULTIES = {
         "lava_delay": 180, "lava_speed": 0.4, "lava_speed_max": 0.9,
         "enemy_speed": 1.5, "enemy_speed_max": 3,
         "flyer_speed": 1.2, "flyer_speed_max": 2.6,
+        "extra_enemy_chance": 0.25, "extra_enemy_chance_max": 0.5,
+        "extra_flyer_chance": 0.07, "extra_flyer_chance_max": 0.25,
         "heart_chance": 0.05, "heart_chance_min": 0.015,
     },
     "hard": {
@@ -79,6 +86,8 @@ DIFFICULTIES = {
         "lava_delay": 120, "lava_speed": 0.55, "lava_speed_max": 1.0,
         "enemy_speed": 2, "enemy_speed_max": 3.3,
         "flyer_speed": 1.6, "flyer_speed_max": 2.9,
+        "extra_enemy_chance": 0.35, "extra_enemy_chance_max": 0.6,
+        "extra_flyer_chance": 0.12, "extra_flyer_chance_max": 0.3,
         "heart_chance": 0.03, "heart_chance_min": 0.012,
     },
     # Baştan en zor: Orta'nın en zor hâliyle başlar, oradan da zorlaşır. Tek can, kalp nadir, lav beklemez
@@ -88,6 +97,8 @@ DIFFICULTIES = {
         "lava_delay": 0, "lava_speed": 0.9, "lava_speed_max": 1.15,
         "enemy_speed": 3, "enemy_speed_max": 3.6,
         "flyer_speed": 2.6, "flyer_speed_max": 3.2,
+        "extra_enemy_chance": 0.5, "extra_enemy_chance_max": 0.65,
+        "extra_flyer_chance": 0.25, "extra_flyer_chance_max": 0.35,
         "heart_chance": 0.015, "heart_chance_min": 0.008,
     },
 }
