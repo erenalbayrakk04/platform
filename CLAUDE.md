@@ -170,3 +170,6 @@ YAYINDA: https://erenalbayrakk04.github.io/platform/ (depo herkese açık, Pages
 yani her commit+push oyunu internette de günceller. Parça testi geçmezse yayına çıkmaz.
 Açık depoda çalışma durumu girişsiz bakılabilir: https://api.github.com/repos/erenalbayrakk04/platform/actions/runs
 - Sonra belki: başka güçlendirmeler (ör. jetpack), başka düşman türleri.
+- İleride ANA MENÜ yapılacak (kullanıcı isteği): orada "Daha akıcı oyun için Düşük Güç Modu'nu kapat" bilgisi
+  sabit yazsın. Şu anki otomatik ipucu (`draw_slow_hint`) kullanıcının iPhone'unda Düşük Güç Modu'nda ÇIKMADI
+  (tarayıcı testinde çıkıyordu; sebep bulunamadı, belki eski sürüm önbellekteydi).
