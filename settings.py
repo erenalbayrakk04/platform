@@ -12,6 +12,9 @@ FPS = 60  # oyun saniyede kaç adım ilerler — telefon daha az kare gösterse 
 # Telefon bir an takılırsa bir karede en fazla kaç adım telafi edilir. Fazlası atlanır: oyun bir an
 # yavaşlar ama karakter ışınlanmaz (ör. sekme değiştirip dönünce)
 MAX_CATCH_UP = 4
+# True = ekranın üstünde saniyede kaç kare çizildiği yazar (akıcılık testi için).
+# Web'de adresin sonuna #fps eklenince de açılır: .../platform/#fps
+SHOW_FPS = False
 
 # Renkler (Kırmızı, Yeşil, Mavi) — her biri 0-255 arası
 BLACK = (0, 0, 0)

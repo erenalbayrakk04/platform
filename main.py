@@ -12,6 +12,7 @@ from settings import (
     TITLE,
     FPS,
     MAX_CATCH_UP,
+    SHOW_FPS,
     STOMP_BOUNCE,
     GAME_OVER_DELAY,
     MUTE_KEY,
@@ -28,7 +29,7 @@ from settings import (
 from player import Player
 from level import Level
 from camera import Camera
-from score import Score, draw_lives, draw_powers, load_high_score, save_high_score
+from score import Score, draw_lives, draw_powers, draw_text, load_high_score, save_high_score
 from screens import draw_menu, draw_game_over
 from art import Background, shield_bubble
 from controls import TouchButtons, read_controls
@@ -65,6 +66,38 @@ class StepTimer:
         steps = int(self.lag)
         self.lag -= steps
         return steps
+
+
+def fps_wanted():
+    # Kare sayacı açık mı: settings.py'de SHOW_FPS ya da web'de adresin sonunda #fps
+    if SHOW_FPS:
+        return True
+    if WEB:
+        try:
+            from platform import window
+
+            return "fps" in str(window.location.hash)
+        except Exception:
+            return False
+    return False
+
+
+class FpsMeter:
+    # Saniyede kaç kare çizildiğini sayar ve ekranın üstüne yazar
+    def __init__(self):
+        self.font = pygame.font.Font(None, 22)
+        self.frames = 0
+        self.start = time.perf_counter()
+        self.text = "..."
+
+    def draw(self, screen):
+        self.frames += 1
+        now = time.perf_counter()
+        if now - self.start >= 1:
+            self.text = f"{self.frames / (now - self.start):.0f} kare/sn"
+            self.frames = 0
+            self.start = now
+        draw_text(screen, self.font, self.text, center=(SCREEN_WIDTH // 2, 80))
 
 
 def new_game():
@@ -201,6 +234,7 @@ async def main():
     new_record = False
     sounds.start_music()
     timer = StepTimer()
+    fps_meter = FpsMeter() if fps_wanted() else None
 
     running = True
     while running:
@@ -267,6 +301,8 @@ async def main():
                     touch.draw(screen)
                 if state == "game_over":
                     draw_game_over(screen, score, high_score, new_record, game_over_timer == 0)
+            if fps_meter:
+                fps_meter.draw(screen)
             pygame.display.flip()
 
         # Bilgisayarda döngü saniyede FPS kez döner. Tarayıcıda hızı tarayıcı belirler (ekran her
