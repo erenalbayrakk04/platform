@@ -21,6 +21,8 @@
   `Emulation.setCPUThrottlingRate` ile işlemci yavaşlatılır (telefon taklidi); görünmez Chrome ekranı ~240 Hz yeniler.
   CDP'ye Python `websocket-client` ile bağlanırken `suppress_origin=True` (yoksa 403); yavaş internet taklidi
   `Network.emulateNetworkConditions`; dokunuş `Emulation.setTouchEmulationEnabled` + `Input.dispatchTouchEvent`.
+  CDP ile fare tıklamadan ÖNCE `mouseMoved` gönder: SDL tıklamayı farenin son hareket ettiği yerde sayar
+  (yoksa tıklama bir önceki yere düşer; gerçek parmak/farede sorun yok).
   pygbag döngüyü tarayıcının ekran yenilemesine bağlar (her yenilemede bir tur) ve `clock.tick()` tarayıcıda
   ~16 ms MEŞGUL BEKLER (tarayıcıyı kilitler, kare kaçırtır) → web'de çağrılmaz.
 - `web.tmpl`'in giriş ekranıyla gelen kısımları: pygbag'in "Başlamak için ekrana dokun" beklemesi (`MM.UME`)
@@ -44,7 +46,8 @@
   Depo: https://github.com/erenalbayrakk04/platform, dal `main`. Commit mesajları Türkçe ve kısa.
 - Ayarlanabilir sayılar (hız, zıplama gücü, renkler) `settings.py` içinde dursun.
 - Görseller ve sesler dosya DEĞİL, kodla üretiliyor (kullanıcı kararı, Aşama 8): piksel sanatı
-  `art.py`'de, retro sesler/müzik `sound.py`'de. Renkler settings.py'deki ana renklerden gelir.
+  `art.py`'de (skin çizimleri, fiyatları ve görevleri `skins.py`'de), retro sesler/müzik `sound.py`'de. Renkler
+  settings.py'deki ana renklerden gelir.
 
 ## Dosyalar
 - `main.py` — oyun döngüsü (olaylar → güncelleme → çizim)
@@ -53,7 +56,9 @@
   `controls.left/right/jump` alır; `jumped` = bu karede zıpladı (ses için); `animate(dx)` resim seçer
   (idle/walk1/walk2/jump × `facing`); yerçekimi `velocity_y` + ondalıklı `pos_y`; yatay ve dikey
   çarpışmayı ayrı çözer; `on_ground` ayağın 1 px altını kontrol eder; `respawn()` başlangıca döndürür;
-  `Player(x, y, level_width)` — bölüm kenarından dışarı çıkamaz)
+  `Player(x, y, level_width, lives, max_lives, skin)` — bölüm kenarından dışarı çıkamaz; `set_skin(id)` görünüşü
+  değiştirir: `frames` = `skins.frames(id)`, `pose` = şu anki resim adı, `color` = can kaybında saçılan parçacık rengi,
+  `trail` = efsanevi skinin izi (`Trail`) ya da None)
 - OYUN SONSUZ (kullanıcı kararı, Doodle Jump tarzı): harita elle yazılmış küçük PARÇALARIN rastgele
   üst üste dizilmesiyle oluşur; ekranın üstüne yeni parça eklenir, çok altta kalan parça silinir.
 - `chunks.py` — `START_CHUNK` (zemin + `P`) ve `CHUNKS` listesi; her parça
@@ -158,12 +163,13 @@
   data, mode)`, Orta eski ad, diğerleri `stages-easy.json`...; `main.load_stars(mode)` uzunluğu STAGE_COUNT'a uydurur),
   `names(kind, mode)`: Orta eski adları kullanır, diğerlerinde ada `-easy`/`-hard`/`-ultra` eklenir (ör.
   `bestheight-ultra.txt`; .gitignore ve pygbag.ini'de de var), "stats" (`stats.json`: games/climbed/coins/enemies toplamları),
-  "options" (`options.json`: muted, difficulty, music_volume, effects_volume). `load_record/save_record` (sayı), `load_dict(kind, defaults)/save_dict`
+  "options" (`options.json`: muted, difficulty, music_volume, effects_volume), "skins" (`skins.json`: coins = cüzdan,
+  owned, selected, known — bkz. skins.py `Wardrobe`). `load_record/save_record` (sayı), `load_dict(kind, defaults)/save_dict`
   (JSON; eksik/bozuk/yanlış tipli değer → default). Dosyalar oyun klasöründe, git ve pygbag dışı; okunamazsa
   default, yazılamazsa sessiz; web'de (`settings.WEB`, `sys.platform == "emscripten"`) `platform.window.localStorage`.
 - `ui.py` — `Buttons(actions, top, gap)`: alt alta ortalı düğmeler; `handle_event(event)` basılan düğmenin adını
   döndürür (dokunma `FINGERDOWN`, sol tık, klavye ↑↓/W-S + Enter/Boşluk; `MOUSEMOTION` ile seçili olan değişir;
-  `focus` = seçili); `draw(screen, labels)`. `take_click()`: `BUTTON_CLICK_GAP` ms içindeki ikinci tıklama sayılmaz
+  `focus` = seçili); `draw(screen, labels, disabled=())` (disabled = gri, basılamaz görünen düğmeler). `take_click()`: `BUTTON_CLICK_GAP` ms içindeki ikinci tıklama sayılmaz
   (telefonda bir dokunuş hem parmak hem fare olayı gelebilir; ör. menüden dönünce alttaki düğmeye de basılıyordu).
   `PauseButton` oyunda sağ üstte ⏸ (`clicked(event)`). `StageGrid(count, modes, back_top)`: üstte zorluk sekmeleri,
   bölüm kutuları (4 sütun) + Geri; `handle_event(event, unlocked, mode)` → sıra / "locked" / "back" / zorluk adı (sekme);
@@ -171,7 +177,8 @@
   parmak/fareyle sürükle veya dokun (`handle_event` → değişti mi), `nudge(±1)` klavye için. Düğme renk/boyları settings "Menü düğmeleri".
 - `screens.py` — `SOUND_MENU` (`SoundMenu`: ses ayarları ekranı; Müzik + Efektler çubukları, "sound" (Ses: Açık/Kapalı)
   ve "back" düğmeleri; ↑↓ seçer, ←→ çubuğu ayarlar; `handle_event` → "music"/"effects"/"sound"/"back"),
-  her ekranın `Buttons`'ı (`MAIN_BUTTONS` play/difficulty/howto/records/sound_menu, `BACK_BUTTON`,
+  her ekranın `Buttons`'ı (`MAIN_BUTTONS` play/skins/difficulty/howto/records/sound_menu — 6 düğme, `gap=60`; web'de
+  altta "Düşük Güç Modu" yazısı olduğu için daha fazla düğme sığmaz, `BACK_BUTTON`,
   `PAUSE_BUTTONS` resume/sound/menu, `GAME_OVER_BUTTONS` again/menu, `PLAY_BUTTONS` stages/endless/back, `STAGE_GRID`,
   `CLEAR_BUTTONS` next/again/stages, `LAST_CLEAR_BUTTONS`), bölüm ekranları: `draw_play_select` (Sonsuz Oyun düğmesinin altında seçili zorluğun "Rekor: N m"si), `draw_stages`,
   ekran fonksiyonları `mode` alır (`STAGE_SETS[mode]`), `stage_title(mode, index)`;
@@ -181,7 +188,8 @@
   `draw_howto` (kontroller + `HOWTO_ROWS`: oyundaki resimlerle her şeyin açıklaması — yeni öğe eklenince buraya da
   ekle; 14 satır `HOWTO_TOP`/`HOWTO_GAP` (31) ile sığıyor, daha fazlası için aralık daralt; `HOWTO_WARN_ROWS` sarı yazı), `draw_records(best_heights, high_scores, stats, current)` (her modun tırmanış + puan rekoru, seçili mod sarı; altında
   tüm modların toplamları), `draw_pause`, `draw_game_over(screen, score, mode_name, ...)` (başlık altında "Zorluk: ...";
-  düğmeler `ready` olunca).
+  düğmeler `ready` olunca). `draw_new_skins(screen, skinler, y)`: oyun sonu ekranlarında (`NEW_SKIN_Y` = durum → y)
+  görevi yeni tamamlanan efsanevinin küçük resmi + "Yeni karakter: Ejderha!".
   Oyunun üstüne yarı saydam perde; büyük yazı yükseklik/rekor (m), puan küçük.
 - Can sistemi `Player`'da: `Player(x, y, level_width, lives, max_lives)` (moddan), `lives`, `max_lives` (kalp sınırı), `invincible` (kalan kare; `visible` ile yanıp söner), `hurt()`
   (can −1, dokunulmazlık, küçük sıçrama), `bounce(power)`, `check_springs(springs)` (ayak şeridi yaya
@@ -222,6 +230,14 @@
   `open_stages()`. `unlocked(i)`: ilki hep açık, sonraki önceki ≥1 yıldızla (`UNLOCK_ALL_STAGES` deneme için). `finish()`
   bölümde sonsuz rekorlarına dokunmaz, sadece istatistik. `Player.hurts` = can kaybı sayısı (3. yıldız). ESC ana menüde oyundan çıkar (web'de hariç).
   `next_difficulty()` Kolay→Orta→Zor→Ultra Zor (`DIFFICULTY_NAMES`), kaydeder ve `reset()` (arkadaki bölüm yeni moda göre).
+  SKİNLER: `wardrobe` (`skins.Wardrobe`; açılışta giyilen skin artık açık değilse klasiğe döner), `progress()` = görev
+  sayıları (stats toplamları, `all_stars()` toplamı, `height-<mod>` = her modun tırmanış rekoru); menü "skins" → "skins"
+  durumu (`SKIN_MENU.open(selected)`, `update`'te `SKIN_MENU.update(steps)`) → `choose_skin(action, id)`: "select" →
+  `wear(id)` ("coin" sesi; menünün arkasındaki karakter de `set_skin` ile değişir), "buy" → `wardrobe.buy` + `celebrate()`
+  ("buy" sesi), "locked"/"poor" → "powerdown". `finish(ended=True)` toplanan altınları cüzdana ekler; `ended` ise
+  `new_skins` = `wardrobe.new_unlocks(progress)` (oyun sonu ekranlarında yazar; durdurup ana menüye dönünce `ended=False`
+  → bir sonraki oyunun sonunda söylenir). `new_game(..., skin)`; `update_game` sonunda `player.trail.update(...)`,
+  `draw_world` izi karakterden hemen önce çizer.
   `update_game(...)` oyun mantığı, `draw_world(...)` dünyayı çizer (her ekranda arkada görünür).
   `main()` `async`: döngü sonunda `await asyncio.sleep(0)` (web için şart), en altta `asyncio.run(main())`.
   Web'de ilk kare çizilince `hide_web_loader()` (sayfanın yükleme ekranını kaldırır, bkz. web.tmpl).
@@ -253,7 +269,8 @@
   için bir üst platform tam tepede olmasın; yana kaydırılmış olsun ki zıplayıp üstüne çıkılabilsin.
 - `art.py` — piksel sanatı: harf haritası + palet → `render(rows, palette, size)` (her harf
   `PIXEL_SCALE` px, çizim alta-ortaya yaslı; hiç `.` yoksa ve ekran açıksa `convert()` = saydamsız → tarayıcıda
-  ~5 kat hızlı çizilir), `shade`/`tint`/`mix` ile tonlar; `player_frames()`,
+  ~5 kat hızlı çizilir), `shade`/`tint`/`mix` ile tonlar; `player_frames(skin)` (gövde ve renkler skinden,
+  bacaklar skinde yoksa `PLAYER_LEGS` — harfi "L", rengi verilmezse "K"; "W"/"E" verilmezse oyunun göz renkleri),
   `enemy_frames()` ({1: sağ, -1: sol} çiftleri), `flyer_frames()` (kanat çırpma), `slime_frames()` (walk1/walk2/squash/jump),
   `spiky_frames()`, `cannon_frames()` ([normal, kızarmış]; `CANNON_MUZZLE_Y` namlu yüksekliği), `fireball_frames()`,
   `bee_frames()`, `flag_frames()` (damalı bayrak), `star_image(filled, size)`, `lock_image()`, `crumble_frames()`
@@ -264,9 +281,38 @@
   OYUNU"nun harfleri — `TITLE` değişirse eksik harf eklenmeli, yoksa açılışta hata) + `logo_letters(text, üst, alt)`
   (her kare 2x2 "ince kareye" bölünür, ince kare `LOGO_PIXEL` px: koyu kenar 1, alttaki 3B kalınlık `LOGO_DEPTH` ince
   kare; içi renk geçişli, çizgilerin üst kenarı parlak; harf başına (resim, parıltı, x)).
+- `skins.py` — SKİNLER (karakter görünüşleri; SADECE GÖRÜNÜŞ: hitbox/hız/zıplama aynı, rekorlar adil). `SKINS` listesi,
+  her biri `skin(id, ad, grup, gövde, renkler, price, goal, legs, trail, color)`: gövde 10x10 harf (+2 satır bacak:
+  `art.PLAYER_LEGS` ya da kendi `legs`'i, ör. hayalet/ahtapot), harfler art.py gibi. Gruplar (`GROUP_NAMES`, ekranda
+  sekme): "colors" Renkler (11; klasik karakterin renk/desenleri, `blob_palette(renk, legs)`), "characters" Karakterler
+  (15; kedi, kurbağa, penguen, panda, tavşan, mantar, kardan adam, ahtapot, hayalet (yarı saydam: renkte 4. sayı),
+  uzaylı, korsan, robot, ninja, şövalye, astronot), "legendary" Efsanevi (7; GÖREVLE açılır, altınla alınmaz, arkasında
+  iz bırakır): Şimşek (40 oyun), Ejderha (150 düşman), Kozmik (toplam 2500 m), Tekboynuz (toplam 1000 altın), Kral
+  (75 yıldız), Buz (Zor'da 150 m, sonsuz), Gölge (Ultra Zor'da 75 m, sonsuz). Bir grupta en fazla `GROUP_SIZE` (15)
+  skin. Fiyatlar 10-250 altın (ucuzdan pahalıya dizili). `goal` = ("games"/"climbed"/"enemies"/"coins"/"stars"/
+  "height-<mod>", hedef), `goal_text(goal)`. Koyu gökte kaybolan bacaklar için açık renk "L" (lavanta, gece, gökkuşağı).
+  `frames(id)` resimleri bir kere hazırlar; `get(id)`, `in_group(g)`. `Wardrobe(lifetime_coins)`: kayıt (storage
+  "skins"): `coins` = cüzdan (ilk açılışta şimdiye kadar toplanan altınlarla başlar — eski oyunlar da sayılsın), `owned`,
+  `selected`, `known` (görevi tamamlandığı söylenmiş efsaneviler); `owns(skin, progress)` (`UNLOCK_ALL_SKINS` deneme
+  için hepsi), `buy` (giyer de), `select`, `add_coins`, `new_unlocks(progress)`. `check_skins()` açılışta (boy, harf
+  renkleri, fiyat/görev). Yeni skin eklerken önizleme betiğiyle büyütülmüş resmine bak (koyu gökte okunuyor mu).
+- `skin_menu.py` — KARAKTERLER EKRANI `SKIN_MENU` (`SkinMenu`): üstte grup sekmeleri, ortada koyu panoda önizlenen skin
+  2 kat büyük platformda yürüyüp zıplar (efsanevinin izi de görünür), adı + bilgi (giyiliyor / fiyat / "N altın daha
+  topla" / görev ve ilerleme), 5 sütun kutular (sahip olunmayan sönük + fiyat etiketi ya da kilit; giyilende yeşil tik),
+  cüzdan ("Altının: N"; yetmeyince kırmızı yanar), "Seç / Seçili / Satın Al: N / Kilitli" düğmesi, Geri. Kutuya dokunmak
+  önizler; sahip olunan skine dokunmak hemen giyer; SATIN ALMAK sadece alttaki düğmeyle (yanlışlıkla alınmasın). Fare
+  üstünden geçmek önizlemeyi DEĞİŞTİRMEZ (düğmeye giderken geçilen kutu alınmasın). Klavye: oklar (en üst satırdan
+  yukarı = sekmeler, sağ/sol grup değiştirir), Enter (sahip olunmayan kutuda alttaki düğmeye geçer). `handle_event(event,
+  wardrobe, progress)` → ("select"/"buy"/"locked"/"poor", id) / "back" / None; `celebrate()` satın alınca konfeti.
+- `trail.py` — `Trail(kind, scale)`: efsanevi izleri (kısa ömürlü parçacıklar, çıktıkları yerde kalır; en fazla
+  `TRAIL_LIMIT`): "spark" şimşek kıvılcımı + elektrik tozu, "fire" yükselen alev, "stars" yıldız tozu, "gold" dökülen
+  altın pırıltı, "snow" süzülen kar, "rainbow" gökkuşağı şeridi (sadece hareket ederken), "shadow" silinen gölgeler
+  (resmin düz renkli hâli, BLEND ile; `pygame.mask` kullanılmadı). `update(rect, image, facing)` her adımda,
+  `draw(screen, dy)` (dy = kamera kaydırması). Oyunda, giriş ekranında (2 kat) ve Karakterler önizlemesinde kullanılır.
 - `title.py` — GİRİŞ EKRANI (kullanıcı isteği: düz "Başlamak için ekrana dokun" kutusu yerine güzel bir ekran):
-  `TitleScreen(web)`: gök + parlayan yıldızlar, logo (harfler `DROP_*` ile sırayla yukarıdan düşüp `bounce` ile sekerek
-  oturur), uçan adacıkta gezinip arada zıplayan karakter (`TITLE_SCALE` kat büyük), iki yanda dönen altınlar, uçan yarasa,
+  `TitleScreen(web, skin)`: gök + parlayan yıldızlar, logo (harfler `DROP_*` ile sırayla yukarıdan düşüp `bounce` ile sekerek
+  oturur), uçan adacıkta gezinip arada zıplayan karakter (giyilen skin, `TITLE_SCALE` kat büyük; efsaneviyse izi de —
+  fırlarken arkasında kalır), iki yanda dönen altınlar, uçan yarasa,
   dipte lav + kıvılcımlar (`embers`), logonun altında "Lavdan kaç, en yükseğe tırman!", nefes alan "Dokun ve Başla"
   (masaüstünde "Tıkla ve Başla") düğmesi. `handle_event` dokunma/tık/tuş (+ `take_click`) → True; `leaving`: karakter
   `TITLE_LAUNCH_POWER` ile fırlar, `TITLE_LEAVE_TIME` adımda ana menü belirir (`draw_fading`: giriş ekranı `layer`'a
@@ -276,7 +322,7 @@
   Yerleşim sabitleri dosyanın başında; ayarlar settings "Oyunun adı (logo)" ve "Giriş ekranı".
 - `sound.py` — `pre_init()` (pygame.init'ten önce; 22050 Hz mono 16 bit; tampon masaüstünde 512,
   web'de `WEB_AUDIO_BUFFER` = 2048 — tarayıcı 512'de cızırdıyordu; tarayıcı frekansı kendisi seçer, 48000), `Sounds()`: efektler
-  (jump, coin, stomp, hurt, start, game_over, win, life, spring, crumble, shoot, powerup, powerdown) ve 8 ölçülük döngü müzik (`MELODY`/`BASS` nota
+  (jump, coin, stomp, hurt, start, game_over, win, life, spring, crumble, shoot, powerup, powerdown, buy = skin satın alındı) ve 8 ölçülük döngü müzik (`MELODY`/`BASS` nota
   numaraları) `array` ile üretilir (numpy YOK); `play(name)`, `start_music/stop_music`, `toggle_mute`,
   `set_levels(music, effects)` (0-1 çarpan; tam = `MUSIC_VOLUME`/`SOUND_VOLUME`)
   (M). Mixer yoksa/biçim farklıysa `enabled=False`, her şey sessizce çalışır. Stereo da desteklenir.
@@ -329,3 +375,9 @@ Açık depoda çalışma durumu girişsiz bakılabilir: https://api.github.com/r
   (La minör, 120 vuruş). O denemedeki ses üretimini hızlandırma (notalar liste olarak, sesler `map(operator.add)` ile
   toplanır; tarayıcıda 48000 Hz yerine yarı hızda üretip her örneği iki kez yazmak) de onunla geri alındı. Telefonda
   açılış yavaş gelirse oradan alınabilir.
+- KARAKTERLER (SKİNLER) yapıldı (2026-10-09; kullanıcı: "oyuna bir sürü skin ekleyeceğiz"). Kullanıcı kararları:
+  açılma = ALTIN + GÖREV (çoğu toplanan altınla alınır, en havalıları sadece görevle), çeşit = KARAKTERLER + RENKLER,
+  en nadirlerde İZ/PARILTI efekti. Toplam 33 (11 renk, 15 karakter, 7 efsanevi). Ana menüde "Karakterler" düğmesi.
+  Skinler sadece görünüş (Claude kararı: fizik/hitbox aynı, yoksa rekorlar ve check_chunks bozulur). Kullanıcı
+  oynayıp fiyat/görev zorluğu için geri bildirim verecek (skins.py; bir oyunda ~0,15 altın/m toplanır → 100 m ≈ 15
+  altın, hepsini almak ~2250 altın). Tarayıcıda (görünmez Chrome) denendi: satın alma, localStorage kaydı, iz çalışıyor.
