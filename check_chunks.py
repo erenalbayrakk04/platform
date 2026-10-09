@@ -18,7 +18,7 @@ os.environ.setdefault("PYGAME_HIDE_SUPPORT_PROMPT", "1")
 
 import pygame
 
-from chunks import START_CHUNK, CHUNKS, WIDTH, SOLID, moving_platforms
+from chunks import START_CHUNK, CHUNKS, FINISH_CHUNKS, WIDTH, SOLID, moving_platforms
 from controls import Controls
 from level import Tile, Platform, Spring, MovingPlatform, CrumblingPlatform
 from player import Player
@@ -33,6 +33,8 @@ for d1 in (-1, 0, 1):
             ACTIONS.append((True, d1, t1, d2))
 JUMP_ACTIONS = [action for action in ACTIONS if action[0]]  # kırılan platformun üstünden yapılabilenler
 MAX_FRAMES = 150
+# Denenen parçalar: oyundakiler + bölüm modunun bitiş parçaları (tepesinde bayrak; üstlerine parça gelmez)
+TESTED = CHUNKS + list(FINISH_CHUNKS.values())
 
 
 def build(rows):
@@ -139,22 +141,22 @@ def chunk_name(chunk):
 
 
 def test_inside(index):
-    # Parçanın girişinden (başlangıç parçasında P'den) en üst satıra çıkılabiliyor mu?
-    chunk = START_CHUNK if index < 0 else CHUNKS[index]
+    # Parçanın girişinden (başlangıç parçasında P'den) en üst satıra (bitiş parçasında zirveye) çıkılabiliyor mu?
+    chunk = START_CHUNK if index < 0 else TESTED[index]
     rows = chunk["rows"]
     if index < 0:
         r = next(i for i, row in enumerate(rows) if "P" in row)
         starts = [(rows[r].index("P") * TILE_SIZE, (r + 1) * TILE_SIZE)]
     else:
         starts = row_starts(rows, len(rows) - 2)
-    return reachable(rows, starts, 0)
+    return reachable(rows, starts, chunk.get("goal_row", 0) * TILE_SIZE)
 
 
 def test_join(pair):
     # Alttaki parçanın çıkışından üstteki parçanın girişine geçilebiliyor mu?
     lower, upper = pair
     lower_rows = (START_CHUNK if lower < 0 else CHUNKS[lower])["rows"]
-    upper_rows = CHUNKS[upper]["rows"]
+    upper_rows = TESTED[upper]["rows"]
     # Üst parçanın alt 5 satırı + alt parçanın üst 4 satırı yeter (zıplama 3 satırdan fazla ulaşmaz)
     rows = upper_rows[-5:] + lower_rows[:4]
     return reachable(rows, row_starts(rows, 5), 3 * TILE_SIZE)
@@ -162,11 +164,11 @@ def test_join(pair):
 
 def main():
     start = time.time()
-    indexes = [-1] + list(range(len(CHUNKS)))
+    indexes = [-1] + list(range(len(TESTED)))
     pairs = []
-    for lower in indexes:
+    for lower in indexes[: len(CHUNKS) + 1]:  # bitiş parçasının üstüne parça gelmez
         exit_side = (START_CHUNK if lower < 0 else CHUNKS[lower])["exit"]
-        for upper, chunk in enumerate(CHUNKS):
+        for upper, chunk in enumerate(TESTED):
             if chunk["entry"] != exit_side:  # oyun sadece böyle dizer (level.pick_chunk)
                 pairs.append((lower, upper))
 
@@ -175,8 +177,11 @@ def main():
         joins = pool.map(test_join, pairs)
 
     def describe(i):
-        chunk = START_CHUNK if i < 0 else CHUNKS[i]
-        return ("başlangıç parçası" if i < 0 else f"CHUNKS[{i}]") + " (" + chunk_name(chunk) + ")"
+        if i < 0:
+            return "başlangıç parçası"
+        if i >= len(CHUNKS):
+            return f"bitiş parçası (giriş {TESTED[i]['entry']})"
+        return f"CHUNKS[{i}] (" + chunk_name(CHUNKS[i]) + ")"
 
     problems = [f"İçinden çıkılamıyor: {describe(i)}" for i, ok in zip(indexes, inside) if not ok]
     problems += [

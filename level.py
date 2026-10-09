@@ -1,4 +1,5 @@
-# Sonsuz bölüm: harita parçalarını (chunks.py) üst üste dizer, geride kalanları siler.
+# Harita: parçaları (chunks.py) üst üste dizer, geride kalanları siler. Sonsuz oyunda parçalar rastgele
+# ve sonsuz; bölümde (stages.py) baştan seçilir ve tepede bayrakla biter.
 import math
 import random
 
@@ -25,10 +26,12 @@ from settings import (
     REMOVE_BELOW,
     DIFFICULTY_STEP,
     HARD_CHUNK_BIAS,
+    FOCUS_WEIGHT,
 )
 from chunks import (
     START_CHUNK,
     CHUNKS,
+    FINISH_CHUNKS,
     platform_run,
     moving_platforms,
     free_span,
@@ -37,14 +40,17 @@ from chunks import (
     column_span,
     SOLID,
 )
+from stages import allowed_chunks, focused
 from enemy import Enemy, Slime, Spiky, Cannon, FlyingEnemy, Bee
 import art
 
 
 def hardness(height, mode):
     # Ne kadar zorlaştı: 0 = oyunun başı, 1 = zorluk modunun (settings.DIFFICULTIES) hard_height'ı kadar
-    # tırmanıldı (en zor). height piksel, yukarı artı
-    return min(1.0, max(0.0, height / mode["hard_height"]))
+    # tırmanıldı (en zor). height piksel, yukarı artı. Bölümlerde (stages.py) "hardness" = (baştaki, sondaki)
+    t = min(1.0, max(0.0, height / mode["hard_height"]))
+    low, high = mode.get("hardness", (0.0, 1.0))
+    return low + (high - low) * t
 
 
 def blend(easy, hard, t):
@@ -66,6 +72,7 @@ def image(name):
             shield=art.shield_image(),
             spring=art.spring_frames(),
             crumble=art.crumble_frames(),
+            flag=art.flag_frames(),
         )
     return IMAGES[name]
 
@@ -231,13 +238,32 @@ class Spring(pygame.sprite.Sprite):
         self.image = self.frames[1 if self.squashed else 0]
 
 
+class Goal(pygame.sprite.Sprite):
+    # Bölümün sonundaki bayrak: altındaki zirveye oturur, dalgalanır; karakter değince bölüm biter (main.py)
+    def __init__(self, x, y):
+        super().__init__()
+        self.frames = image("flag")
+        self.image = self.frames[0]
+        self.rect = self.image.get_rect(midbottom=(x + TILE_SIZE // 2, y + TILE_SIZE))
+        self.time = 0
+
+    def update(self):
+        self.time += 1
+        self.image = self.frames[(self.time // 8) % len(self.frames)]
+
+
 class Level:
     # Koordinatlar: en alttaki zeminin altı y = 0; yukarı çıktıkça y eksiye iner.
-    def __init__(self, mode, seed=LEVEL_SEED):
-        # mode = zorluk modunun sayıları (settings.DIFFICULTIES): düşman hızı, kalp ihtimali, parça seçimi
+    def __init__(self, mode, seed=LEVEL_SEED, stage=None):
+        # mode = zorluk modunun sayıları (settings.DIFFICULTIES; bölümde stages.stage_mode): düşman hızı,
+        # kalp ihtimali, parça seçimi. stage = bölüm (stages.py) ya da None (sonsuz oyun)
         self.mode = mode
+        self.stage = stage
         # Aynı seed (sayı) hep aynı haritayı üretir; None ise her oyun farklı
         self.random = random.Random(seed)
+        # Düşman türleri ve ağırlıkları (bölümde sadece o bölümünkiler)
+        self.walker_kinds = mode.get("walker_kinds", WALKER_KINDS)
+        self.flyer_kinds = mode.get("flyer_kinds", FLYER_KINDS)
         # Karakterin çarptığı her şey (bloklar ve ince platformlar)
         self.tiles = pygame.sprite.Group()
         # Toplanabilir altınlar
@@ -254,6 +280,9 @@ class Level:
         self.enemies = pygame.sprite.Group()
         # Topçuların attığı ateş topları (hiçbir parçaya ait değiller; çarpınca kendileri söner)
         self.shots = pygame.sprite.Group()
+        # Bölümün sonundaki bayrak (sonsuz oyunda boş)
+        self.goals = pygame.sprite.Group()
+        self.coins_total = 0  # haritaya konan altın sayısı (bölümde yıldız için)
         self.width = len(START_CHUNK["rows"][0]) * TILE_SIZE
         self.player_start = (TILE_SIZE, 0)
         # Şu an bellekteki parçalar, aşağıdan yukarıya: (üst y, alt y, sprite listesi)
@@ -262,6 +291,24 @@ class Level:
         self.bottom = 0  # en alttaki parçanın altı — bunun altına düşen kaybeder
         self.exit_side = None  # en üstteki parçanın çıkışı hangi tarafta
         self.add_chunk(START_CHUNK)
+        # Bölümde bütün parçalar baştan seçilir (sonunda bitiş parçası): bayrağın yüksekliği baştan belli olur.
+        # Parçalar yine ekrana yaklaştıkça kurulur. goal_height = bayrağın durduğu zirve, başlangıçtan kaç blok
+        self.plan = []
+        self.goal_height = None
+        if stage:
+            self.make_plan()
+
+    def make_plan(self):
+        finish_rise = len(FINISH_CHUNKS["L"]["rows"]) - FINISH_CHUNKS["L"]["goal_row"]  # zirve, parçanın altından kaç blok yukarıda
+        goal_y = self.player_start[1] - self.stage["goal"] * TILE_SIZE
+        top, side = self.top, self.exit_side
+        while top - finish_rise * TILE_SIZE > goal_y:
+            chunk = self.pick_chunk(top, side)
+            self.plan.append(chunk)
+            top -= len(chunk["rows"]) * TILE_SIZE
+            side = chunk["exit"]
+        self.plan.append(FINISH_CHUNKS["R" if side == "L" else "L"])
+        self.goal_height = (self.player_start[1] - (top - finish_rise * TILE_SIZE)) // TILE_SIZE
 
     def add_chunk(self, chunk):
         # Parçayı şu anki tepenin hemen üstüne yerleştir
@@ -271,6 +318,11 @@ class Level:
         t = hardness(-top, mode)  # yükseklerdeki parçada düşmanlar hızlı ve çok, kalpler seyrek
         if chunk is not START_CHUNK:
             rows = self.add_extra_enemies(rows, t)
+        # Bölümde olmayan düşman türlerinin yerleri boş kalır (parça yine çıkılabilir; düşmanlar katı değil)
+        if not self.walker_kinds:
+            rows = [row.replace("E", ".") for row in rows]
+        if not self.flyer_kinds:
+            rows = [row.replace("F", ".") for row in rows]
         sprites = []
         for row_index, row in enumerate(rows):
             for col_index, cell in enumerate(row):
@@ -295,6 +347,7 @@ class Level:
                         coin = Coin(x, y)
                         sprites.append(coin)
                         self.coins.add(coin)
+                        self.coins_total += 1
                 elif cell == "S":
                     spring = Spring(x, y)
                     sprites.append(spring)
@@ -304,8 +357,10 @@ class Level:
                     # Türü rastgele; sümüğün zıplayacak yeri (platformun iki üstü boş) olmalı
                     left, right = platform_run(rows, row_index, col_index)
                     roof = rows[row_index - 1][left : right + 1]
-                    kind = self.pick_enemy(WALKER_KINDS, t, ("slime",) if any(c in SOLID for c in roof) else ())
+                    kind = self.pick_enemy(self.walker_kinds, t, ("slime",) if any(c in SOLID for c in roof) else ())
                     feet = (x + TILE_SIZE // 2, y + TILE_SIZE)
+                    if kind is None:  # bölümde buraya uyan tür yok
+                        continue
                     if kind == "cannon":
                         enemy = Cannon(*feet, self.shots)
                     else:
@@ -318,9 +373,11 @@ class Level:
                     # Uçan düşman yeri: yarasa satırında duvara veya kenara kadar uçar, arı sütununda
                     # aşağı-yukarı (yeri yoksa arı gelmez)
                     path = self.bee_path(rows, top, row_index, col_index)
-                    kind = self.pick_enemy(FLYER_KINDS, t, () if path else ("bee",))
+                    kind = self.pick_enemy(self.flyer_kinds, t, () if path else ("bee",))
                     center = (x + TILE_SIZE // 2, y + TILE_SIZE // 2)
                     speed = blend(mode["flyer_speed"], mode["flyer_speed_max"], t)
+                    if kind is None:
+                        continue
                     if kind == "bee":
                         facing = 1 if center[0] < self.width // 2 else -1  # ortaya baksın
                         flyer = Bee(*center, *path, speed, facing)
@@ -329,6 +386,10 @@ class Level:
                         flyer = FlyingEnemy(*center, left * TILE_SIZE, (right + 1) * TILE_SIZE, speed)
                     sprites.append(flyer)
                     self.enemies.add(flyer)
+                elif cell == "G":
+                    goal = Goal(x, y)
+                    sprites.append(goal)
+                    self.goals.add(goal)
                 elif cell == "P":
                     # Karakterin ayakları bu kutunun altına gelsin
                     self.player_start = (x + TILE_SIZE // 2, y + TILE_SIZE)
@@ -371,7 +432,10 @@ class Level:
     def pick_enemy(self, kinds, t, banned=()):
         # Düşman yerine hangi tür gelecek (settings WALKER_KINDS / FLYER_KINDS): ağırlıklar
         # (başta, en zorda), zorluk (t) arttıkça "en zorda"ya kayar. banned = o yere uymayan türler
+        # Uyan tür yoksa (bölümde sadece o türler var) None
         options = [kind for kind in kinds if kind not in banned]
+        if not options:
+            return None
         weights = [blend(*kinds[kind], t) for kind in options]
         return self.random.choices(options, weights)[0]
 
@@ -395,8 +459,8 @@ class Level:
         # Kalpler zorluk (t) arttıkça seyrekleşir
         chances = (
             ("heart", blend(self.mode["heart_chance"], self.mode["heart_chance_min"], t)),
-            ("magnet", MAGNET_CHANCE),
-            ("shield", SHIELD_CHANCE),
+            ("magnet", self.mode.get("magnet_chance", MAGNET_CHANCE)),
+            ("shield", self.mode.get("shield_chance", SHIELD_CHANCE)),
         )
         roll = self.random.random()
         for kind, chance in chances:
@@ -405,22 +469,35 @@ class Level:
             roll -= chance
         return "coin"
 
-    def pick_chunk(self):
+    def pick_chunk(self, top, exit_side):
+        # top = parçanın konacağı yer (alttaki parçanın tepesi), exit_side = alttaki parçanın çıkışı.
         # Girişi, alttaki parçanın çıkışının karşı tarafında olan parçalardan rastgele seç
-        entry = "R" if self.exit_side == "L" else "L"
+        entry = "R" if exit_side == "L" else "L"
         # Yükseldikçe daha zor parçalar da seçilebilir. Zor modlarda harita baştan yukarıdaymış gibi seçilir
-        height = -self.top + self.mode["map_head_start"]
-        max_difficulty = 1 + int(height // DIFFICULTY_STEP)
-        options = [c for c in CHUNKS if c["entry"] == entry and c["difficulty"] <= max_difficulty]
+        height = -top + self.mode["map_head_start"]
+        stage = self.stage
+        if stage:
+            # Bölümde: sadece bölümün izin verdiği parçalar; tanıttığı şeyin olduğu parçalar daha sık
+            options = allowed_chunks(stage, entry)
+        else:
+            max_difficulty = 1 + int(height // DIFFICULTY_STEP)
+            options = [c for c in CHUNKS if c["entry"] == entry and c["difficulty"] <= max_difficulty]
         # Çok yükseklerde kolay parçalar seyrekleşir, zorlar sıklaşır
         t = hardness(height, self.mode)
         weights = [1 + t * HARD_CHUNK_BIAS * (c["difficulty"] - 1) for c in options]
+        if stage:
+            weights = [w * (FOCUS_WEIGHT if focused(stage, c) else 1) for w, c in zip(weights, options)]
         return self.random.choices(options, weights)[0]
 
     def update(self, view_top, view_bottom):
-        # Ekranın yukarısı için yeterince parça hazır olsun
+        # Ekranın yukarısı için yeterince parça hazır olsun (bölümde plan bitince — bayraktan sonra — durur)
         while self.top > view_top - GENERATE_AHEAD:
-            self.add_chunk(self.pick_chunk())
+            if self.stage:
+                if not self.plan:
+                    break
+                self.add_chunk(self.plan.pop(0))
+            else:
+                self.add_chunk(self.pick_chunk(self.top, self.exit_side))
         # Ekranın çok altında kalan parçaları unut (bellekten sil)
         while len(self.chunks) > 1 and self.chunks[0][0] > view_bottom + REMOVE_BELOW:
             _, _, sprites = self.chunks.pop(0)
@@ -431,4 +508,5 @@ class Level:
             self.movers.remove(sprites)
             self.crumblers.remove(sprites)
             self.enemies.remove(sprites)
+            self.goals.remove(sprites)
         self.bottom = self.chunks[0][1]

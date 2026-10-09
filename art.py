@@ -39,6 +39,9 @@ from settings import (
     LIFE_EMPTY_COLOR,
     MAGNET_COLOR,
     SHIELD_COLOR,
+    FLAG_COLOR,
+    STAR_COLOR,
+    STAR_EMPTY_COLOR,
     LAVA_COLOR,
     LAVA_TOP_COLOR,
     LAVA_GLOW_COLOR,
@@ -562,6 +565,76 @@ def shield_bubble(radius):
     # Sol üstte küçük bir parlama
     pygame.draw.circle(image, (*WHITE, 150), (radius * 2 // 3, radius * 2 // 3), PIXEL_SCALE)
     return image
+
+
+# --- Bölüm modu: bitiş bayrağı, yıldız, kilit ---
+FLAG_SIZE = (10, 20)  # bayrağın resmi (kare): direk + bez
+FLAG_CLOTH = 6  # bezin yüksekliği (kare)
+
+
+def flag_frames(count=4):
+    # Direğin tepesinde altın top, yeşil-beyaz damalı bez dalgalanır (count resim); dipte taş ayak
+    palette = {
+        "Y": COIN_COLOR, "y": COIN_EDGE_COLOR, "P": (225, 225, 235), "B": (90, 90, 110),
+        "G": FLAG_COLOR, "g": shade(FLAG_COLOR, 0.7), "W": WHITE, "w": (190, 190, 205),
+    }
+    width, height = FLAG_SIZE
+    frames = []
+    for frame in range(count):
+        grid = [["."] * width for _ in range(height)]
+        grid[0][1] = "Y"
+        grid[1][0:3] = ["Y", "Y", "y"]
+        for r in range(2, height):
+            grid[r][1] = "P"
+        grid[height - 1][0:3] = ["B", "B", "B"]
+        for c in range(2, width):
+            # Dalga direkten uzaklaştıkça başlar; geriye doğru kıvrılan yer biraz koyu
+            wave = math.sin((c - 2) / 2.2 - frame * math.pi / 2)
+            offset = round(wave) if c > 3 else 0
+            for k in range(FLAG_CLOTH):
+                letter = "G" if ((c - 2) // 2 + k // 2) % 2 else "W"
+                grid[2 + offset + k][c] = letter.lower() if wave < -0.3 else letter
+        frames.append(render(["".join(row) for row in grid], palette))
+    return frames
+
+
+STAR_ROWS = [
+    "....S....",
+    "...ShS...",
+    "...ShS...",
+    "SSSShSSSS",
+    ".SSSSSSS.",
+    "..SSSSS..",
+    "..SSSSS..",
+    ".SSS.SSS.",
+    ".SS...SS.",
+]
+
+
+def star_image(filled=True, size=None):
+    # Kazanılan (sarı) ya da kazanılmayan (gri) yıldız; size verilirse o boya küçültülür (piksel)
+    color = STAR_COLOR if filled else STAR_EMPTY_COLOR
+    image = render(STAR_ROWS, {"S": color, "h": tint(color, 0.5)})
+    if size:
+        image = pygame.transform.scale(image, (size, size))
+    return image
+
+
+LOCK_ROWS = [
+    "..kkk..",
+    ".k...k.",
+    ".k...k.",
+    "LLLLLLL",
+    "LLLdLLL",
+    "LLLdLLL",
+    "lllllll",
+]
+
+
+def lock_image():
+    # Kilitli bölümün üstündeki asma kilit
+    body = (170, 170, 190)
+    return render(LOCK_ROWS, {"k": (210, 210, 225), "L": body, "l": shade(body, 0.7), "d": EYE_DARK})
 
 
 LAVA_WAVE_ROWS = 8  # dalga şeridinin yüksekliği (piksel sanatı karesi)

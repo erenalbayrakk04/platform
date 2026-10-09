@@ -13,6 +13,7 @@
 #   F  = uçan düşman (havada, kendi satırında duvara/kenara kadar sağa-sola uçar; bir platformun
 #        hemen üstündeki satıra koyarsan tam karakterin boyunda geçer). Satırda tek F, M ile aynı satırda olmaz.
 #   P  = karakterin başladığı yer (sadece başlangıç parçasında)
+#   G  = bitiş bayrağı (sadece bölüm modunun bitiş parçasında, FINISH_CHUNK)
 #
 # Parçaların birbirine bağlanma kuralları (check_chunk bunları kontrol eder):
 #   - Her satır 10 karakter.
@@ -305,9 +306,9 @@ def mirror(chunk):
     # Parçanın sağ-sol aynası: her satır ters çevrilir, giriş/çıkış tarafları yer değiştirir
     swap = {"L": "R", "R": "L"}
     return {
+        **chunk,
         "entry": swap[chunk["entry"]],
-        "exit": swap[chunk["exit"]],
-        "difficulty": chunk["difficulty"],
+        "exit": swap.get(chunk["exit"]),  # bitiş parçasının çıkışı yok (None)
         "rows": [row[::-1] for row in chunk["rows"]],
     }
 
@@ -604,6 +605,25 @@ MIRRORED_CHUNKS = [
 ]
 CHUNKS += MIRRORED_CHUNKS + [mirror(chunk) for chunk in MIRRORED_CHUNKS]
 
+# Bölüm modunda (stages.py) en tepeye konan parça: geniş bir zirve, üstünde bayrak (G = bayrağa değen
+# bölümü bitirir). Çıkışı yok, üstüne parça gelmez. Giriş tarafına göre iki tane (biri ötekinin aynası)
+FINISH_CHUNK = {
+    "entry": "L", "exit": None, "difficulty": 1,
+    "goal_row": 4,  # zirvenin satırı (check_chunks oraya çıkılabiliyor mu diye bakar)
+    "rows": [
+        "..........",
+        "..........",
+        "..........",
+        ".......G..",
+        ".....#####",
+        "..........",
+        "..........",
+        "-----.....",
+        "..........",
+    ],
+}
+FINISH_CHUNKS = {"L": FINISH_CHUNK, "R": mirror(FINISH_CHUNK)}  # giriş tarafı → bitiş parçası
+
 WIDTH = 10
 # Her taraf için hangi sütunlar ona ait ve hangi sütun mutlaka dolu olmalı
 SIDE_COLUMNS = {"L": range(0, 5), "R": range(5, 10)}
@@ -718,13 +738,16 @@ def check_side_row(row, side, allowed):
 def check_chunk(chunk, is_start=False):
     # Parça kurallara uymuyorsa oyun açılırken hata ver (yanlış parça fark edilmeden kalmasın)
     rows = chunk["rows"]
-    allowed = "#-.CESMKF" + ("P" if is_start else "")
+    finish = chunk.get("exit", "") is None  # bitiş parçası: çıkışı yok, bayrak (G) var
+    allowed = "#-.CESMKF" + ("P" if is_start else "") + ("G" if finish else "")
     problem = None
     if any(len(row) != WIDTH for row in rows):
         problem = "her satır 10 karakter olmalı"
     elif any(cell not in allowed for row in rows for cell in row):
         problem = f"sadece şu işaretler kullanılabilir: {allowed}"
-    elif not check_side_row(rows[0], chunk["exit"], "#-"):
+    elif finish and sum(row.count("G") for row in rows) != 1:
+        problem = "bitiş parçasında tek bayrak (G) olmalı"
+    elif not finish and not check_side_row(rows[0], chunk["exit"], "#-"):
         problem = "en üst satır (çıkış) kurala uymuyor"
     elif not is_start and rows[-1] != "." * WIDTH:
         problem = "en alt satır boş olmalı"
@@ -733,7 +756,7 @@ def check_chunk(chunk, is_start=False):
     # Altın, yay ve düşman havada olmasın; düşmanın platformu yeterince geniş olsun
     for r, row in enumerate(rows):
         for c, cell in enumerate(row):
-            if problem or cell not in "CES":
+            if problem or cell not in "CESG":
                 continue
             if r + 1 >= len(rows) or rows[r + 1][c] not in SOLID:
                 problem = f"{r}. satır {c}. sütundaki '{cell}' havada (altı katı değil)"
@@ -768,7 +791,7 @@ def check_chunk(chunk, is_start=False):
 
 
 check_chunk(START_CHUNK, is_start=True)
-for _chunk in CHUNKS:
+for _chunk in CHUNKS + list(FINISH_CHUNKS.values()):
     check_chunk(_chunk)
 # Her iki giriş tarafı için de en az bir kolay parça olmalı, yoksa oyun takılır
 for _side in "LR":

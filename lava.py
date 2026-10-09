@@ -22,6 +22,7 @@ class Lava:
     def __init__(self, mode, ground_y=0):
         # mode = zorluk modunun sayıları (settings.DIFFICULTIES): lavın hızı ve bekleme süresi
         self.mode = mode
+        self.active = mode.get("lava", True)  # bazı bölümlerde lav yok (stages.py)
         # y = lavın yüzeyi (bölümdeki konum; yukarı çıktıkça eksiye iner). Başta zeminin altında
         self.y = float(ground_y + LAVA_START_GAP)
         self.wait = mode["lava_delay"]  # yükselmeye başlamasına kaç kare kaldı
@@ -30,6 +31,8 @@ class Lava:
     def update(self, camera_bottom):
         # Her karede bir kere: yüksekte daha hızlı yükselir; ekranın çok altında da kalmaz
         self.time += 1
+        if not self.active:
+            return
         if self.wait > 0:
             self.wait -= 1
             return
@@ -39,13 +42,15 @@ class Lava:
 
     def touches(self, rect):
         # Ayağı lavın içine yeterince girdi mi
-        return rect.bottom > self.y + LAVA_HIT_DEPTH
+        return self.active and rect.bottom > self.y + LAVA_HIT_DEPTH
 
     def push_back(self, feet_y):
         # Can kaybedince karakterin döndüğü yerin epey altına çekil
         self.y = max(self.y, feet_y + LAVA_PUSHBACK)
 
     def draw(self, screen, camera):
+        if not self.active:
+            return
         if not IMAGES:
             IMAGES["waves"] = art.lava_frames()
             IMAGES["glow"] = art.lava_glow()

@@ -103,6 +103,19 @@ DIFFICULTIES = {
     },
 }
 
+# Bölümler — "Oyna → Bölümler"; her bölümün haritası, düşmanları, lavı stages.py'de. Bir bölüm bitince
+# (en az 1 yıldız) sıradakinin kilidi açılır. Yıldızlar: bitirdin / altınların çoğu / hiç can kaybetmeden
+STAGE_LIVES = 3  # bölüme kaç canla başlanır (kalp toplayarak da en fazla bu kadar)
+STAR_COIN_SHARE = 0.6  # 2. yıldız için bölümdeki altınların en az ne kadarı toplanmalı (0.6 = %60)
+FOCUS_WEIGHT = 4  # bölümde yeni tanıtılan şeyin (ör. yay) olduğu parçalar kaç kat sık gelsin
+STAGE_INTRO_TIME = 180  # bölüm başlarken adı ve "Yeni: ..." yazısı kaç kare görünür
+STAGE_CLEAR_DELAY = 70  # bölüm bitti ekranında düğmeler kaç kare sonra çıkar (yıldızlar o arada belirir)
+UNLOCK_ALL_STAGES = False  # True = bütün bölümler açık (deneme için)
+FLAG_COLOR = (60, 200, 110)  # bitiş bayrağının yeşili (beyazla dama)
+STAR_COLOR = (255, 210, 40)  # kazanılan yıldız
+STAR_EMPTY_COLOR = (80, 80, 100)  # kazanılmayan yıldız
+LOCKED_COLOR = (60, 56, 90)  # kilitli bölüm kutusu
+
 # Bloklar (zemin ve platformlar)
 TILE_SIZE = 40  # her bloğun kenar uzunluğu (piksel)
 TILE_COLOR = (120, 80, 50)  # toprak kahvesi
@@ -227,6 +240,8 @@ STATS_FILE = "stats.json"
 STATS_KEY = "platform-oyunu-istatistik"
 OPTIONS_FILE = "options.json"
 OPTIONS_KEY = "platform-oyunu-secenekler"
+STAGES_FILE = "stages.json"  # her bölümün en iyi yıldızı
+STAGES_KEY = "platform-oyunu-bolumler"
 
 # Menü düğmeleri
 BUTTON_WIDTH = 250
