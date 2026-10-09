@@ -13,21 +13,22 @@ from settings import (
     MAGNET_TIME,
     SHIELD_TIME,
 )
-from art import player_frames
+import skins
+from trail import Trail
 
 
 class Player(pygame.sprite.Sprite):
     # Güçlendirmeler kaç kare sürer
     POWER_TIME = {"magnet": MAGNET_TIME, "shield": SHIELD_TIME}
 
-    def __init__(self, x, y, level_width, lives=1, max_lives=1):
+    def __init__(self, x, y, level_width, lives=1, max_lives=1, skin=skins.DEFAULT_SKIN):
         # lives / max_lives: kaç canla başlar / kalplerle en fazla kaç can (zorluk moduna göre, main.py verir)
+        # skin = görünüşü (skins.py); sadece resimleri değiştirir, hareket hep aynı
         super().__init__()
-        # Resimler (art.py): "idle" duruyor, "walk1"/"walk2" yürüyor, "jump" havada; her biri sağa/sola
-        self.frames = player_frames()
         self.facing = 1  # 1 = sağa bakıyor, -1 = sola
         self.walk_time = 0  # yürüme animasyonu sayacı
-        self.image = self.frames["idle"][self.facing]
+        self.pose = "idle"  # hangi resim: "idle" duruyor, "walk1"/"walk2" yürüyor, "jump" havada
+        self.set_skin(skin)
         # rect = karakterin bölümdeki konumu ve boyutu
         self.rect = self.image.get_rect()
         # En son güvenle üstünde durduğu yer — düşünce buradan devam eder
@@ -41,6 +42,15 @@ class Player(pygame.sprite.Sprite):
         self.powers = dict.fromkeys(self.POWER_TIME, 0)
         self.expired = []
         self.respawn()
+
+    def set_skin(self, skin_id):
+        # Görünüşü değiştir (Karakterler ekranında seçilince menünün arkasındaki karakter de değişir)
+        skin = skins.get(skin_id)
+        self.frames = skins.frames(skin_id)  # {resim adı: {1: sağa, -1: sola}}
+        self.image = self.frames[self.pose][self.facing]
+        self.color = skin["color"]  # can kaybedince saçılan parçacıklar
+        # Efsanevi skinler arkalarında iz bırakır (trail.py); main.py her adımda trail.update çağırır
+        self.trail = Trail(skin["trail"]) if skin["trail"] else None
 
     def respawn(self):
         # Karakteri en son durduğu güvenli yere geri koy
@@ -180,11 +190,11 @@ class Player(pygame.sprite.Sprite):
         if dx:
             self.facing = 1 if dx > 0 else -1
         if not self.on_ground:
-            name = "jump"
+            self.pose = "jump"
         elif dx:
             self.walk_time += 1
-            name = "walk1" if (self.walk_time // ANIMATION_SPEED) % 2 == 0 else "walk2"
+            self.pose = "walk1" if (self.walk_time // ANIMATION_SPEED) % 2 == 0 else "walk2"
         else:
             self.walk_time = 0
-            name = "idle"
-        self.image = self.frames[name][self.facing]
+            self.pose = "idle"
+        self.image = self.frames[self.pose][self.facing]

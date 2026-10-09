@@ -18,6 +18,7 @@ from settings import (
     HINT_COLOR,
     SLOW_HINT_COLOR,
     LAVA_TOP_COLOR,
+    LEGENDARY_COLOR,
     COIN_POINTS,
     MUTE_KEY,
     VOLUME_STEPS,
@@ -29,11 +30,12 @@ from stages import STAGE_SETS, STAGE_COUNT
 from title import draw_logo
 from ui import Buttons, Slider, StageGrid, take_click, ACTIVATE_KEYS, UP_KEYS, DOWN_KEYS
 import art
+import skins
 
 CENTER_X = SCREEN_WIDTH // 2
 
 # Her ekranın düğmeleri (adları main.py'de kullanılır)
-MAIN_BUTTONS = Buttons(["play", "difficulty", "howto", "records", "sound_menu"], top=345)
+MAIN_BUTTONS = Buttons(["play", "skins", "difficulty", "howto", "records", "sound_menu"], top=335, gap=60)
 BACK_BUTTON = Buttons(["back"], top=655)
 PAUSE_BUTTONS = Buttons(["resume", "sound", "menu"], top=330)
 GAME_OVER_BUTTONS = Buttons(["again", "menu"], top=505)
@@ -46,6 +48,7 @@ LAST_CLEAR_BUTTONS = Buttons(["again", "stages"], top=505)  # son bölüm bitinc
 # Düğme yazıları; değişenler ("sound", "difficulty") main.py'den gelir
 LABELS = {
     "play": "Oyna",
+    "skins": "Karakterler",
     "sound_menu": "Ses Ayarları",
     "howto": "Nasıl Oynanır",
     "records": "Rekorlar",
@@ -196,7 +199,7 @@ def howto_icons():
 
 HOWTO_ROWS = (
     ("flag", "Bayrak: bölümün sonu, ona ulaş!"),
-    ("coin", f"Altın: +{COIN_POINTS} puan"),
+    ("coin", f"Altın: +{COIN_POINTS} puan, karakter al"),
     ("heart", "Kalp: +1 can"),
     ("magnet", "Mıknatıs: altınları çeker"),
     ("shield", "Kalkan: düşman ve lavdan korur"),
@@ -292,6 +295,30 @@ def draw_game_over(screen, score, mode_name, best_height, high_score, new_record
         GAME_OVER_BUTTONS.draw(screen, LABELS)
     if slow:
         draw_slow_hint(screen)
+
+
+# Oyun sonu ekranlarında görevi yeni tamamlanan efsanevi skinlerin yazısının yüksekliği (y)
+NEW_SKIN_Y = {"game_over": 130, "stage_clear": 96}
+
+
+def draw_new_skins(screen, new_skins, y):
+    # Görevi bu oyunda tamamlanan efsanevi skin(ler): küçük resmi + "Yeni karakter: Ejderha!"
+    if not new_skins:
+        return
+    names = ", ".join(skin["name"] for skin in new_skins)
+    text = f"Yeni karakter: {names}!" if len(new_skins) == 1 else f"Yeni karakterler: {names}!"
+    small = font(MENU_SMALL_FONT_SIZE + 4)
+    if small.size(text)[0] > SCREEN_WIDTH - 70:
+        text = f"{len(new_skins)} yeni karakter açıldı!"
+    key = ("skin_icon", new_skins[0]["id"])
+    if key not in _cache:
+        image = skins.frames(new_skins[0]["id"])["idle"][1]
+        _cache[key] = pygame.transform.scale(image, (image.get_width() // 2, image.get_height() // 2))
+    icon = _cache[key]
+    width = icon.get_width() + 8 + small.size(text)[0]
+    left = CENTER_X - width // 2
+    screen.blit(icon, icon.get_rect(midleft=(left, y)))
+    draw_text(screen, small, text, LEGENDARY_COLOR, midleft=(left + icon.get_width() + 8, y + 1))
 
 
 def stars_needed(total):

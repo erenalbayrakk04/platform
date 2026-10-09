@@ -13,7 +13,6 @@ from settings import (
     WHITE,
     PLAYER_WIDTH,
     PLAYER_HEIGHT,
-    PLAYER_COLOR,
     TILE_SIZE,
     TILE_COLOR,
     TILE_TOP_COLOR,
@@ -99,40 +98,23 @@ def facing_pair(image):
     return {1: image, -1: pygame.transform.flip(image, True, False)}
 
 
-# --- Karakter (sağa bakıyor) ---
-PLAYER_BODY = [
-    "...KKKK...",
-    ".KKBBBBKK.",
-    ".KBhhBBBK.",
-    "KBhBBBBBBK",
-    "KBBBWEBWEK",
-    "KBBBWEBWEK",
-    "KBBBBBBBBK",
-    "KbBBBBBBbK",
-    ".KbbbbbbK.",
-    "..KKKKKK..",
-]
+# --- Karakter (sağa bakıyor): gövdesi ve renkleri seçili skinden (skins.py), bacaklar çoğunda bunlar ---
 PLAYER_LEGS = {
-    "idle": ["..KK..KK..", "..KK..KK.."],
-    "walk1": ["..KK..KK..", ".KK....KK."],
-    "walk2": ["...KK.KK..", "...KKKK..."],
-    "jump": [".KK....KK.", ".........."],
+    "idle": ["..LL..LL..", "..LL..LL.."],
+    "walk1": ["..LL..LL..", ".LL....LL."],
+    "walk2": ["...LL.LL..", "...LLLL..."],
+    "jump": [".LL....LL.", ".........."],
 }
 
 
-def player_frames():
-    palette = {
-        "K": shade(PLAYER_COLOR, 0.3),
-        "B": PLAYER_COLOR,
-        "b": shade(PLAYER_COLOR, 0.75),
-        "h": tint(PLAYER_COLOR, 0.5),
-        "W": WHITE,
-        "E": EYE_DARK,
-    }
+def player_frames(skin):
+    # skin = skins.py'deki bir skin. Resimler: "idle" duruyor, "walk1"/"walk2" yürüyor, "jump" havada; {1: sağa, -1: sola}
+    palette = {"W": WHITE, "E": EYE_DARK, **skin["palette"]}
+    palette.setdefault("L", palette["K"])  # bacaklar verilmezse dış çizgi renginde
     size = (PLAYER_WIDTH, PLAYER_HEIGHT)
     return {
-        name: facing_pair(render(PLAYER_BODY + legs, palette, size))
-        for name, legs in PLAYER_LEGS.items()
+        name: facing_pair(render(skin["body"] + legs, palette, size))
+        for name, legs in (skin["legs"] or PLAYER_LEGS).items()
     }
 
 

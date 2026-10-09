@@ -119,6 +119,14 @@ STAR_EMPTY_COLOR = (80, 80, 100)  # kazanılmayan yıldız
 LOCKED_COLOR = (60, 56, 90)  # kilitli bölüm kutusu
 PROGRESS_EMPTY_COLOR = (60, 56, 90)  # oyunda sol üstteki "bayrağa ne kadar kaldı" çubuğunun boş kısmı
 
+# Karakterler (skinler) — ana menüdeki "Karakterler" ekranı. Çizimleri, fiyatları ve görevleri skins.py'de.
+# Sadece görünüş: hız ve zıplama her skinde aynı. Toplanan altınlar cüzdanda birikir, skin onunla alınır;
+# efsaneviler altınla değil görevle açılır ve arkalarında iz bırakır (trail.py)
+UNLOCK_ALL_SKINS = False  # True = bütün skinler açık (deneme için)
+SKIN_SELECTED_COLOR = (90, 220, 120)  # giyilen skinin kutusundaki işaret
+LEGENDARY_COLOR = (255, 190, 60)  # efsanevi skinin adı
+TRAIL_LIMIT = 60  # izde aynı anda en fazla kaç parçacık olur (telefonda yavaşlamasın)
+
 # Bloklar (zemin ve platformlar)
 TILE_SIZE = 40  # her bloğun kenar uzunluğu (piksel)
 TILE_COLOR = (120, 80, 50)  # toprak kahvesi
@@ -245,6 +253,8 @@ OPTIONS_FILE = "options.json"
 OPTIONS_KEY = "platform-oyunu-secenekler"
 STAGES_FILE = "stages.json"  # her bölümün en iyi yıldızı
 STAGES_KEY = "platform-oyunu-bolumler"
+SKINS_FILE = "skins.json"  # cüzdandaki altın, satın alınan ve seçili skin
+SKINS_KEY = "platform-oyunu-karakterler"
 
 # Menü düğmeleri
 BUTTON_WIDTH = 250

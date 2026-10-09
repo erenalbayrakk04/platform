@@ -18,7 +18,6 @@ from settings import (
     GAME_OVER_DELAY,
     MUTE_KEY,
     COIN_COLOR,
-    PLAYER_COLOR,
     LIFE_COLOR,
     HEART_POINTS,
     CRUMBLE_COLOR,
@@ -46,6 +45,8 @@ from storage import load_record, save_record, load_dict, save_dict
 import screens
 from title import TitleScreen
 from ui import PauseButton
+from skin_menu import SKIN_MENU
+import skins
 from art import Background, shield_bubble
 from controls import TouchButtons, read_controls
 from effects import burst
@@ -152,13 +153,14 @@ def load_stars(mode):
     ]
 
 
-def new_game(best_height, mode, stage=None):
+def new_game(best_height, mode, stage=None, skin=skins.DEFAULT_SKIN):
     # Yeni harita kur, karakteri başlangıç parçasındaki P noktasına koy.
     # best_height = yükseklik rekoru (haritada "Rekor" çizgisi orada çizilir),
     # mode = zorluk modunun sayıları (settings.DIFFICULTIES; bölümde stages.stage_mode): can, lav, düşman hızı...
     # stage = oynanacak bölüm (stages.py; harita hep aynı, tepede bayrak) ya da None (sonsuz, rastgele)
+    # skin = karakterin görünüşü (skins.py)
     level = Level(mode, stage["seed"], stage) if stage else Level(mode)
-    player = Player(*level.player_start, level.width, mode["lives"], mode["max_lives"])
+    player = Player(*level.player_start, level.width, mode["lives"], mode["max_lives"], skin)
     camera = Camera()
     camera.follow(player.rect, level.bottom, instant=True)
     level.update(camera.top, camera.bottom)
@@ -233,7 +235,7 @@ def update_game(level, player, camera, score, controls, sounds):
         elif not player.invincible:
             player.hurt()
             sounds.play("hurt")
-            burst(level.effects, player.rect.center, PLAYER_COLOR)
+            burst(level.effects, player.rect.center, player.color)
     # Ateş topları uçar; değerse can gider (kalkan varsa sadece top söner)
     level.shots.update(level.tiles, level.width)
     for shot in pygame.sprite.spritecollide(player, level.shots, False):
@@ -244,7 +246,7 @@ def update_game(level, player, camera, score, controls, sounds):
             shot.kill()
             player.hurt()
             sounds.play("hurt")
-            burst(level.effects, player.rect.center, PLAYER_COLOR)
+            burst(level.effects, player.rect.center, player.color)
 
     # Lav yükselir; değdiyse bir can gider, son durduğu yerden devam eder, lav geri çekilir.
     # Kalkanı varsa can gitmez: lavdan yukarı fırlar ve kalkan kırılır (bir kez kurtarır)
@@ -275,6 +277,8 @@ def update_game(level, player, camera, score, controls, sounds):
     level.springs.update()
     level.goals.update()
     level.effects.update()
+    if player.trail:  # efsanevi skinin izi
+        player.trail.update(player.rect, player.image, player.facing)
 
     camera.follow(player.rect, level.bottom)
     # Yukarıya yeni parçalar ekle, aşağıda kalanları sil
@@ -292,13 +296,16 @@ def draw_world(screen, background, level, player, camera, score):
         *level.goals, *level.tiles, *ghosts, *level.springs, *level.coins, *level.pickups, *level.enemies, *level.shots,
         *level.effects,
     ]
-    if player.visible:  # dokunulmazken yanıp söner
-        sprites.append(player)
     for sprite in sprites:
         # draw_rect: çizim yeri çarpışma kutusundan farklı olabilir (ör. titreyen platform)
         screen_pos = camera.apply(getattr(sprite, "draw_rect", sprite.rect))
         if screen_pos.colliderect(screen_rect):  # sadece ekranda görüneni çiz
             screen.blit(sprite.image, screen_pos)
+    # Efsanevi skinin izi karakterin arkasında
+    if player.trail:
+        player.trail.draw(screen, -round(camera.top))
+    if player.visible:  # dokunulmazken yanıp söner
+        screen.blit(player.image, camera.apply(player.rect))
     # Lav her şeyin önünde (içine düşen kaybolur)
     level.lava.draw(screen, camera)
     # Kalkan: karakterin etrafında baloncuk; bitmesine az kalınca yanıp söner
@@ -313,8 +320,8 @@ def draw_world(screen, background, level, player, camera, score):
 class Game:
     # Oyunun bütün durumu: hangi ekrandayız, rekorlar, seçenekler ve şu an oynanan bölüm.
     # Ekranlar (state): "title" (giriş ekranı, oyun bununla açılır), "menu" (ana menü), "play_select" (bölümler mi
-    # sonsuz mu), "stages" (bölüm seçme), "sound" (ses ayarları), "howto" (nasıl oynanır), "records" (rekorlar),
-    # "playing" (oyun), "paused" (durdu), "game_over" (kaybettin), "stage_clear" (bölüm bitti)
+    # sonsuz mu), "stages" (bölüm seçme), "skins" (karakterler), "sound" (ses ayarları), "howto" (nasıl oynanır),
+    # "records" (rekorlar), "playing" (oyun), "paused" (durdu), "game_over" (kaybettin), "stage_clear" (bölüm bitti)
     def __init__(self, sounds):
         self.sounds = sounds
         # Rekorlar her zorluk modunun ayrı: asıl hedef en yüksek tırmanış (blok), ayrıca en yüksek puan
@@ -340,8 +347,13 @@ class Game:
             self.options[key] = max(0, min(VOLUME_STEPS, self.options[key]))
             sliders[name].value = self.options[key]
         self.apply_volume()
+        # Skinler: cüzdandaki altın, satın alınanlar, giyilen (skins.py); ilk açılışta cüzdan eski altınlarla dolar
+        self.wardrobe = skins.Wardrobe(self.stats["coins"])
+        if not self.wardrobe.owns(skins.get(self.wardrobe.selected), self.progress()):
+            self.wardrobe.select(skins.DEFAULT_SKIN)  # artık açık değilse (ör. UNLOCK_ALL_SKINS kapatıldı)
+        self.new_skins = []  # bu oyunda görevi tamamlanan efsaneviler (oyun sonu ekranında yazar)
         self.state = "title"
-        self.title = TitleScreen(WEB)  # menüye geçiş bitince silinir
+        self.title = TitleScreen(WEB, self.wardrobe.selected)  # menüye geçiş bitince silinir
         self.game_over_timer = 0  # kaybettin ekranında düğmeler çıkana kadar kalan kare
         self.new_record = False
         self.pause_button = PauseButton()
@@ -372,11 +384,14 @@ class Game:
 
     def reset(self):
         # Yeni harita kur (menünün arkasında da bu görünür): bölüm oynanıyorsa onun haritası, yoksa sonsuz oyun
+        skin = self.wardrobe.selected
         if self.stage is not None:
             stage = self.stages[self.stage]
-            self.level, self.player, self.camera, self.score = new_game(0, stage_mode(stage), stage)
+            self.level, self.player, self.camera, self.score = new_game(0, stage_mode(stage), stage, skin)
         else:
-            self.level, self.player, self.camera, self.score = new_game(self.best_height, DIFFICULTIES[self.mode])
+            self.level, self.player, self.camera, self.score = new_game(
+                self.best_height, DIFFICULTIES[self.mode], None, skin
+            )
 
     def unlocked(self, index):
         # Bölüm açık mı: ilki hep açık, sonrakiler bir öncekinden en az 1 yıldız alınınca
@@ -430,6 +445,22 @@ class Game:
         # Bütün zorlukların bölüm yıldızları tek listede (toplam için)
         return [star for stars in self.stage_stars.values() for star in stars]
 
+    def progress(self):
+        # Efsanevi skinlerin görevleri için sayılar (skins.py goal): toplamlar, yıldızlar, her modun tırmanış rekoru
+        return {
+            "games": self.stats["games"],
+            "climbed": self.stats["climbed"],
+            "enemies": self.stats["enemies"],
+            "coins": self.stats["coins"],
+            "stars": sum(self.all_stars()),
+            **{f"height-{mode}": best for mode, best in self.best_heights.items()},
+        }
+
+    def wear(self, skin_id):
+        # Skini giy: kaydedilir, menünün arkasındaki karakter de hemen değişir
+        self.wardrobe.select(skin_id)
+        self.player.set_skin(skin_id)
+
     def last_unlocked(self):
         return max(i for i in range(STAGE_COUNT) if self.unlocked(i))
 
@@ -438,6 +469,7 @@ class Game:
         self.stage = stage
         self.reset()
         self.state = "playing"
+        self.new_skins = []
         self.intro = STAGE_INTRO_TIME if stage is not None else 0
         self.sounds.play("start")
         self.sounds.start_music()
@@ -496,9 +528,11 @@ class Game:
             burst(self.level.effects, goal.rect.center, COIN_COLOR)
         self.finish()
 
-    def finish(self):
+    def finish(self, ended=True):
         # Oyun bitti (kaybetti, bölümü bitirdi ya da yarıda menüye döndü): bu modun rekorlarını ve toplamları
-        # kaydet. Bölümlerde rekor tutulmaz (sonsuz oyunun rekorları değişmez), sadece toplamlar
+        # kaydet. Bölümlerde rekor tutulmaz (sonsuz oyunun rekorları değişmez), sadece toplamlar.
+        # Toplanan altınlar cüzdana eklenir. ended = oyun sonu ekranı çıkacak mı (görevi yeni tamamlanan
+        # efsaneviler orada yazar; yarıda bırakınca bir sonraki oyunun sonunda)
         score = self.score
         endless = self.stage is None
         self.new_record = endless and score.new_record  # yükseklik rekoru
@@ -513,6 +547,9 @@ class Game:
         self.stats["coins"] += score.coins
         self.stats["enemies"] += score.enemies
         save_dict("stats", self.stats)
+        self.wardrobe.add_coins(score.coins)
+        if ended:
+            self.new_skins = self.wardrobe.new_unlocks(self.progress())
 
     def handle_event(self, event):
         # Ekrana göre tuş / dokunuş / tıklama. Oyundan çıkılacaksa False döner
@@ -530,6 +567,9 @@ class Game:
             if action == "play":
                 self.state = "play_select"
                 screens.PLAY_BUTTONS.focus = 0
+            elif action == "skins":
+                self.state = "skins"
+                SKIN_MENU.open(self.wardrobe.selected)
             elif action == "difficulty":
                 self.next_difficulty()
             elif action == "sound_menu":
@@ -571,6 +611,13 @@ class Game:
             elif action == "stages" or key == pygame.K_ESCAPE:
                 self.open_stages()
 
+        elif self.state == "skins":
+            result = SKIN_MENU.handle_event(event, self.wardrobe, self.progress())
+            if key == pygame.K_ESCAPE or result == "back":
+                self.state = "menu"
+            elif result:
+                self.choose_skin(*result)
+
         elif self.state == "sound":
             action = screens.SOUND_MENU.handle_event(event)
             if key == pygame.K_ESCAPE or action == "back":
@@ -596,7 +643,7 @@ class Game:
             elif action == "sound":
                 self.toggle_sound()
             elif action == "menu":
-                self.finish()
+                self.finish(ended=False)
                 self.to_menu()
 
         elif self.state == "game_over" and self.game_over_timer == 0:
@@ -606,6 +653,19 @@ class Game:
             elif action == "menu" or key == pygame.K_ESCAPE:
                 self.to_menu()
         return True
+
+    def choose_skin(self, action, skin_id):
+        # Karakterler ekranında bir şeye basıldı (skin_menu.py): giy, satın al, ya da olmadı (kilitli / altın yetmedi)
+        if action == "select":
+            self.wear(skin_id)
+            self.sounds.play("coin")
+        elif action == "buy":
+            if self.wardrobe.buy(skins.get(skin_id)):
+                self.player.set_skin(skin_id)
+                SKIN_MENU.celebrate()
+                self.sounds.play("buy")
+        elif action in ("locked", "poor"):
+            self.sounds.play("powerdown")
 
     def update(self, steps, touch):
         # Oyun, geçen süre kadar adım ilerler (StepTimer)
@@ -629,6 +689,8 @@ class Game:
                     break
         elif self.state == "game_over":
             self.game_over_timer = max(0, self.game_over_timer - steps)
+        elif self.state == "skins":
+            SKIN_MENU.update(steps)
         elif self.state == "stage_clear":
             # Yıldızlar sırayla belirir (her biri bir "çın" sesiyle), sonra düğmeler çıkar
             self.clear_timer = max(0, self.clear_timer - steps)
@@ -664,6 +726,9 @@ class Game:
             )
         elif self.state == "stages":
             screens.draw_stages(screen, self.mode, self.stars, self.unlocked)
+        elif self.state == "skins":
+            screens.draw_overlay(screen)
+            SKIN_MENU.draw(screen, self.wardrobe, self.progress())
         elif self.state == "sound":
             screens.SOUND_MENU.draw(screen, self.labels(), self.sounds.muted)
         elif self.state == "howto":
@@ -701,6 +766,8 @@ class Game:
                     self.game_over_timer == 0,
                     slow,
                 )
+            if self.state in screens.NEW_SKIN_Y:  # görevle yeni açılan efsanevi skin
+                screens.draw_new_skins(screen, self.new_skins, screens.NEW_SKIN_Y[self.state])
 
 
 async def main():

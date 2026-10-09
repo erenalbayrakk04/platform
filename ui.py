@@ -21,6 +21,7 @@ from settings import (
     SLIDER_MUTED_COLOR,
     LOCKED_COLOR,
     DIFFICULTY_NAMES,
+    HINT_COLOR,
     WHITE,
 )
 from score import draw_text
@@ -36,6 +37,7 @@ RIGHT_KEYS = (pygame.K_RIGHT, pygame.K_d)
 # aynı dokunuş iki kez sayılmasın (ör. ses düğmesi açıp hemen geri kapatmasın)
 _last_click = [-BUTTON_CLICK_GAP]
 _fonts = {}
+DISABLED_TEXT_COLOR = HINT_COLOR  # basılamayan düğmenin yazısı
 
 
 def click_pos(event):
@@ -93,17 +95,19 @@ class Buttons:
                 return self.actions[i]
         return None
 
-    def draw(self, screen, labels):
-        # labels: düğme adı → üstünde yazacak yazı
+    def draw(self, screen, labels, disabled=()):
+        # labels: düğme adı → üstünde yazacak yazı; disabled = şu an işe yaramayan düğmeler (gri görünür)
         if BUTTON_FONT_SIZE not in _fonts:
             _fonts[BUTTON_FONT_SIZE] = pygame.font.Font(None, BUTTON_FONT_SIZE)
         font = _fonts[BUTTON_FONT_SIZE]
         for i, (action, rect) in enumerate(zip(self.actions, self.rects)):
             focused = i == self.focus
-            pygame.draw.rect(screen, BUTTON_FOCUS_COLOR if focused else BUTTON_COLOR, rect, border_radius=12)
+            off = action in disabled
+            fill = LOCKED_COLOR if off else BUTTON_FOCUS_COLOR if focused else BUTTON_COLOR
+            pygame.draw.rect(screen, fill, rect, border_radius=12)
             border = BUTTON_FOCUS_BORDER_COLOR if focused else BUTTON_BORDER_COLOR
             pygame.draw.rect(screen, border, rect, 3, border_radius=12)
-            draw_text(screen, font, labels.get(action, action), center=rect.center)
+            draw_text(screen, font, labels.get(action, action), DISABLED_TEXT_COLOR if off else WHITE, center=rect.center)
 
 
 class PauseButton:

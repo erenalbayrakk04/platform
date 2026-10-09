@@ -44,7 +44,9 @@ from settings import (
     TITLE_EMBER_CHANCE,
 )
 import art
+import skins
 from score import draw_text
+from trail import Trail
 from ui import click_pos, take_click
 
 # Ekrandaki yerleşim (y = yukarıdan piksel)
@@ -159,16 +161,18 @@ def button_glow(rect):
 
 
 class TitleScreen:
-    def __init__(self, web):
-        # web = tarayıcıda mı (telefonda "dokun", bilgisayarda "tıkla" yazsın)
+    def __init__(self, web, skin=skins.DEFAULT_SKIN):
+        # web = tarayıcıda mı (telefonda "dokun", bilgisayarda "tıkla" yazsın), skin = giyilen skin (skins.py)
         self.button_text = "Dokun ve Başla" if web else "Tıkla ve Başla"
         self.time = 0  # ekrana geleli kaç adım (kare) oldu
         self.leaving = 0  # dokunulalı kaç adım oldu (0 = henüz dokunulmadı)
         self.rng = random.Random()
         # Resimler oyundakilerin aynısı (art.py); karakter, adacık ve altınlar büyük, yarasa uzakta (küçük)
         self.player = {
-            name: {side: scaled(image) for side, image in pair.items()} for name, pair in art.player_frames().items()
+            name: {side: scaled(image) for side, image in pair.items()} for name, pair in skins.frames(skin).items()
         }
+        trail = skins.get(skin)["trail"]
+        self.trail = Trail(trail, TITLE_SCALE) if trail else None  # efsanevi skinin izi
         self.island = scaled(art.island_image())
         self.coins = [scaled(image) for image in art.coin_frames()]
         self.bat = art.flyer_frames()
@@ -219,6 +223,9 @@ class TitleScreen:
             self.lift += self.vy  # yukarı fırlıyor, ekrandan çıkana kadar yavaşlamaz
         else:
             self.move_player()
+        if self.trail:
+            image = self.player_image()
+            self.trail.update(image.get_rect(midbottom=self.player_feet()), image, self.facing)
         # Yarasa soldan sağa uçar; ekrandan çıkınca bir süre sonra soldan yine gelir
         self.bat_x += BAT_SPEED
         if self.bat_x > SCREEN_WIDTH + 300:
@@ -291,21 +298,32 @@ class TitleScreen:
             screen.fill(color, (x - arm, y, 2 * arm + 2, 2))
             screen.fill(color, (x, y - arm, 2, 2 * arm + 2))
 
-    def draw_island(self, screen):
-        # Havada hafifçe süzülen adacık, iki yanında dönen altınlar, üstünde karakter
-        top = ISLAND_Y + round(3 * math.sin(self.time / 45))
-        screen.blit(self.island, self.island.get_rect(midtop=(SCREEN_WIDTH // 2, top)))
-        coin = self.coins[(self.time // COIN_SPIN_SPEED) % len(self.coins)]
-        for i, (x, y) in enumerate(COIN_SPOTS):
-            screen.blit(coin, coin.get_rect(center=(x, y + round(4 * math.sin(self.time / 30 + i * 1.7)))))
+    def island_top(self):
+        # Adacık havada hafifçe süzülür
+        return ISLAND_Y + round(3 * math.sin(self.time / 45))
+
+    def player_feet(self):
+        return round(self.x), self.island_top() - round(self.lift)
+
+    def player_image(self):
         if self.lift > 0 or self.leaving:
             name = "jump"
         elif self.rest:
             name = "idle"
         else:
             name = "walk1" if (self.time // ANIMATION_SPEED) % 2 == 0 else "walk2"
-        image = self.player[name][self.facing]
-        screen.blit(image, image.get_rect(midbottom=(round(self.x), top - round(self.lift))))
+        return self.player[name][self.facing]
+
+    def draw_island(self, screen):
+        # Havada hafifçe süzülen adacık, iki yanında dönen altınlar, üstünde karakter (efsanevi skinse arkasında izi)
+        screen.blit(self.island, self.island.get_rect(midtop=(SCREEN_WIDTH // 2, self.island_top())))
+        coin = self.coins[(self.time // COIN_SPIN_SPEED) % len(self.coins)]
+        for i, (x, y) in enumerate(COIN_SPOTS):
+            screen.blit(coin, coin.get_rect(center=(x, y + round(4 * math.sin(self.time / 30 + i * 1.7)))))
+        if self.trail:
+            self.trail.draw(screen)
+        image = self.player_image()
+        screen.blit(image, image.get_rect(midbottom=self.player_feet()))
 
     def draw_lava(self, screen):
         # Ekranın dibinde kaynayan lav (oyundaki gibi dalgalı) ve içinden yükselen kıvılcımlar
