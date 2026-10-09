@@ -115,6 +115,7 @@ FLAG_COLOR = (60, 200, 110)  # bitiş bayrağının yeşili (beyazla dama)
 STAR_COLOR = (255, 210, 40)  # kazanılan yıldız
 STAR_EMPTY_COLOR = (80, 80, 100)  # kazanılmayan yıldız
 LOCKED_COLOR = (60, 56, 90)  # kilitli bölüm kutusu
+PROGRESS_EMPTY_COLOR = (60, 56, 90)  # oyunda sol üstteki "bayrağa ne kadar kaldı" çubuğunun boş kısmı
 
 # Bloklar (zemin ve platformlar)
 TILE_SIZE = 40  # her bloğun kenar uzunluğu (piksel)

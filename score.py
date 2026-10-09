@@ -18,14 +18,16 @@ from settings import (
     RECORD_TOAST_TIME,
     RECORD_COLOR,
     POWERUP_WARN_TIME,
+    PROGRESS_EMPTY_COLOR,
 )
 
 
 class Score:
-    def __init__(self, start_y, record=0):
+    def __init__(self, start_y, record=0, goal=None):
         # Karakterin ayaklarının başladığı yükseklik — yükseklik buna göre ölçülür
         self.start_y = start_y
         self.record = record  # oyun başlarken en yüksek tırmanış rekoru (blok)
+        self.goal = goal  # bölümde bayrağın yüksekliği (blok); sonsuz oyunda None
         self.height = 0  # üstüne basılan en yüksek yer (blok sayısı)
         self.coins = 0  # toplanan altın sayısı
         self.enemies = 0  # üstüne basılıp yenilen düşman sayısı
@@ -76,7 +78,16 @@ class Score:
 
     def draw(self, screen):
         # Büyük yazı yükseklik (asıl hedef); puan ve altın altında küçük.
-        # Rekor kırıldıysa yükseklik rekor renginde
+        # Rekor kırıldıysa yükseklik rekor renginde. Bölümde: "37 / 62 m", altın ve bayrağa ilerleme çubuğu
+        if self.goal:
+            draw_text(screen, self.font, f"{self.height} / {self.goal} m", topleft=(12, 10))
+            draw_text(screen, self.small_font, f"Altın: {self.coins}", topleft=(12, 44))
+            bar = pygame.Rect(12, 66, 140, 6)
+            screen.fill(SCORE_SHADOW_COLOR, bar.move(2, 2))
+            screen.fill(PROGRESS_EMPTY_COLOR, bar)
+            bar.width = round(bar.width * min(1, self.height / self.goal))
+            screen.fill(RECORD_COLOR, bar)
+            return
         color = RECORD_COLOR if self.new_record and self.record > 0 else SCORE_COLOR
         draw_text(screen, self.font, f"{self.height} m", color, topleft=(12, 10))
         draw_text(

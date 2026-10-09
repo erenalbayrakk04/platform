@@ -35,6 +35,7 @@ class Player(pygame.sprite.Sprite):
         self.level_width = level_width
         self.lives = lives
         self.max_lives = max_lives
+        self.hurts = 0  # kaç kere can kaybetti (bölümde 3. yıldız: hiç)
         self.invincible = 0  # dokunulmazlığın bitmesine kaç kare kaldı (0 = dokunulabilir)
         # Güçlendirmelerin bitmesine kaç kare kaldı (0 = yok); expired = bu karede bitenler (ses için)
         self.powers = dict.fromkeys(self.POWER_TIME, 0)
@@ -56,6 +57,7 @@ class Player(pygame.sprite.Sprite):
     def hurt(self):
         # Bir can kaybet ve kısa süre dokunulmaz ol (yanıp söner)
         self.lives -= 1
+        self.hurts += 1
         self.invincible = INVINCIBLE_TIME
         self.velocity_y = -HURT_BOUNCE
 

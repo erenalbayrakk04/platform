@@ -19,13 +19,17 @@ from settings import (
     SLIDER_TRACK_COLOR,
     SLIDER_FILL_COLOR,
     SLIDER_MUTED_COLOR,
+    LOCKED_COLOR,
     WHITE,
 )
 from score import draw_text
+import art
 
 ACTIVATE_KEYS = (pygame.K_RETURN, pygame.K_KP_ENTER, pygame.K_SPACE)
 UP_KEYS = (pygame.K_UP, pygame.K_w)
 DOWN_KEYS = (pygame.K_DOWN, pygame.K_s)
+LEFT_KEYS = (pygame.K_LEFT, pygame.K_a)
+RIGHT_KEYS = (pygame.K_RIGHT, pygame.K_d)
 
 # Son tıklamanın zamanı: telefonda bir dokunuş hem "parmak" hem "fare" olayı olarak gelebilir,
 # aynı dokunuş iki kez sayılmasın (ör. ses düğmesi açıp hemen geri kapatmasın)
@@ -185,3 +189,104 @@ class Slider:
         knob = (knob_x, self.rect.centery)
         pygame.draw.circle(screen, BUTTON_FOCUS_COLOR if focused else BUTTON_COLOR, knob, SLIDER_KNOB_RADIUS)
         pygame.draw.circle(screen, border if focused else WHITE, knob, SLIDER_KNOB_RADIUS, 3)
+
+
+class StageGrid:
+    # Bölüm seçme: numaralı kutular (COLUMNS sütun), altlarında kazanılan yıldızlar; en altta Geri düğmesi.
+    # Kilitli bölümün kutusu gri ve asma kilitli. Dokunma/fare veya klavye (oklar + Enter) ile seçilir
+    COLUMNS = 4
+    SIZE = 76  # kutunun kenarı (piksel)
+    GAP = 14  # kutular arası
+    TOP = 140  # ilk satırın üst kenarı
+    STAR_SIZE = 18
+
+    def __init__(self, count, back_top):
+        self.count = count
+        width = self.COLUMNS * self.SIZE + (self.COLUMNS - 1) * self.GAP
+        left = (SCREEN_WIDTH - width) // 2
+        step = self.SIZE + self.GAP
+        self.rects = [
+            pygame.Rect(left + (i % self.COLUMNS) * step, self.TOP + (i // self.COLUMNS) * step, self.SIZE, self.SIZE)
+            for i in range(count)
+        ]
+        self.back = Buttons(["back"], top=back_top)
+        self.images = None
+        self.set_focus(0)
+
+    def set_focus(self, index):
+        # index = count → Geri düğmesi seçili
+        self.focus = index
+        self.back.focus = 0 if index == self.count else -1
+
+    def move(self, step):
+        # Klavyeyle seçimi kaydır (sağ-sol 1, yukarı-aşağı bir satır); Geri düğmesi en altta
+        if self.focus == self.count:
+            if step < 0:  # Geri'den yukarı/sola → son bölüm
+                self.set_focus(self.count - 1)
+            return
+        target = self.focus + step
+        if target >= self.count:
+            target = self.count  # en alt satırdan aşağı → Geri
+        if target >= 0:
+            self.set_focus(target)
+
+    def handle_event(self, event, unlocked):
+        # Seçilen bölümün sırası, kilitliyse "locked", Geri'ye basıldıysa "back", yoksa None.
+        # unlocked(i) = i. bölüm açık mı
+        if event.type == pygame.KEYDOWN:
+            steps = {LEFT_KEYS: -1, RIGHT_KEYS: 1, UP_KEYS: -self.COLUMNS, DOWN_KEYS: self.COLUMNS}
+            for keys, step in steps.items():
+                if event.key in keys:
+                    self.move(step)
+            if event.key in ACTIVATE_KEYS and take_click():
+                if self.focus == self.count:
+                    return "back"
+                return self.focus if unlocked(self.focus) else "locked"
+            return None
+        if event.type == pygame.MOUSEMOTION:
+            for i, rect in enumerate(self.rects):
+                if rect.collidepoint(event.pos):
+                    self.set_focus(i)
+            if self.back.rects[0].collidepoint(event.pos):
+                self.set_focus(self.count)
+            return None
+        pos = click_pos(event)
+        if pos is None:
+            return None
+        for i, rect in enumerate(self.rects):
+            if rect.collidepoint(pos) and take_click():
+                self.set_focus(i)
+                return i if unlocked(i) else "locked"
+        if self.back.handle_event(event) == "back":
+            return "back"
+        return None
+
+    def draw(self, screen, stars, unlocked):
+        # stars[i] = i. bölümün en iyi yıldızı (0-3)
+        if self.images is None:
+            if BUTTON_FONT_SIZE + 8 not in _fonts:
+                _fonts[BUTTON_FONT_SIZE + 8] = pygame.font.Font(None, BUTTON_FONT_SIZE + 8)
+            self.images = {
+                "lock": art.lock_image(),
+                True: art.star_image(True, self.STAR_SIZE),
+                False: art.star_image(False, self.STAR_SIZE),
+            }
+        font = _fonts[BUTTON_FONT_SIZE + 8]
+        for i, rect in enumerate(self.rects):
+            focused = i == self.focus
+            is_open = unlocked(i)
+            fill = (BUTTON_FOCUS_COLOR if focused else BUTTON_COLOR) if is_open else LOCKED_COLOR
+            pygame.draw.rect(screen, fill, rect, border_radius=12)
+            border = BUTTON_FOCUS_BORDER_COLOR if focused else BUTTON_BORDER_COLOR
+            pygame.draw.rect(screen, border, rect, 3, border_radius=12)
+            if not is_open:
+                lock = self.images["lock"]
+                screen.blit(lock, lock.get_rect(center=rect.center))
+                continue
+            draw_text(screen, font, str(i + 1), center=(rect.centerx, rect.centery - 9))
+            # Altta 3 yıldız: kazanılanlar sarı
+            for k in range(3):
+                star = self.images[k < stars[i]]
+                x = rect.centerx + (k - 1) * (self.STAR_SIZE + 2)
+                screen.blit(star, star.get_rect(center=(x, rect.bottom - 15)))
+        self.back.draw(screen, {"back": "Geri"})

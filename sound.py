@@ -130,6 +130,9 @@ class Sounds:
         powerdown = []
         for midi in (79, 72, 67, 60):
             powerdown += t(freq(midi), freq(midi), 0.06, "triangle", 0.6)
+        win = []  # bölüm bitti: kısa zafer melodisi
+        for midi, length in ((72, 0.1), (76, 0.1), (79, 0.1), (84, 0.22), (79, 0.1), (84, 0.45)):
+            win += t(freq(midi), freq(midi), length, "pulse", 0.45)
         game_over = []
         for midi, length in ((67, 0.2), (64, 0.2), (60, 0.2), (55, 0.6)):
             game_over += t(freq(midi), freq(midi) * 0.98, length, "triangle", 0.8)
@@ -140,6 +143,7 @@ class Sounds:
             "hurt": hurt,
             "start": start,
             "game_over": game_over,
+            "win": win,
             "life": life,
             "spring": spring,
             "crumble": crumble,

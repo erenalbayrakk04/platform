@@ -1,4 +1,4 @@
-# Kalıcı kayıtlar: rekorlar (her zorluk modunun ayrı), istatistikler, seçenekler (ses, zorluk).
+# Kalıcı kayıtlar: rekorlar (her zorluk modunun ayrı), istatistikler, seçenekler (ses, zorluk), bölüm yıldızları.
 # Bilgisayarda oyun klasöründeki dosyalarda; tarayıcıda dosyaya yazılan şey sayfa kapanınca kaybolduğu için
 # tarayıcının kendi hafızasında (localStorage) saklanır. pygbag, tarayıcıya platform.window ile eriştirir.
 import json
@@ -14,6 +14,8 @@ from settings import (
     STATS_KEY,
     OPTIONS_FILE,
     OPTIONS_KEY,
+    STAGES_FILE,
+    STAGES_KEY,
     DEFAULT_DIFFICULTY,
 )
 
@@ -23,6 +25,7 @@ STORES = {
     "score": (HIGHSCORE_FILE, HIGHSCORE_KEY),  # en yüksek puan
     "stats": (STATS_FILE, STATS_KEY),  # toplamlar (oynanan oyun, altın...)
     "options": (OPTIONS_FILE, OPTIONS_KEY),  # ses kapalı mı, zorluk
+    "stages": (STAGES_FILE, STAGES_KEY),  # her bölümün en iyi yıldızı
 }
 
 

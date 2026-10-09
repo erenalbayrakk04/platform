@@ -73,7 +73,16 @@
   tarafında; sol = sütun 0-4 ve 4 dolu, sağ = 5-9 ve 5 dolu), en üst satır çıkış (aynı kural). Çıkışı
   sol olanın üstüne girişi sağ olan gelir → birleşmede 2 satır fark, üst üste binme yok.
   `check_chunk` yanlış parçada oyun açılırken hata verir. Yeni parça eklerken her iki giriş
-  tarafı için her zorlukta parça olsun.
+  tarafı için her zorlukta parça olsun. `FINISH_CHUNKS` = {giriş tarafı: bitiş parçası} (bölüm modu; çıkışı `None`,
+  `goal_row` = zirve satırı, `G` = bayrak; `mirror` çıkışsızı da aynalar).
+- `stages.py` — BÖLÜM MODU (kullanıcı kararı: sonsuz oyun da kalır; bölümler mevcut parçalardan, 3 yıldız, lav bazı
+  bölümlerde): `STAGES` = 20 bölüm, `stage(name, goal, intro, ...)` ile yazılır (alanlar dosyanın başında: `max_chunk`,
+  `features` (SMK), `focus` (bu işaretli parçalar `FOCUS_WEIGHT` kat sık), `walkers`/`flyers` tür ağırlıkları (boşsa
+  o düşman yok), `items`, `lava` (None / (bekleme, hız, en yüksek)), `hardness` (t aralığı), `base` mod, `extra`).
+  `seed` = 1000 + sıra (harita hep aynı). İlk 12 bölüm mekanikleri tek tek tanıtır. `stage_mode(stage)` → Level/Lava'nın
+  mod sözlüğü (base + `walker_kinds`, `flyer_kinds`, `magnet_chance`, `shield_chance`, `lava` bool, `hardness`);
+  `allowed_chunks(stage, entry)`, `focused`, `check_stages()` (açılışta). Bölüm değişince scratchpad'deki gibi
+  bir betikle her bölümü üretip bak (bayrak yüksekliği, çıkan düşman/yapı).
 - `enemy.py` — ortak `Patrol` (`patrol()`: `start`-`end` piksel arasında gidip gelir, `vertical` ise dikeyde; ondalıklı `pos`,
   `old_top` = önceki karedeki üst kenar, `spiky` = üstüne basılamaz); resimler `frames(tür)` ile bir kere hazırlanır.
   Hepsinin `update(target)`'ı karakterin kutusunu alır (`level.enemies.update(player.rect)`; sadece topçu kullanır).
@@ -97,6 +106,11 @@
   zorluk ≤ 1 + yükseklik // `DIFFICULTY_STEP`; `random.choices` ağırlığı `1 + t·HARD_CHUNK_BIAS·(zorluk−1)` → yukarıda zor parçalar sık), `update(view_top, view_bottom)` (`GENERATE_AHEAD` kadar yukarıyı doldurur,
   `REMOVE_BELOW`'dan aşağıdaki parçaları siler). `tiles` = çarpılan her şey, `coins` = altınlar,
   `enemies` = düşmanlar (katı değiller; parça silinince onunkiler de silinir).
+  BÖLÜMDE `Level(mode, seed, stage)`: `make_plan()` bütün parça sırasını baştan seçer (sonunda bitiş parçası) →
+  `goal_height` (bayrağın zirvesi, blok) baştan belli; `update` planı tembel kurar, bitince durur. `pick_chunk(top, side)`
+  bölümde `allowed_chunks` + focus ağırlığı. Bölümde olmayan düşman türünün E/F'si '.' olur; `pick_enemy` uyan tür
+  yoksa None (yerleştirilmez). `Goal` bayrak sprite'ı `level.goals`; `coins_total` = konan altın (yıldız için).
+  `hardness()` modda `hardness` (low, high) varsa t'yi o aralığa sıkıştırır.
   ZORLUK MODLARI: settings `DIFFICULTIES` = mod → sayılar sözlüğü ("easy" Kolay, "normal" Orta = eski oyunun
   sayıları, "hard" Zor, "ultra" Ultra Zor; `DIFFICULTY_NAMES` ekrandaki adlar). Anahtarlar: `lives`/`max_lives`,
   `hard_height`, `map_head_start` (harita parçaları baştan o kadar yukarıdaymış gibi), `lava_delay`, `lava_speed(_max)`,
@@ -116,7 +130,7 @@
   Arı: `bee_path(rows, top, row, col)` (chunks `column_span` + `BEE_RANGE`; alttaki platformda (2 satıra kadar) duran
   karakterin kafasına inmesin diye `PLAYER_HEIGHT` kadar kısaltılır; `BEE_MIN_PATH` bloktan kısaysa None → yarasa). Tile/Platform/Coin resimleri `level.image()`
   ile bir kere hazırlanıp paylaşılır; `Coin.update()` dönme animasyonu., `bottom` = en alttaki parçanın altı, `width` piksel.
-- `score.py` — `Score(start_y, record)`: `height` = üstüne basılan en yüksek yer (blok = ekranda "m", sadece `on_ground`
+- `score.py` — `Score(start_y, record, goal)` (goal = bölümde bayrak yüksekliği: `draw` "37 / 62 m" + altın + ilerleme çubuğu): `height` = üstüne basılan en yüksek yer (blok = ekranda "m", sadece `on_ground`
   iken sayılır, düşünce azalmaz), `coins`, `enemies`, `total` = height × `HEIGHT_POINTS` + coins × `COIN_POINTS`
   + enemies × `ENEMY_POINTS`. ASIL HEDEF YÜKSEKLİK (kullanıcı kararı: oyuncu kendi tırmanış rekorunu geçmek ister):
   `draw(screen)` sol üstte BÜYÜK "37 m", altında küçük "Puan / Altın" (kameradan bağımsız); `record` = oyun
@@ -129,6 +143,7 @@
   yeniden yazılmaz).
 - `storage.py` — kalıcı kayıtlar, `STORES` = tür → (dosya, localStorage adı): "height" (`bestheight.txt`, asıl
   rekor), "score" (`highscore.txt`, en yüksek puan) — rekorlar HER MODUN AYRI: `load_record/save_record(..., mode)`,
+  "stages" (`stages.json`: `{"stars": [...]}` her bölümün en iyi yıldızı; Game uzunluğu STAGES'e uydurur),
   `names(kind, mode)`: Orta eski adları kullanır, diğerlerinde ada `-easy`/`-hard`/`-ultra` eklenir (ör.
   `bestheight-ultra.txt`; .gitignore ve pygbag.ini'de de var), "stats" (`stats.json`: games/climbed/coins/enemies toplamları),
   "options" (`options.json`: muted, difficulty, music_volume, effects_volume). `load_record/save_record` (sayı), `load_dict(kind, defaults)/save_dict`
@@ -138,15 +153,19 @@
   döndürür (dokunma `FINGERDOWN`, sol tık, klavye ↑↓/W-S + Enter/Boşluk; `MOUSEMOTION` ile seçili olan değişir;
   `focus` = seçili); `draw(screen, labels)`. `take_click()`: `BUTTON_CLICK_GAP` ms içindeki ikinci tıklama sayılmaz
   (telefonda bir dokunuş hem parmak hem fare olayı gelebilir; ör. menüden dönünce alttaki düğmeye de basılıyordu).
-  `PauseButton` oyunda sağ üstte ⏸ (`clicked(event)`). `Slider(center_y)` kaydırma çubuğu: `value` 0..`VOLUME_STEPS`,
+  `PauseButton` oyunda sağ üstte ⏸ (`clicked(event)`). `StageGrid(count, back_top)`: bölüm kutuları (4 sütun) + Geri;
+  `handle_event(event, unlocked)` → sıra / "locked" / "back"; `set_focus(i)` (i = count → Geri); `draw(screen, stars, unlocked)`. `Slider(center_y)` kaydırma çubuğu: `value` 0..`VOLUME_STEPS`,
   parmak/fareyle sürükle veya dokun (`handle_event` → değişti mi), `nudge(±1)` klavye için. Düğme renk/boyları settings "Menü düğmeleri".
 - `screens.py` — `SOUND_MENU` (`SoundMenu`: ses ayarları ekranı; Müzik + Efektler çubukları, "sound" (Ses: Açık/Kapalı)
   ve "back" düğmeleri; ↑↓ seçer, ←→ çubuğu ayarlar; `handle_event` → "music"/"effects"/"sound"/"back"),
   her ekranın `Buttons`'ı (`MAIN_BUTTONS` play/difficulty/howto/records/sound_menu, `BACK_BUTTON`,
-  `PAUSE_BUTTONS` resume/sound/menu, `GAME_OVER_BUTTONS` again/menu), `LABELS` sabit yazılar (değişenleri main
+  `PAUSE_BUTTONS` resume/sound/menu, `GAME_OVER_BUTTONS` again/menu, `PLAY_BUTTONS` stages/endless/back, `STAGE_GRID`,
+  `CLEAR_BUTTONS` next/again/stages, `LAST_CLEAR_BUTTONS`), bölüm ekranları: `draw_play_select`, `draw_stages`,
+  `draw_stage_intro` (bölüm başında ad + intro + hedef), `draw_stage_clear(screen, index, result, shown, ready)` (yıldızlar
+  sırayla, 3 şart: bayrak / altın ≥ `stars_needed(total)` (`STAR_COIN_SHARE`) / hiç can kaybetmeden), `draw_stage_failed`, `LABELS` sabit yazılar (değişenleri main
   verir); `draw_main_menu` (logo = `title.draw_logo`, "Rekor: N m", düğmeler, web'de HEP `draw_slow_hint` — kullanıcı isteği),
   `draw_howto` (kontroller + `HOWTO_ROWS`: oyundaki resimlerle her şeyin açıklaması — yeni öğe eklenince buraya da
-  ekle; 13 satır `HOWTO_TOP`/`HOWTO_GAP` ile sığıyor, daha fazlası için aralık daralt; `HOWTO_WARN_ROWS` sarı yazı), `draw_records(best_heights, high_scores, stats, current)` (her modun tırmanış + puan rekoru, seçili mod sarı; altında
+  ekle; 14 satır `HOWTO_TOP`/`HOWTO_GAP` (31) ile sığıyor, daha fazlası için aralık daralt; `HOWTO_WARN_ROWS` sarı yazı), `draw_records(best_heights, high_scores, stats, current)` (her modun tırmanış + puan rekoru, seçili mod sarı; altında
   tüm modların toplamları), `draw_pause`, `draw_game_over(screen, score, mode_name, ...)` (başlık altında "Zorluk: ...";
   düğmeler `ready` olunca).
   Oyunun üstüne yarı saydam perde; büyük yazı yükseklik/rekor (m), puan küçük.
@@ -180,7 +199,13 @@
   `start()` → "playing" ↔ "paused" (⏸ düğmesi, ESC veya P; durunca Devam/Ses/Ana Menü); can biter → "game_over"
   (`GAME_OVER_DELAY` kare düğme yok) → Tekrar Oyna (`start()`) / Ana Menü (`to_menu()`). `finish()` oyun bitince
   (kaybedince VE durdurup ana menüye dönünce) rekorları + istatistikleri kaydeder. `handle_event`, `update(steps, touch)`,
-  `draw(...)`. M tuşu her yerde `toggle_sound()` (kaydedilir). ESC ana menüde oyundan çıkar (web'de hariç).
+  `draw(...)`. M tuşu her yerde `toggle_sound()` (kaydedilir).
+  BÖLÜM AKIŞI: menü "play" → "play_select" (Bölümler / Sonsuz Oyun / Geri) → "stages" (`open_stages()`; arkada sonsuz harita)
+  → `start(index)` (`Game.stage` = sıra, None = sonsuz; `intro` = `STAGE_INTRO_TIME`) → bayrağa değince `clear_stage()`
+  → "stage_clear" (`clear_result`, `stars_shown`, `STAGE_CLEAR_DELAY`; "win" sesi) → Sonraki/Tekrar/Bölümler. Bölümde can
+  biterse `draw_stage_failed` (Tekrar Dene / Bölümler); durdurunca "menu" düğmesi "Bölümler" yazar, `to_menu()` bölümdeyse
+  `open_stages()`. `unlocked(i)`: ilki hep açık, sonraki önceki ≥1 yıldızla (`UNLOCK_ALL_STAGES` deneme için). `finish()`
+  bölümde sonsuz rekorlarına dokunmaz, sadece istatistik. `Player.hurts` = can kaybı sayısı (3. yıldız). ESC ana menüde oyundan çıkar (web'de hariç).
   `next_difficulty()` Kolay→Orta→Zor→Ultra Zor (`DIFFICULTY_NAMES`), kaydeder ve `reset()` (arkadaki bölüm yeni moda göre).
   `update_game(...)` oyun mantığı, `draw_world(...)` dünyayı çizer (her ekranda arkada görünür).
   `main()` `async`: döngü sonunda `await asyncio.sleep(0)` (web için şart), en altta `asyncio.run(main())`.
@@ -192,7 +217,7 @@
   değilse dokunulmaz değilken `hurt()`. `level.bottom`'ın altına düşerse (kalkan olsa da) `hurt()` +
   `respawn()`. Mıknatıs varken her karede `coin.attract(player.rect.center)`. Kalkan sürerken `draw_world`
   karakterin etrafına `art.shield_bubble` çizer. Düşmanın `color`'ı ölünce saçılan parçacıkların rengi.
-- `lava.py` — `Lava(mode)`: aşağıdan yükselen lav, `level.lava`'da (new_game kurar). `y` = yüzey; `lava_delay`
+- `lava.py` — `Lava(mode)` (modda `lava` False ise `active = False`: hiçbir şey yapmaz/çizmez): aşağıdan yükselen lav, `level.lava`'da (new_game kurar). `y` = yüzey; `lava_delay`
   bekler, sonra `blend(lava_speed, lava_speed_max, hardness(-camera.bottom, mode))` hızla yükselir; ekranın en fazla
   `LAVA_MAX_GAP` altında kalır (< `REMOVE_BELOW` → düşen önce lava değer). `update(camera_bottom)`, `touches(rect)`
   (ayak `LAVA_HIT_DEPTH` içerideyse) → main: `hurt()` + `respawn()` + `push_back(ayak)` (lav
@@ -200,7 +225,7 @@
   lavdan fırlar, kalkan kırılır (bir kez kurtarır), lav yine `push_back`. `draw(screen, camera)` her şeyin önünde (`art.lava_frames()` dalga şeridi + düz dolgu);
   ekranın altındayken `LAVA_WARN_DISTANCE` içinde `art.lava_glow()` kızıllık. check_chunks lavı hesaba katmaz.
 - `check_chunks.py` — çıkılabilirlik testi: `python check_chunks.py` (~20 sn, çok çekirdekli).
-  Gerçek `Player` fiziğiyle (sahte `Controls`) BFS: her parçanın girişinden (başlangıçta P) tepesine
+  Gerçek `Player` fiziğiyle (sahte `Controls`) BFS: her parçanın (bitiş parçaları dahil, onlarda zirveye) girişinden (başlangıçta P) tepesine
   ve her geçerli birleşmede (alt parçanın üst 4 satırı + üst parçanın alt 5 satırı) girişe
   ulaşılabiliyor mu. Düşmanları hesaba katmaz. Yayları gerçek fizikle dener; hareketli
   platformu iki uç durumla modeller (üstündeysen öbür uca taşınırsın, değilsen beklersin). Kırılan
@@ -216,7 +241,7 @@
   ~5 kat hızlı çizilir), `shade`/`tint`/`mix` ile tonlar; `player_frames()`,
   `enemy_frames()` ({1: sağ, -1: sol} çiftleri), `flyer_frames()` (kanat çırpma), `slime_frames()` (walk1/walk2/squash/jump),
   `spiky_frames()`, `cannon_frames()` ([normal, kızarmış]; `CANNON_MUZZLE_Y` namlu yüksekliği), `fireball_frames()`,
-  `bee_frames()`, `crumble_frames()`
+  `bee_frames()`, `flag_frames()` (damalı bayrak), `star_image(filled, size)`, `lock_image()`, `crumble_frames()`
   (sağlam, çatlak, silik), `magnet_image()`, `shield_image()`, `shield_bubble(r)`, `coin_frames()` (dönme), `tile_image()`,
   `platform_image()`, `heart_images()`, `Background` (`SKY_THEMES` gökleri, her `SKY_CHANGE_HEIGHT` px tırmanışta sıradakine
   `SKY_BLEND_HEIGHT` boyunca saydamlıkla geçer, döngüsel; + `STAR_PARALLAX` ile kayan yıldızlar), `island_image()`
@@ -236,7 +261,7 @@
   Yerleşim sabitleri dosyanın başında; ayarlar settings "Oyunun adı (logo)" ve "Giriş ekranı".
 - `sound.py` — `pre_init()` (pygame.init'ten önce; 22050 Hz mono 16 bit; tampon masaüstünde 512,
   web'de `WEB_AUDIO_BUFFER` = 2048 — tarayıcı 512'de cızırdıyordu; tarayıcı frekansı kendisi seçer, 48000), `Sounds()`: efektler
-  (jump, coin, stomp, hurt, start, game_over, life, spring, crumble, shoot, powerup, powerdown) ve 8 ölçülük döngü müzik (`MELODY`/`BASS` nota
+  (jump, coin, stomp, hurt, start, game_over, win, life, spring, crumble, shoot, powerup, powerdown) ve 8 ölçülük döngü müzik (`MELODY`/`BASS` nota
   numaraları) `array` ile üretilir (numpy YOK); `play(name)`, `start_music/stop_music`, `toggle_mute`,
   `set_levels(music, effects)` (0-1 çarpan; tam = `MUSIC_VOLUME`/`SOUND_VOLUME`)
   (M). Mixer yoksa/biçim farklıysa `enabled=False`, her şey sessizce çalışır. Stereo da desteklenir.
@@ -271,6 +296,9 @@ Açık depoda çalışma durumu girişsiz bakılabilir: https://api.github.com/r
   yükselen lav. Kullanıcı oynayıp lav/düşman hızı için geri bildirim verecek (sayılar settings.py'de).
   Kolay/orta/zor MODLARI sonra, ana menüyle birlikte (her modun ayrı rekoru olsun).
 - Sonra belki: başka güçlendirmeler (ör. jetpack).
+- BÖLÜM MODU yapıldı (2026-10-09; kullanıcı fikri: "Oyna'ya basınca bölümler, biri bitince sonrakinin kilidi açılsın").
+  20 bölüm, 3 yıldız, lav bazı bölümlerde, sonsuz oyun da duruyor. Kullanıcı oynayıp bölüm zorluğu/sayıları için geri
+  bildirim verecek (stages.py).
 - YENİ DÜŞMANLAR yapıldı (kullanıcı dördünü de seçti): zıplayan sümük, dikenli kirpi, ateş atan topçu, dikey uçan arı.
   Düşman sayısı/oranı değişmedi (kullanıcı isteği). Tür sıklığı settings `WALKER_KINDS`/`FLYER_KINDS`.
 - ANA MENÜ yapıldı (Oyna, Zorluk, Nasıl Oynanır, Rekorlar, Ses Ayarları (müzik/efekt seviyesi) + oyunda durdur). Web'de menüde "Düşük Güç Modu'nu

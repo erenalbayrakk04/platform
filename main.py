@@ -31,10 +31,14 @@ from settings import (
     DEFAULT_DIFFICULTY,
     DIFFICULTIES,
     VOLUME_STEPS,
+    STAGE_INTRO_TIME,
+    STAGE_CLEAR_DELAY,
+    UNLOCK_ALL_STAGES,
     WEB,
 )
 from player import Player
 from level import Level
+from stages import STAGES, stage_mode
 from lava import Lava
 from camera import Camera
 from score import Score, draw_lives, draw_powers, draw_text
@@ -139,16 +143,17 @@ class FpsMeter:
         draw_text(screen, self.font, self.text, center=(SCREEN_WIDTH // 2, 80))
 
 
-def new_game(best_height, mode):
-    # Yeni rastgele bölüm kur, karakteri başlangıç parçasındaki P noktasına koy.
+def new_game(best_height, mode, stage=None):
+    # Yeni harita kur, karakteri başlangıç parçasındaki P noktasına koy.
     # best_height = yükseklik rekoru (haritada "Rekor" çizgisi orada çizilir),
-    # mode = zorluk modunun sayıları (settings.DIFFICULTIES): can, lav, düşman hızı...
-    level = Level(mode)
+    # mode = zorluk modunun sayıları (settings.DIFFICULTIES; bölümde stages.stage_mode): can, lav, düşman hızı...
+    # stage = oynanacak bölüm (stages.py; harita hep aynı, tepede bayrak) ya da None (sonsuz, rastgele)
+    level = Level(mode, stage["seed"], stage) if stage else Level(mode)
     player = Player(*level.player_start, level.width, mode["lives"], mode["max_lives"])
     camera = Camera()
     camera.follow(player.rect, level.bottom, instant=True)
     level.update(camera.top, camera.bottom)
-    score = Score(level.player_start[1], best_height)
+    score = Score(level.player_start[1], best_height, level.goal_height)
     # Saçılan parçacıklar (effects.py) — dünyada dururlar, kamerayla birlikte çizilirler
     level.effects = pygame.sprite.Group()
     # Aşağıdan yükselen lav (lava.py) — zeminin altından başlar
@@ -259,6 +264,7 @@ def update_game(level, player, camera, score, controls, sounds):
     level.coins.update()
     level.pickups.update()
     level.springs.update()
+    level.goals.update()
     level.effects.update()
 
     camera.follow(player.rect, level.bottom)
@@ -274,7 +280,7 @@ def draw_world(screen, background, level, player, camera, score):
     # Kırık platformlar geri gelmeden az önce silik görünür
     ghosts = [crumbler for crumbler in level.crumblers if crumbler.ghost]
     sprites = [
-        *level.tiles, *ghosts, *level.springs, *level.coins, *level.pickups, *level.enemies, *level.shots,
+        *level.goals, *level.tiles, *ghosts, *level.springs, *level.coins, *level.pickups, *level.enemies, *level.shots,
         *level.effects,
     ]
     if player.visible:  # dokunulmazken yanıp söner
@@ -297,14 +303,26 @@ def draw_world(screen, background, level, player, camera, score):
 
 class Game:
     # Oyunun bütün durumu: hangi ekrandayız, rekorlar, seçenekler ve şu an oynanan bölüm.
-    # Ekranlar (state): "title" (giriş ekranı, oyun bununla açılır), "menu" (ana menü), "sound" (ses ayarları),
-    # "howto" (nasıl oynanır), "records" (rekorlar), "playing" (oyun), "paused" (durdu), "game_over" (kaybettin)
+    # Ekranlar (state): "title" (giriş ekranı, oyun bununla açılır), "menu" (ana menü), "play_select" (bölümler mi
+    # sonsuz mu), "stages" (bölüm seçme), "sound" (ses ayarları), "howto" (nasıl oynanır), "records" (rekorlar),
+    # "playing" (oyun), "paused" (durdu), "game_over" (kaybettin), "stage_clear" (bölüm bitti)
     def __init__(self, sounds):
         self.sounds = sounds
         # Rekorlar her zorluk modunun ayrı: asıl hedef en yüksek tırmanış (blok), ayrıca en yüksek puan
         self.best_heights = {mode: load_record("height", mode) for mode in DIFFICULTY_NAMES}
         self.high_scores = {mode: load_record("score", mode) for mode in DIFFICULTY_NAMES}
         self.stats = load_dict("stats", STATS_DEFAULTS)
+        # Bölümler: her birinin en iyi yıldızı (0-3). Bölüm sayısı değiştiyse liste ona uydurulur
+        saved = load_dict("stages", {"stars": []})["stars"]
+        self.stage_stars = [
+            max(0, min(3, saved[i])) if i < len(saved) and isinstance(saved[i], int) else 0
+            for i in range(len(STAGES))
+        ]
+        self.stage = None  # oynanan bölümün sırası; None = sonsuz oyun
+        self.intro = 0  # bölüm başında adının görüneceği kalan kare
+        self.clear_timer = 0  # bölüm bitti ekranında düğmeler çıkana kadar kalan kare
+        self.clear_result = None  # bölüm bitince: yıldızlar ve şartlar (screens.draw_stage_clear)
+        self.stars_shown = 0  # bölüm bitti ekranında şimdiye kadar beliren yıldız
         self.options = load_dict("options", OPTIONS_DEFAULTS)
         if self.options["difficulty"] not in DIFFICULTY_NAMES:
             self.options["difficulty"] = DEFAULT_DIFFICULTY
@@ -338,14 +356,23 @@ class Game:
         return self.high_scores[self.mode]
 
     def reset(self):
-        # Yeni bölüm kur (menünün arkasında da bu görünür)
-        self.level, self.player, self.camera, self.score = new_game(self.best_height, DIFFICULTIES[self.mode])
+        # Yeni harita kur (menünün arkasında da bu görünür): bölüm oynanıyorsa onun haritası, yoksa sonsuz oyun
+        if self.stage is not None:
+            stage = STAGES[self.stage]
+            self.level, self.player, self.camera, self.score = new_game(0, stage_mode(stage), stage)
+        else:
+            self.level, self.player, self.camera, self.score = new_game(self.best_height, DIFFICULTIES[self.mode])
+
+    def unlocked(self, index):
+        # Bölüm açık mı: ilki hep açık, sonrakiler bir öncekinden en az 1 yıldız alınınca
+        return UNLOCK_ALL_STAGES or index == 0 or self.stage_stars[index - 1] > 0
 
     def labels(self):
         # Yazısı değişen düğmeler
         return {
             "sound": "Ses: Kapalı" if self.sounds.muted else "Ses: Açık",
             "difficulty": f"Zorluk: {DIFFICULTY_NAMES[self.options['difficulty']]}",
+            "menu": "Bölümler" if self.stage is not None else "Ana Menü",
         }
 
     def save_options(self):
@@ -381,27 +408,79 @@ class Game:
         self.save_options()
         self.reset()  # menünün arkasındaki bölüm ve rekor çizgisi yeni moda göre olsun
 
-    def start(self):
-        # Yeni oyuna başla
+    def start(self, stage=None):
+        # Yeni oyuna başla: stage = bölümün sırası, None = sonsuz oyun
+        self.stage = stage
         self.reset()
         self.state = "playing"
+        self.intro = STAGE_INTRO_TIME if stage is not None else 0
         self.sounds.play("start")
         self.sounds.start_music()
 
     def to_menu(self):
+        # Oyundan çık: bölümdeysen bölüm seçme ekranına, sonsuz oyundaysan ana menüye
+        if self.stage is not None:
+            self.open_stages()
+            return
         if self.state == "game_over":
             self.sounds.start_music()  # kaybedince durmuştu
         self.reset()
         self.state = "menu"
 
+    def open_stages(self):
+        # Bölüm seçme ekranı: bitirilen bölümün sonrakisi, oynanan bölüm ya da açık olan son bölüm seçili gelir
+        if self.state in ("game_over", "stage_clear"):
+            self.sounds.start_music()  # oyun bitince durmuştu
+        if self.state == "stage_clear" and self.stage + 1 < len(STAGES):
+            focus = self.stage + 1
+        elif self.stage is not None:
+            focus = self.stage
+        else:
+            focus = max(i for i in range(len(STAGES)) if self.unlocked(i))
+        screens.STAGE_GRID.set_focus(focus)
+        if self.stage is not None:
+            self.stage = None
+            self.reset()  # arkada yine sonsuz oyunun haritası
+        self.state = "stages"
+
+    def clear_stage(self):
+        # Bayrağa ulaştı: yıldızları hesapla, en iyisini kaydet, sıradaki bölümün kilidini aç
+        coins_total = self.level.coins_total
+        enough_coins = self.score.coins >= screens.stars_needed(coins_total)
+        no_hurt = self.player.hurts == 0
+        stars = 1 + enough_coins + no_hurt
+        has_next = self.stage + 1 < len(STAGES)
+        next_was_locked = has_next and not self.unlocked(self.stage + 1)
+        if stars > self.stage_stars[self.stage]:
+            self.stage_stars[self.stage] = stars
+            save_dict("stages", {"stars": self.stage_stars})
+        self.clear_result = {
+            "stars": stars,
+            "coins": self.score.coins,
+            "coins_total": coins_total,
+            "no_hurt": no_hurt,
+            "unlocked": next_was_locked and self.unlocked(self.stage + 1),
+        }
+        self.state = "stage_clear"
+        self.clear_timer = STAGE_CLEAR_DELAY
+        self.stars_shown = 0
+        (screens.CLEAR_BUTTONS if has_next else screens.LAST_CLEAR_BUTTONS).focus = 0
+        self.sounds.stop_music()
+        self.sounds.play("win")
+        for goal in self.level.goals:
+            burst(self.level.effects, goal.rect.center, COIN_COLOR)
+        self.finish()
+
     def finish(self):
-        # Oyun bitti (kaybetti ya da yarıda ana menüye döndü): bu modun rekorlarını ve toplamları kaydet
+        # Oyun bitti (kaybetti, bölümü bitirdi ya da yarıda menüye döndü): bu modun rekorlarını ve toplamları
+        # kaydet. Bölümlerde rekor tutulmaz (sonsuz oyunun rekorları değişmez), sadece toplamlar
         score = self.score
-        self.new_record = score.new_record  # yükseklik rekoru
+        endless = self.stage is None
+        self.new_record = endless and score.new_record  # yükseklik rekoru
         if self.new_record:
             self.best_heights[self.mode] = score.height
             save_record("height", score.height, self.mode)
-        if score.total > self.high_score:
+        if endless and score.total > self.high_score:
             self.high_scores[self.mode] = score.total
             save_record("score", score.total, self.mode)
         self.stats["games"] += 1
@@ -424,7 +503,8 @@ class Game:
                 return False  # tarayıcıda çıkış yok (sayfa kapatılır)
             action = screens.MAIN_BUTTONS.handle_event(event)
             if action == "play":
-                self.start()
+                self.state = "play_select"
+                screens.PLAY_BUTTONS.focus = 0
             elif action == "difficulty":
                 self.next_difficulty()
             elif action == "sound_menu":
@@ -433,6 +513,34 @@ class Game:
             elif action in ("howto", "records"):
                 self.state = action
                 screens.BACK_BUTTON.focus = 0
+
+        elif self.state == "play_select":
+            action = screens.PLAY_BUTTONS.handle_event(event)
+            if key == pygame.K_ESCAPE or action == "back":
+                self.state = "menu"
+            elif action == "stages":
+                self.open_stages()
+            elif action == "endless":
+                self.start()
+
+        elif self.state == "stages":
+            choice = screens.STAGE_GRID.handle_event(event, self.unlocked)
+            if key == pygame.K_ESCAPE or choice == "back":
+                self.state = "play_select"
+            elif choice == "locked":
+                self.sounds.play("powerdown")
+            elif choice is not None:
+                self.start(choice)
+
+        elif self.state == "stage_clear" and self.clear_timer == 0:
+            has_next = self.stage + 1 < len(STAGES)
+            action = (screens.CLEAR_BUTTONS if has_next else screens.LAST_CLEAR_BUTTONS).handle_event(event)
+            if action == "next":
+                self.start(self.stage + 1)
+            elif action == "again":
+                self.start(self.stage)
+            elif action == "stages" or key == pygame.K_ESCAPE:
+                self.open_stages()
 
         elif self.state == "sound":
             action = screens.SOUND_MENU.handle_event(event)
@@ -465,7 +573,7 @@ class Game:
         elif self.state == "game_over" and self.game_over_timer == 0:
             action = screens.GAME_OVER_BUTTONS.handle_event(event)
             if action == "again":
-                self.start()
+                self.start(self.stage)
             elif action == "menu" or key == pygame.K_ESCAPE:
                 self.to_menu()
         return True
@@ -476,6 +584,11 @@ class Game:
             controls = read_controls(touch)
             for _ in range(steps):
                 update_game(self.level, self.player, self.camera, self.score, controls, self.sounds)
+                self.intro = max(0, self.intro - 1)
+                # Bayrağa değdi → bölüm bitti
+                if pygame.sprite.spritecollideany(self.player, self.level.goals):
+                    self.clear_stage()
+                    break
                 # Can bitti → kaybettin ekranı; rekor kırıldıysa hemen kaydet
                 if self.player.lives <= 0:
                     self.state = "game_over"
@@ -487,6 +600,16 @@ class Game:
                     break
         elif self.state == "game_over":
             self.game_over_timer = max(0, self.game_over_timer - steps)
+        elif self.state == "stage_clear":
+            # Yıldızlar sırayla belirir (her biri bir "çın" sesiyle), sonra düğmeler çıkar
+            self.clear_timer = max(0, self.clear_timer - steps)
+            for _ in range(steps):
+                self.level.effects.update()
+                self.level.goals.update()
+            shown = min(self.clear_result["stars"], (STAGE_CLEAR_DELAY - self.clear_timer) // 18)
+            if shown > self.stars_shown:
+                self.stars_shown = shown
+                self.sounds.play("coin")
         elif self.state == "title":
             for _ in range(steps):
                 self.title.update()
@@ -506,12 +629,18 @@ class Game:
             screens.draw_main_menu(screen, self.best_height, self.labels(), WEB)
             if self.state == "title":
                 self.title.draw_fading(screen, background)
+        elif self.state == "play_select":
+            screens.draw_play_select(screen, self.labels(), DIFFICULTY_NAMES[self.mode], self.stage_stars)
+        elif self.state == "stages":
+            screens.draw_stages(screen, self.stage_stars, self.unlocked)
         elif self.state == "sound":
             screens.SOUND_MENU.draw(screen, self.labels(), self.sounds.muted)
         elif self.state == "howto":
             screens.draw_howto(screen)
         elif self.state == "records":
-            screens.draw_records(screen, self.best_heights, self.high_scores, self.stats, self.mode)
+            screens.draw_records(
+                screen, self.best_heights, self.high_scores, self.stats, self.mode, self.stage_stars
+            )
         else:
             # Puan ve canlar kameradan bağımsız: hep ekranın üst köşelerinde
             self.score.draw(screen)
@@ -520,8 +649,16 @@ class Game:
             if self.state == "playing":
                 touch.draw(screen)
                 self.pause_button.draw(screen)
+                if self.intro:
+                    screens.draw_stage_intro(screen, self.stage, self.score.goal)
             elif self.state == "paused":
                 screens.draw_pause(screen, self.labels())
+            elif self.state == "stage_clear":
+                screens.draw_stage_clear(
+                    screen, self.stage, self.clear_result, self.stars_shown, self.clear_timer == 0
+                )
+            elif self.state == "game_over" and self.stage is not None:
+                screens.draw_stage_failed(screen, self.stage, self.score, self.game_over_timer == 0, slow)
             elif self.state == "game_over":
                 screens.draw_game_over(
                     screen,
