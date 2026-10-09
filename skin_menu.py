@@ -94,6 +94,7 @@ class SkinMenu:
         self.images = None  # ilk çizimde hazırlanır (pygame açıldıktan sonra)
         self.big = {}  # skin → önizleme resimleri (büyütülmüş)
         self.thumbs = {}  # skin → (kutudaki resim, sönük hâli)
+        self.tags = {}  # (fiyat, alınabilir mi) → fiyat etiketi resmi
         # Önizlemedeki karakter: x = ortası, lift = ayağının platformdan yüksekliği, vy = dikey hız (yukarı +)
         self.time = 0
         self.x = float(CENTER_X)
@@ -403,15 +404,18 @@ class SkinMenu:
                 self.draw_check(screen, (rect.right - 10, rect.top + 10))
 
     def draw_price(self, screen, font, price, rect, affordable):
-        # Kutunun altında fiyat etiketi: küçük altın + sayı (alınabiliyorsa sarı)
-        coin = self.images["small_coin"]
-        text = font.render(str(price), True, RECORD_COLOR if affordable else HINT_COLOR)
-        width = coin.get_width() + 3 + text.get_width()
-        tag = pygame.Rect(0, 0, width + 8, 16)
-        tag.midbottom = (rect.centerx, rect.bottom - 3)
-        pygame.draw.rect(screen, (20, 18, 40), tag, border_radius=6)
-        screen.blit(coin, coin.get_rect(midleft=(tag.left + 4, tag.centery)))
-        screen.blit(text, text.get_rect(midleft=(tag.left + 7 + coin.get_width(), tag.centery + 1)))
+        # Kutunun altında fiyat etiketi: küçük altın + sayı (alınabiliyorsa sarı); her etiket bir kere hazırlanır
+        key = (price, affordable)
+        if key not in self.tags:
+            coin = self.images["small_coin"]
+            text = font.render(str(price), True, RECORD_COLOR if affordable else HINT_COLOR)
+            tag = pygame.Surface((coin.get_width() + text.get_width() + 11, 16), pygame.SRCALPHA)
+            pygame.draw.rect(tag, (20, 18, 40), tag.get_rect(), border_radius=6)
+            tag.blit(coin, coin.get_rect(midleft=(4, 8)))
+            tag.blit(text, text.get_rect(midleft=(7 + coin.get_width(), 9)))
+            self.tags[key] = tag
+        tag = self.tags[key]
+        screen.blit(tag, tag.get_rect(midbottom=(rect.centerx, rect.bottom - 3)))
 
     def draw_check(self, screen, center):
         # Giyilen skinin kutusunun köşesinde yeşil yuvarlak içinde tik
