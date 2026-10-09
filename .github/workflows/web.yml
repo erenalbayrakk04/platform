@@ -1,6 +1,7 @@
 # Web sürümü: GitHub'a her gönderimde (push) oyunu pygbag ile tarayıcı sürümüne çevirip
 # GitHub Pages'e koyar → https://erenalbayrakk04.github.io/platform/
-# Önce harita parçası testi çalışır; çıkılamayan bir parça varsa yayına çıkmaz.
+# Önce harita parçası testi ve çeviri testi çalışır; çıkılamayan bir parça ya da İngilizcesi eksik bir yazı
+# varsa yayına çıkmaz.
 name: Web sürümü
 
 on:
@@ -32,6 +33,9 @@ jobs:
         run: |
           pip install pygame-ce
           python check_chunks.py
+
+      - name: Çeviri testi (her yazının İngilizcesi var mı)
+        run: python check_lang.py
 
       - name: Tarayıcı sürümünü derle (pygbag)
         run: |

@@ -12,11 +12,19 @@
 # trail = efsanevilerin arkasında bıraktığı iz (trail.py): "spark", "fire", "stars", "gold", "snow", "rainbow", "shadow"
 from settings import WHITE, PLAYER_COLOR, DIFFICULTY_NAMES, UNLOCK_ALL_SKINS
 from storage import load_dict, save_dict
+from lang import t, mark
 import art
 from art import shade, tint
 
-GROUP_NAMES = {"colors": "Renkler", "characters": "Karakterler", "legendary": "Efsanevi"}
-CURRENCY_NAMES = {"coins": "altın", "gems": "elmas"}  # paralar (Wardrobe'da aynı adla tutulur)
+GROUP_NAMES = {"colors": mark("Renkler"), "characters": mark("Karakterler"), "legendary": mark("Efsanevi")}
+# Görevlerin ekrandaki yazısı ({} = hedef); "height-<mod>" görevi ayrı (modun adıyla)
+GOAL_TEXTS = {
+    "games": mark("{} oyun oyna"),
+    "climbed": mark("Toplam {} m tırman"),
+    "enemies": mark("{} düşman yen"),
+    "coins": mark("Toplam {} altın topla"),
+    "stars": mark("Bölümlerden {} yıldız topla"),
+}
 DEFAULT_SKIN = "classic"
 
 
@@ -549,15 +557,8 @@ def goal_text(goal):
     # Görevin ekrandaki yazısı, ör. "150 düşman yen"
     kind, target = goal
     if kind.startswith("height-"):
-        return f"Sonsuz Oyun'da {target} m tırman ({DIFFICULTY_NAMES[kind[7:]]})"
-    texts = {
-        "games": "{} oyun oyna",
-        "climbed": "Toplam {} m tırman",
-        "enemies": "{} düşman yen",
-        "coins": "Toplam {} altın topla",
-        "stars": "Bölümlerden {} yıldız topla",
-    }
-    return texts[kind].format(target)
+        return t("Sonsuz Oyun'da {} m tırman ({})").format(target, t(DIFFICULTY_NAMES[kind[7:]]))
+    return t(GOAL_TEXTS[kind]).format(target)
 
 
 class Wardrobe:

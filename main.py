@@ -58,6 +58,7 @@ from title import TitleScreen
 from ui import PauseButton
 from skin_menu import SKIN_MENU
 from ads import Ads
+from lang import t, mark, LANGUAGES, language, set_language, device_language
 import skins
 from art import Background, shield_bubble
 from controls import TouchButtons, read_controls
@@ -76,6 +77,7 @@ OPTIONS_DEFAULTS = {
     "difficulty": DEFAULT_DIFFICULTY,
     "music_volume": VOLUME_STEPS,  # ses ekranındaki çubuklar (0..VOLUME_STEPS)
     "effects_volume": VOLUME_STEPS,
+    "language": "",  # "tr" / "en"; boş = cihazın dili (ayarlardan seçilince kaydedilir)
 }
 # Oyun sırasında durduran tuşlar
 PAUSE_KEYS = (pygame.K_ESCAPE, pygame.K_p)
@@ -150,7 +152,7 @@ class FpsMeter:
         now = time.perf_counter()
         if now - self.start >= 1:
             fps = self.frames / (now - self.start)
-            self.text = f"{fps:.0f} kare/sn"
+            self.text = t("{} kare/sn").format(round(fps))
             self.low_seconds = self.low_seconds + 1 if fps < LOW_FPS_LIMIT else 0
             self.frames = 0
             self.start = now
@@ -362,6 +364,9 @@ class Game:
         self.options = load_dict("options", OPTIONS_DEFAULTS)
         if self.options["difficulty"] not in DIFFICULTY_NAMES:
             self.options["difficulty"] = DEFAULT_DIFFICULTY
+        # Dil (lang.py): ayarlardan seçilen, seçilmediyse telefonun / bilgisayarın dili
+        chosen = self.options["language"]
+        set_language(chosen if chosen in LANGUAGES else device_language(WEB))
         if self.options["muted"]:
             sounds.toggle_mute()
         # Ses seviyeleri: kayıttaki değer çubuklara ve seslere
@@ -440,9 +445,10 @@ class Game:
     def labels(self):
         # Yazısı değişen düğmeler
         return {
-            "sound": "Ses: Kapalı" if self.sounds.muted else "Ses: Açık",
-            "difficulty": f"Zorluk: {DIFFICULTY_NAMES[self.options['difficulty']]}",
-            "menu": "Bölümler" if self.stage is not None else "Ana Menü",
+            "sound": mark("Ses: Kapalı") if self.sounds.muted else mark("Ses: Açık"),
+            "difficulty": t("Zorluk: {}").format(t(DIFFICULTY_NAMES[self.options["difficulty"]])),
+            "menu": mark("Bölümler") if self.stage is not None else mark("Ana Menü"),
+            "language": t("Dil: {}").format(LANGUAGES[language()]),
         }
 
     def save_options(self):
@@ -465,6 +471,13 @@ class Game:
         self.save_options()
         if name == "effects":
             self.sounds.play("coin")  # efekt sesi ne kadar yüksek, hemen duyulsun
+
+    def next_language(self):
+        # Ayarlar ekranındaki Dil düğmesi: sıradaki dil (Türkçe ↔ English), kaydedilir
+        names = list(LANGUAGES)
+        self.options["language"] = names[(names.index(language()) + 1) % len(names)]
+        set_language(self.options["language"])
+        self.save_options()
 
     def toggle_sound(self):
         self.sounds.toggle_mute()
@@ -653,7 +666,7 @@ class Game:
         self.state = self.ad_back
         reward = self.ad_reward
         if not watched:
-            self.show_note("Şu an reklam yok, sonra tekrar dene")
+            self.show_note("Şu an reklam yok, sonra tekrar dene")  # draw_note çevirir
             if reward == "revive":
                 self.revive_ad = "failed"
             elif reward == "double":
@@ -670,7 +683,7 @@ class Game:
             self.ads.count_free_gems()
             SKIN_MENU.celebrate()
         self.sounds.play("gem")
-        self.show_note(f"+{gems} elmas!")
+        self.show_note(t("+{} elmas!", gems).format(gems))
 
     def show_note(self, text):
         self.note = text
@@ -784,6 +797,8 @@ class Game:
                 self.state = "menu"
             elif action == "sound":
                 self.toggle_sound()
+            elif action == "language":
+                self.next_language()
             elif action in ("music", "effects"):
                 self.change_volume(action)
 

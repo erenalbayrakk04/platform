@@ -1,4 +1,4 @@
-# Ekranlar: ana menü, oyun seçimi (bölümler / sonsuz), bölüm seçme, ses ayarları, nasıl oynanır, rekorlar,
+# Ekranlar: ana menü, oyun seçimi (bölümler / sonsuz), bölüm seçme, ayarlar (ses, dil), nasıl oynanır, rekorlar,
 # durdu, "Devam Et?", "Kaybettin" ve "Bölüm bitti". Oyunun üstüne karanlık bir perde
 # serilip yazılar ve düğmeler (ui.py) ortalanır. Hangi düğmeye basıldığına main.py bakar.
 import math
@@ -30,6 +30,7 @@ from settings import (
     REVIVE_GEMS,
 )
 from score import draw_text
+from lang import t, mark
 from stages import STAGE_SETS, STAGE_COUNT
 from title import draw_logo
 from ui import Buttons, Slider, StageGrid, take_click, ACTIVATE_KEYS, UP_KEYS, DOWN_KEYS
@@ -59,7 +60,7 @@ END_BUTTONS = {
     ("last_clear", True): Buttons(["again", "stages", "double"], top=505),
 }
 # 2 kat elmas düğmesinin yazısı ({} = bu oyunda kazanılan elmas): teklif / alındı / reklam gelmedi
-DOUBLE_LABELS = {"offer": "2 Kat: +{}", "done": "+{} elmas alındı!", "failed": "Reklam yok"}
+DOUBLE_LABELS = {"offer": mark("2 Kat: +{}"), "done": mark("+{} elmas alındı!"), "failed": mark("Reklam yok")}
 
 
 def revive_buttons(ad):
@@ -70,23 +71,22 @@ def revive_buttons(ad):
 def end_buttons(kind, double):
     return END_BUTTONS[kind, double is not None]
 
-# Düğme yazıları; değişenler ("sound", "difficulty") main.py'den gelir
+# Düğme yazıları; değişenler ("sound", "difficulty", "language") main.py'den gelir
 LABELS = {
-    "play": "Oyna",
-    "skins": "Karakterler",
-    "sound_menu": "Ses Ayarları",
-    "howto": "Nasıl Oynanır",
-    "records": "Rekorlar",
-    "back": "Geri",
-    "resume": "Devam Et",
-    "menu": "Ana Menü",
-    "again": "Tekrar Oyna",
-    "stages": "Bölümler",
-    "endless": "Sonsuz Oyun",
-    "next": "Sonraki Bölüm",
-    "revive": f"Devam Et: {REVIVE_GEMS}",
-    "revive_ad": "Reklam İzle",
-    "give_up": "Hayır",
+    "play": mark("Oyna"),
+    "skins": mark("Karakterler"),
+    "sound_menu": mark("Ayarlar"),
+    "howto": mark("Nasıl Oynanır"),
+    "records": mark("Rekorlar"),
+    "back": mark("Geri"),
+    "resume": mark("Devam Et"),
+    "menu": mark("Ana Menü"),
+    "again": mark("Tekrar Oyna"),
+    "stages": mark("Bölümler"),
+    "endless": mark("Sonsuz Oyun"),
+    "next": mark("Sonraki Bölüm"),
+    "revive_ad": mark("Reklam İzle"),
+    "give_up": mark("Hayır"),
 }
 
 # Yazı tipleri, perde ve resimler ilk kullanımda bir kere hazırlanır (pygame.init()'ten sonra olmalı)
@@ -124,6 +124,7 @@ def draw_button_icons(screen, buttons, action, left=None, right=None):
 
 def draw_note(screen, text):
     # Ekranın altında kısa bilgi ("+2 elmas!", "Şu an reklam yok..."): koyu zemin üstünde
+    text = t(text)  # genişliği çevrilmiş yazıya göre
     small = font(MENU_SMALL_FONT_SIZE + 2)
     box = pygame.Rect(0, 0, small.size(text)[0] + 28, 32)
     box.center = (CENTER_X, 700)
@@ -147,7 +148,9 @@ def draw_main_menu(screen, best_height, labels, web=False):
     # Oyunun adı (piksel harfli logo): giriş ekranındakiyle aynı yerde — geçişte yerinden oynamaz
     draw_logo(screen)
     # Asıl hedef: yükseklik rekoru
-    draw_text(screen, font(MENU_FONT_SIZE + 10), f"Rekor: {best_height} m", RECORD_COLOR, center=(CENTER_X, 260))
+    draw_text(
+        screen, font(MENU_FONT_SIZE + 10), t("Rekor: {} m").format(best_height), RECORD_COLOR, center=(CENTER_X, 260)
+    )
     MAIN_BUTTONS.draw(screen, {**LABELS, **labels})
     # Telefonda (tarayıcıda) hep yazsın: iPhone Düşük Güç Modu'nda oyun daha az akıcı
     if web:
@@ -155,16 +158,16 @@ def draw_main_menu(screen, best_height, labels, web=False):
 
 
 class SoundMenu:
-    # Ses ayarları ekranı: müzik ve efekt seviyesi çubukları + "Ses: Açık/Kapalı" ve "Geri" düğmeleri.
+    # Ayarlar ekranı: müzik ve efekt seviyesi çubukları + "Ses: Açık/Kapalı", "Dil: Türkçe" ve "Geri" düğmeleri.
     # Klavyede yukarı/aşağı ile seçilir, çubuk seçiliyken sol/sağ ok ile ayarlanır
     SLIDER_NAMES = ("music", "effects")
-    TITLES = {"music": "Müzik", "effects": "Efektler"}
+    TITLES = {"music": mark("Müzik"), "effects": mark("Efektler")}
     LEFT_KEYS = (pygame.K_LEFT, pygame.K_a)
     RIGHT_KEYS = (pygame.K_RIGHT, pygame.K_d)
 
     def __init__(self):
         self.sliders = {"music": Slider(255), "effects": Slider(370)}
-        self.buttons = Buttons(["sound", "back"], top=480)
+        self.buttons = Buttons(["sound", "language", "back"], top=480)
         self.focus = 0  # 0 = müzik, 1 = efektler, 2+ = düğmeler
 
     def open(self):
@@ -177,7 +180,7 @@ class SoundMenu:
         self.buttons.focus = self.focus - count  # çubuk seçiliyse eksi (düğme seçili görünmez)
 
     def handle_event(self, event):
-        # Değişen çubuğun adı ("music"/"effects") veya basılan düğmenin adı ("sound"/"back"), yoksa None
+        # Değişen çubuğun adı ("music"/"effects") veya basılan düğmenin adı ("sound"/"language"/"back"), yoksa None
         count = len(self.SLIDER_NAMES)
         if event.type == pygame.KEYDOWN:
             if event.key in UP_KEYS:
@@ -206,14 +209,14 @@ class SoundMenu:
 
     def draw(self, screen, labels, muted):
         draw_overlay(screen)
-        draw_title(screen, "Ses Ayarları", 120)
+        draw_title(screen, "Ayarlar", 120)
         for i, name in enumerate(self.SLIDER_NAMES):
             slider = self.sliders[name]
             focused = self.focus == i
             y = slider.rect.top - 32
             color = TITLE_COLOR if focused else (255, 255, 255)
             draw_text(screen, font(MENU_FONT_SIZE), self.TITLES[name], color, midleft=(slider.rect.left, y))
-            percent = f"%{slider.value * 100 // VOLUME_STEPS}"
+            percent = t("%{}").format(slider.value * 100 // VOLUME_STEPS)  # İngilizcede "100%"
             draw_text(screen, font(MENU_FONT_SIZE), percent, color, midright=(slider.rect.right, y))
             slider.draw(screen, focused, muted)
         self.buttons.draw(screen, {**LABELS, **labels})
@@ -251,22 +254,22 @@ def howto_icons():
     return _cache["howto"]
 
 
-HOWTO_ROWS = (
-    ("flag", "Bayrak: bölümün sonu, ona ulaş!"),
-    ("coin", f"Altın: +{COIN_POINTS} puan, yeni renk al"),
-    ("gem", "Elmas: nadir! Yeni karakter al"),
-    ("heart", "Kalp: +1 can"),
-    ("magnet", "Mıknatıs: altınları çeker"),
-    ("shield", "Kalkan: düşman ve lavdan korur"),
-    ("spring", "Yay: çok yükseğe fırlatır"),
-    ("crumble", "Çatlak taş: basınca kırılır"),
-    ("enemy", "Düşman: üstüne zıpla, yanına değme"),
-    ("slime", "Sümük: zıplar, inince üstüne bas"),
-    ("spiky", "Kirpi: dikenli, üstüne BASMA!"),
-    ("cannon", "Topçu: ateş atar, üstüne zıpla"),
-    ("bat", "Yarasa: onun da üstüne zıpla"),
-    ("bee", "Arı: aşağı yukarı uçar"),
-    ("lava", "Lav: yükseliyor, acele et!"),
+HOWTO_ROWS = (  # {points} = altının puanı
+    ("flag", mark("Bayrak: bölümün sonu, ona ulaş!")),
+    ("coin", mark("Altın: +{points} puan, yeni renk al")),
+    ("gem", mark("Elmas: nadir! Yeni karakter al")),
+    ("heart", mark("Kalp: +1 can")),
+    ("magnet", mark("Mıknatıs: altınları çeker")),
+    ("shield", mark("Kalkan: düşman ve lavdan korur")),
+    ("spring", mark("Yay: çok yükseğe fırlatır")),
+    ("crumble", mark("Çatlak taş: basınca kırılır")),
+    ("enemy", mark("Düşman: üstüne zıpla, yanına değme")),
+    ("slime", mark("Sümük: zıplar, inince üstüne bas")),
+    ("spiky", mark("Kirpi: dikenli, üstüne BASMA!")),
+    ("cannon", mark("Topçu: ateş atar, üstüne zıpla")),
+    ("bat", mark("Yarasa: onun da üstüne zıpla")),
+    ("bee", mark("Arı: aşağı yukarı uçar")),
+    ("lava", mark("Lav: yükseliyor, acele et!")),
 )
 HOWTO_WARN_ROWS = ("spiky", "lava")  # yazısı uyarı renginde olanlar
 HOWTO_ICON = 30  # resimlerin en fazla boyu (piksel)
@@ -282,7 +285,7 @@ def draw_howto(screen):
     draw_text(screen, small, "Ok tuşları / A-D: yürü    Boşluk / W: zıpla", HINT_COLOR, center=(CENTER_X, 122))
     draw_text(screen, small, "Telefonda: alttaki düğmeler", HINT_COLOR, center=(CENTER_X, 146))
     draw_text(
-        screen, small, f"ESC / P: durdur    {MUTE_KEY.upper()}: ses", HINT_COLOR, center=(CENTER_X, 170)
+        screen, small, t("ESC / P: durdur    {}: ses").format(MUTE_KEY.upper()), HINT_COLOR, center=(CENTER_X, 170)
     )
     icons = howto_icons()
     for i, (name, text) in enumerate(HOWTO_ROWS):
@@ -290,7 +293,7 @@ def draw_howto(screen):
         icon = icons[name]
         screen.blit(icon, icon.get_rect(center=(58, y)))
         color = LAVA_TOP_COLOR if name in HOWTO_WARN_ROWS else (255, 255, 255)
-        draw_text(screen, small, text, color, midleft=(92, y))
+        draw_text(screen, small, t(text).format(points=COIN_POINTS), color, midleft=(92, y))
     BACK_BUTTON.draw(screen, LABELS)
 
 
@@ -311,11 +314,11 @@ def draw_records(screen, best_heights, high_scores, stats, current, stars):
         draw_text(screen, text_font, str(high_scores[mode]), color, midright=(score_x, y))
     # Bütün modların toplamı
     rows = (
-        ("Oynanan oyun", str(stats["games"])),
-        ("Toplam tırmanış", f"{stats['climbed']} m"),
-        ("Toplam altın", str(stats["coins"])),
-        ("Yenilen düşman", str(stats["enemies"])),
-        ("Bölüm yıldızı", f"{sum(stars)} / {3 * len(stars)}"),
+        (mark("Oynanan oyun"), str(stats["games"])),
+        (mark("Toplam tırmanış"), f"{stats['climbed']} m"),
+        (mark("Toplam altın"), str(stats["coins"])),
+        (mark("Yenilen düşman"), str(stats["enemies"])),
+        (mark("Bölüm yıldızı"), f"{sum(stars)} / {3 * len(stars)}"),
     )
     for i, (label, value) in enumerate(rows):
         y = 400 + i * 48
@@ -334,17 +337,17 @@ def draw_game_over(screen, score, mode_name, best_height, high_score, new_record
     # mode_name = oynanan zorluk modu (rekorlar o modun rekorları). Düğmeleri main.py çizer (draw_end_buttons)
     draw_overlay(screen)
     draw_title(screen, "Kaybettin!", 200, GAME_OVER_COLOR)
-    draw_text(screen, font(MENU_SMALL_FONT_SIZE), f"Zorluk: {mode_name}", HINT_COLOR, center=(CENTER_X, 243))
+    draw_text(screen, font(MENU_SMALL_FONT_SIZE), t("Zorluk: {}").format(t(mode_name)), HINT_COLOR, center=(CENTER_X, 243))
     # Büyük yazı: ne kadar tırmandın (asıl hedef). Puan ve ayrıntılar altında küçük
     draw_text(screen, font(TITLE_FONT_SIZE), f"{score.height} m", center=(CENTER_X, 290))
     small = font(MENU_SMALL_FONT_SIZE)
-    details = f"Puan: {score.total}   {score.loot_text()}   Düşman: {score.enemies}"
+    details = "   ".join((t("Puan: {}").format(score.total), score.loot_text(), t("Düşman: {}").format(score.enemies)))
     draw_text(screen, small, details, HINT_COLOR, center=(CENTER_X, 335))
     if new_record:
         draw_text(screen, font(MENU_FONT_SIZE), "YENİ REKOR!", RECORD_COLOR, center=(CENTER_X, 390))
     else:
-        draw_text(screen, font(MENU_FONT_SIZE), f"Rekor: {best_height} m", RECORD_COLOR, center=(CENTER_X, 390))
-    draw_text(screen, small, f"En yüksek puan: {high_score}", HINT_COLOR, center=(CENTER_X, 420))
+        draw_text(screen, font(MENU_FONT_SIZE), t("Rekor: {} m").format(best_height), RECORD_COLOR, center=(CENTER_X, 390))
+    draw_text(screen, small, t("En yüksek puan: {}").format(high_score), HINT_COLOR, center=(CENTER_X, 420))
     if slow:
         draw_slow_hint(screen)
 
@@ -363,9 +366,9 @@ def draw_revive(screen, score, gems, time_left, ad):
     # Neyi kaçıracağı: bayrağa / rekora ne kadar kaldı (ilk oyunda rekor yok)
     note = None
     if score.goal:
-        note = f"Bayrağa {max(0, score.goal - score.height)} m kaldı!"
+        note = t("Bayrağa {} m kaldı!").format(max(0, score.goal - score.height))
     elif score.record > 0:
-        note = "YENİ REKOR!" if score.new_record else f"Rekora {score.record - score.height} m kaldı!"
+        note = "YENİ REKOR!" if score.new_record else t("Rekora {} m kaldı!").format(score.record - score.height)
     if note:
         draw_text(screen, font(MENU_FONT_SIZE), note, RECORD_COLOR, center=(CENTER_X, 340))
     icon = gem_icon()
@@ -378,13 +381,15 @@ def draw_revive(screen, score, gems, time_left, ad):
         if fill.width > 0:
             pygame.draw.rect(screen, GEM_COLOR, fill, border_radius=5)
         disabled = [name for name, off in (("revive", gems < REVIVE_GEMS), ("revive_ad", ad == "failed")) if off]
-        labels = {**LABELS, "revive_ad": "Reklam yok"} if ad == "failed" else LABELS
+        labels = {**LABELS, "revive": t("Devam Et: {}").format(REVIVE_GEMS)}
+        if ad == "failed":
+            labels["revive_ad"] = "Reklam yok"
         buttons.draw(screen, labels, disabled)
         draw_button_icons(screen, buttons, "revive", right=icon)
         if ad == "offer":
             draw_button_icons(screen, buttons, "revive_ad", left=ad_icon())
     # Cüzdandaki elmas (düğmelerin altında)
-    text = f"Cüzdan: {gems}"
+    text = t("Cüzdan: {}").format(gems)
     y = buttons.rects[-1].bottom + 36
     left = CENTER_X - (icon.get_width() + 6 + small.size(text)[0]) // 2
     screen.blit(icon, icon.get_rect(midleft=(left, y)))
@@ -395,9 +400,9 @@ def draw_end_buttons(screen, buttons, stage_failed, double, earned):
     # Oyun sonu ekranının düğmeleri (main.py hangi düğmeler olduğunu end_buttons ile seçer). stage_failed = bölümde
     # kaybedildi (Tekrar Dene / Bölümler), double = 2 kat elmas (None / "offer" / "done" / "failed"),
     # earned = bu oyunda kazanılan elmas
-    labels = {**LABELS, "double": DOUBLE_LABELS.get(double, "").format(earned)}
+    labels = {**LABELS, "double": t(DOUBLE_LABELS.get(double, ""), earned).format(earned)}
     if stage_failed:
-        labels.update(again="Tekrar Dene", menu="Bölümler")
+        labels.update(again=mark("Tekrar Dene"), menu=mark("Bölümler"))
     buttons.draw(screen, labels, ("double",) if double in ("done", "failed") else ())
     if double == "offer":
         draw_button_icons(screen, buttons, "double", left=ad_icon(), right=gem_icon())
@@ -411,11 +416,11 @@ def draw_new_skins(screen, new_skins, y):
     # Görevi bu oyunda tamamlanan efsanevi skin(ler): küçük resmi + "Yeni karakter: Ejderha!"
     if not new_skins:
         return
-    names = ", ".join(skin["name"] for skin in new_skins)
-    text = f"Yeni karakter: {names}!" if len(new_skins) == 1 else f"Yeni karakterler: {names}!"
+    names = ", ".join(t(skin["name"]) for skin in new_skins)
+    text = (t("Yeni karakter: {}!") if len(new_skins) == 1 else t("Yeni karakterler: {}!")).format(names)
     small = font(MENU_SMALL_FONT_SIZE + 4)
     if small.size(text)[0] > SCREEN_WIDTH - 70:
-        text = f"{len(new_skins)} yeni karakter açıldı!"
+        text = t("{} yeni karakter açıldı!").format(len(new_skins))
     key = ("skin_icon", new_skins[0]["id"])
     if key not in _cache:
         image = skins.frames(new_skins[0]["id"])["idle"][1]
@@ -435,10 +440,14 @@ def gems_text(found, bonus, reason):
     # Kazanılan elmasın yazısı, nereden geldiğiyle: "+2 elmas topladın", "+3 elmas: rekor ödülü",
     # "+5 elmas: 2 toplandı + 3 rekor ödülü" (reason = "rekor" / "yıldız")
     if not bonus:
-        return f"+{found} elmas topladın"
+        return t("+{} elmas topladın", found).format(found)
+    if reason == "rekor":
+        only, both = mark("+{} elmas: rekor ödülü"), mark("+{total} elmas: {found} toplandı + {bonus} rekor ödülü")
+    else:
+        only, both = mark("+{} elmas: yıldız ödülü"), mark("+{total} elmas: {found} toplandı + {bonus} yıldız ödülü")
     if not found:
-        return f"+{bonus} elmas: {reason} ödülü"
-    return f"+{found + bonus} elmas: {found} toplandı + {bonus} {reason} ödülü"
+        return t(only, bonus).format(bonus)
+    return t(both).format(total=found + bonus, found=found, bonus=bonus)
 
 
 def gem_icon():
@@ -468,7 +477,12 @@ def stars_needed(total):
 
 
 def stage_title(mode, index):
-    return f"{index + 1}. Bölüm: {STAGE_SETS[mode][index]['name']}"
+    return t("{}. Bölüm: {}").format(index + 1, t(STAGE_SETS[mode][index]["name"]))
+
+
+def stage_subtitle(mode, index):
+    # "Orta - 3. Bölüm: İlk Düşman"
+    return f"{t(DIFFICULTY_NAMES[mode])} - {stage_title(mode, index)}"
 
 
 def draw_play_select(screen, labels, mode_name, stars, best_height):
@@ -477,17 +491,19 @@ def draw_play_select(screen, labels, mode_name, stars, best_height):
     draw_overlay(screen)
     draw_logo(screen)
     draw_text(
-        screen, font(MENU_FONT_SIZE + 10), f"Yıldızlar: {sum(stars)} / {3 * len(stars)}", RECORD_COLOR,
+        screen, font(MENU_FONT_SIZE + 10), t("Yıldızlar: {} / {}").format(sum(stars), 3 * len(stars)), RECORD_COLOR,
         center=(CENTER_X, 260),
     )
     PLAY_BUTTONS.draw(screen, {**LABELS, **labels})
     draw_text(
-        screen, font(MENU_SMALL_FONT_SIZE + 2), f"Rekor: {best_height} m", RECORD_COLOR,
+        screen, font(MENU_SMALL_FONT_SIZE + 2), t("Rekor: {} m").format(best_height), RECORD_COLOR,
         center=(CENTER_X, PLAY_RECORD_Y),
     )
     small = font(MENU_SMALL_FONT_SIZE)
-    draw_text(screen, small, "Bölümler: her zorlukta 20 bölüm, yıldız topla", HINT_COLOR, center=(CENTER_X, 560))
-    draw_text(screen, small, f"Sonsuz Oyun: rekor için tırman ({mode_name})", HINT_COLOR, center=(CENTER_X, 586))
+    text = t("Bölümler: her zorlukta {} bölüm, yıldız topla").format(STAGE_COUNT)
+    draw_text(screen, small, text, HINT_COLOR, center=(CENTER_X, 560))
+    text = t("Sonsuz Oyun: rekor için tırman ({})").format(t(mode_name))
+    draw_text(screen, small, text, HINT_COLOR, center=(CENTER_X, 586))
 
 
 def draw_stages(screen, mode, stars, unlocked):
@@ -495,8 +511,8 @@ def draw_stages(screen, mode, stars, unlocked):
     draw_overlay(screen)
     draw_title(screen, "Bölümler", 40)
     draw_text(
-        screen, font(MENU_SMALL_FONT_SIZE + 2), f"Yıldızlar: {sum(stars)} / {3 * len(stars)}", RECORD_COLOR,
-        center=(CENTER_X, 130),
+        screen, font(MENU_SMALL_FONT_SIZE + 2), t("Yıldızlar: {} / {}").format(sum(stars), 3 * len(stars)),
+        RECORD_COLOR, center=(CENTER_X, 130),
     )
     STAGE_GRID.draw(screen, stars, unlocked, mode)
     focus = STAGE_GRID.focus
@@ -504,7 +520,9 @@ def draw_stages(screen, mode, stars, unlocked):
     if 0 <= focus < len(stages):
         if unlocked(focus):
             draw_text(screen, font(MENU_FONT_SIZE), stage_title(mode, focus), center=(CENTER_X, 584))
-            info = f"Hedef: {stages[focus]['goal']} m" + ("   Lav var!" if stages[focus]["lava"] else "")
+            info = t("Hedef: {} m").format(stages[focus]["goal"])
+            if stages[focus]["lava"]:
+                info += "   " + t("Lav var!")
             draw_text(screen, font(MENU_SMALL_FONT_SIZE), info, HINT_COLOR, center=(CENTER_X, 610))
         else:
             draw_text(screen, font(MENU_FONT_SIZE), "Kilitli", HINT_COLOR, center=(CENTER_X, 584))
@@ -521,11 +539,11 @@ def draw_stages(screen, mode, stars, unlocked):
 def draw_stage_intro(screen, mode, index, goal):
     # Bölüm başlarken birkaç saniye: bölümün adı, hedefi ve tanıttığı şey
     stage = STAGE_SETS[mode][index]
-    title = f"{index + 1}. Bölüm ({DIFFICULTY_NAMES[mode]})"
+    title = t("{}. Bölüm ({})").format(index + 1, t(DIFFICULTY_NAMES[mode]))
     draw_text(screen, font(MENU_FONT_SIZE), title, HINT_COLOR, center=(CENTER_X, 170))
     draw_text(screen, font(MENU_FONT_SIZE + 14), stage["name"], TITLE_COLOR, center=(CENTER_X, 210))
     draw_text(screen, font(MENU_SMALL_FONT_SIZE + 2), stage["intro"], center=(CENTER_X, 250))
-    draw_text(screen, font(MENU_SMALL_FONT_SIZE), f"Hedef: {goal} m", HINT_COLOR, center=(CENTER_X, 278))
+    draw_text(screen, font(MENU_SMALL_FONT_SIZE), t("Hedef: {} m").format(goal), HINT_COLOR, center=(CENTER_X, 278))
 
 
 STAR_IMAGES = {}
@@ -545,8 +563,7 @@ def draw_stage_clear(screen, mode, index, result, shown):
     # result = {"stars", "coins", "coins_total", "no_hurt", "unlocked"} (main.py)
     draw_overlay(screen)
     draw_title(screen, "Tebrikler!", 140)
-    subtitle = f"{DIFFICULTY_NAMES[mode]} - {stage_title(mode, index)}"
-    draw_text(screen, font(MENU_SMALL_FONT_SIZE + 2), subtitle, HINT_COLOR, center=(CENTER_X, 185))
+    draw_text(screen, font(MENU_SMALL_FONT_SIZE + 2), stage_subtitle(mode, index), HINT_COLOR, center=(CENTER_X, 185))
     images = star_images()
     for k in range(3):
         image = images["big" if k < shown else "big_empty"]
@@ -554,9 +571,9 @@ def draw_stage_clear(screen, mode, index, result, shown):
         screen.blit(image, image.get_rect(center=(CENTER_X + (k - 1) * 80, y)))
     need = stars_needed(result["coins_total"])
     conditions = (
-        (True, "Bayrağa ulaştın"),
-        (result["coins"] >= need, f"Altın: {result['coins']} / {result['coins_total']}  (en az {need})"),
-        (result["no_hurt"], "Hiç can kaybetmeden"),
+        (True, mark("Bayrağa ulaştın")),
+        (result["coins"] >= need, t("Altın: {} / {}  (en az {})").format(result["coins"], result["coins_total"], need)),
+        (result["no_hurt"], mark("Hiç can kaybetmeden")),
     )
     small = font(MENU_SMALL_FONT_SIZE + 2)
     for i, (done, text) in enumerate(conditions):
@@ -567,7 +584,7 @@ def draw_stage_clear(screen, mode, index, result, shown):
     if result["unlocked"]:
         draw_text(screen, font(MENU_FONT_SIZE), "Yeni bölüm açıldı!", RECORD_COLOR, center=(CENTER_X, 438))
     elif index == STAGE_COUNT - 1:
-        text = f"{DIFFICULTY_NAMES[mode]} bölümleri bitti!"
+        text = t("{} bölümleri bitti!").format(t(DIFFICULTY_NAMES[mode]))
         draw_text(screen, font(MENU_FONT_SIZE), text, RECORD_COLOR, center=(CENTER_X, 438))
 
 
@@ -575,11 +592,10 @@ def draw_stage_failed(screen, mode, index, score, slow=False):
     # Bölümde canlar bitti: ne kadar kalmıştı (düğmeler Tekrar Dene / Bölümler: draw_end_buttons)
     draw_overlay(screen)
     draw_title(screen, "Kaybettin!", 200, GAME_OVER_COLOR)
-    subtitle = f"{DIFFICULTY_NAMES[mode]} - {stage_title(mode, index)}"
-    draw_text(screen, font(MENU_SMALL_FONT_SIZE + 2), subtitle, HINT_COLOR, center=(CENTER_X, 243))
+    draw_text(screen, font(MENU_SMALL_FONT_SIZE + 2), stage_subtitle(mode, index), HINT_COLOR, center=(CENTER_X, 243))
     draw_text(screen, font(TITLE_FONT_SIZE), f"{score.height} / {score.goal} m", center=(CENTER_X, 295))
     left = max(0, score.goal - score.height)
-    draw_text(screen, font(MENU_FONT_SIZE), f"Bayrağa {left} m kalmıştı", RECORD_COLOR, center=(CENTER_X, 350))
+    draw_text(screen, font(MENU_FONT_SIZE), t("Bayrağa {} m kalmıştı").format(left), RECORD_COLOR, center=(CENTER_X, 350))
     draw_text(screen, font(MENU_SMALL_FONT_SIZE), score.loot_text(), HINT_COLOR, center=(CENTER_X, 385))
     if slow:
         draw_slow_hint(screen)

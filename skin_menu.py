@@ -32,6 +32,7 @@ from settings import (
     GEM_COLOR,
 )
 from score import draw_text
+from lang import t, mark
 from ui import Buttons, click_pos, take_click, ACTIVATE_KEYS, UP_KEYS, DOWN_KEYS, LEFT_KEYS, RIGHT_KEYS
 from trail import Trail
 import skins
@@ -57,6 +58,12 @@ HOP_POWER = 7
 FLASH_TIME = 50  # altın yetmeyince cüzdan yazısı kaç adım kırmızı yanar
 CONFETTI_COLORS = [COIN_COLOR, WHITE, (255, 150, 200), (120, 220, 255)]
 CURRENCY_COLORS = {"coins": RECORD_COLOR, "gems": art.tint(GEM_COLOR, 0.3)}  # cüzdandaki sayıların rengi
+# Fiyat yazısı (para cinsine göre); parası yetmiyorsa ne kadar eksik olduğuyla
+PRICE_TEXTS = {"coins": mark("Fiyatı: {} altın"), "gems": mark("Fiyatı: {} elmas")}
+SHORT_TEXTS = {
+    "coins": mark("Fiyatı: {price} altın ({need} altın daha topla)"),
+    "gems": mark("Fiyatı: {price} elmas ({need} elmas daha topla)"),
+}
 
 
 def scaled(image, factor):
@@ -377,22 +384,22 @@ class SkinMenu:
         else:
             self.draw_wallet(screen, wardrobe, fonts[MENU_FONT_SIZE])
         self.draw_action(screen, skin, owned, wardrobe)
-        self.back.draw(screen, {"back": "Geri"})
+        self.back.draw(screen, {"back": mark("Geri")})
 
     def info(self, skin, owned, wardrobe, progress):
         # Adın altındaki yazı: giyiliyor mu, fiyatı ya da görevi
         if skin["id"] == wardrobe.selected:
-            return "Şu an bunu giyiyorsun", SKIN_SELECTED_COLOR
+            return mark("Şu an bunu giyiyorsun"), SKIN_SELECTED_COLOR
         if owned:
-            return ("Görevle açıldı!" if skin["goal"] else "Senin"), WHITE
+            return (mark("Görevle açıldı!") if skin["goal"] else mark("Senin")), WHITE
         if skin["goal"]:
             kind, target = skin["goal"]
             return f"{skins.goal_text(skin['goal'])}  ({min(progress[kind], target)} / {target})", RECORD_COLOR
-        money = skins.CURRENCY_NAMES[skin["currency"]]
+        currency = skin["currency"]
         if not wardrobe.can_afford(skin):
-            need = skin["price"] - wardrobe.balance(skin["currency"])
-            return f"Fiyatı: {skin['price']} {money} ({need} {money} daha topla)", HINT_COLOR
-        return f"Fiyatı: {skin['price']} {money}", CURRENCY_COLORS[skin["currency"]]
+            need = skin["price"] - wardrobe.balance(currency)
+            return t(SHORT_TEXTS[currency], need).format(price=skin["price"], need=need), HINT_COLOR
+        return t(PRICE_TEXTS[currency]).format(skin["price"]), CURRENCY_COLORS[currency]
 
     def draw_tabs(self, screen, font):
         for group, rect in zip(self.groups, self.tabs):
@@ -497,13 +504,13 @@ class SkinMenu:
         # Alttaki düğme: Seç / Seçili / Satın Al: 150 (altın ya da elmas resmiyle) / Kilitli
         disabled = ()
         if skin["id"] == wardrobe.selected:
-            label, disabled = "Seçili", ("action",)
+            label, disabled = mark("Seçili"), ("action",)
         elif owned:
-            label = "Seç"
+            label = mark("Seç")
         elif skin["goal"]:
-            label, disabled = "Kilitli", ("action",)
+            label, disabled = mark("Kilitli"), ("action",)
         else:
-            label = f"Satın Al: {skin['price']}"
+            label = t("Satın Al: {}").format(skin["price"])
             if not wardrobe.can_afford(skin):
                 disabled = ("action",)
         self.action.draw(screen, {"action": label}, disabled)

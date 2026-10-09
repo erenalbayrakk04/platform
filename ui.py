@@ -25,6 +25,7 @@ from settings import (
     WHITE,
 )
 from score import draw_text
+from lang import mark
 import art
 
 ACTIVATE_KEYS = (pygame.K_RETURN, pygame.K_KP_ENTER, pygame.K_SPACE)
@@ -325,4 +326,4 @@ class StageGrid:
                 star = self.images[k < stars[i]]
                 x = rect.centerx + (k - 1) * (self.STAR_SIZE + 3)
                 screen.blit(star, star.get_rect(center=(x, rect.bottom - 14)))
-        self.back.draw(screen, {"back": "Geri"})
+        self.back.draw(screen, {"back": mark("Geri")})

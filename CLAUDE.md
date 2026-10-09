@@ -6,10 +6,15 @@
   (Doodle Jump / Icy Tower tarzı tırmanma). Kullanıcı yana kayan haritayı istemedi.
 - Kullanıcı hiç kod yazmamış: kodu Claude yazar, kullanıcı test eder ve geri bildirim verir.
 - Kullanıcıyla Türkçe konuş, teknik terimleri basitçe açıkla.
+- OYUN İKİ DİLLİ (Türkçe + İngilizce, `lang.py`): kodda yazılar Türkçe yazılır, `draw_text` çizerken çevirir. YENİ YAZI
+  EKLEYİNCE `lang.EN`'e İngilizcesini de yaz ve `python check_lang.py` çalıştır (eksik çeviri varsa yayına çıkmaz).
 - Çalıştırma: `python main.py` (ESC veya pencereyi kapatmak oyundan çıkar).
 - Web sürümü (pygbag 0.9.3, tarayıcıda Python 3.12 çalışır): `python -m pygbag --width 400 --height 720
   --title "Platform Oyunu" --template web.tmpl .` → derler ve http://localhost:8000'de test sunucusu açar
-  (`--build` = sadece derle; çıktı `build/web`, git dışı). `pygbag.ini` pakete girmeyecek dosyalar
+  (`--build` = sadece derle; çıktı `build/web`, git dışı). Windows'ta başına `PYTHONUTF8=1` koy (yoksa pygbag
+  web.tmpl'i cp1254 ile okuyup ▶ ■ gibi karakterlerde çöküyor). Yerel `--build` çıktısı pygame'i localhost:8000'deki
+  pygbag sunucusundan ister → tarayıcı testi pygbag'in kendi sunucusuyla (başka sunucuyla "Hazırlanıyor"da takılır).
+  `pygbag.ini` pakete girmeyecek dosyalar
   (check_chunks.py, CLAUDE.md, highscore.txt...). `web.tmpl` = sayfa şablonu (pygbag default.tmpl'den:
   koyu arka plan; Python'dan tarayıcıya (platform.window...) giden yazıda Türkçe harfler BOZULUYOR
   (UTF-8 → Latin-1) → şablondaki Python yazıları sadece ASCII + HTML kodu (`&#351;`) ve `innerHTML`,
@@ -33,7 +38,8 @@
   iPhone'da yetmez). Askıda kalırken SDL ses karıştırmaz → müzik dokununca baştan başlar. Görünmez Chrome'da
   doğrulandı (dokunmadan suspended → dokununca running). YÜKLEME EKRANI `#loader`: oyunla aynı oranda kutu, ilk gök
   renkleri, dönen piksel altın (art.py COIN_ROWS'un JS kopyası), "Yükleniyor..." + pygbag'in gizli `#progress`'inden
-  indirme çubuğu (sadece ilk/yavaş indirmede görünür); Python başlayınca `loader_say("Haz&#305;rlan&#305;yor")`.
+  indirme çubuğu (sadece ilk/yavaş indirmede görünür); Python başlayınca `loader_ready()` → "Hazırlanıyor". Yazıların
+  dili: localStorage'daki seçeneklerde `language` (oyunda seçilen), yoksa `navigator.language` (lang.py ile aynı kural).
   main.py ilk kareyi çizince `hide_web_loader()` → JS `loader_done()`: önce `window_resize()` (pygbag oranı oyun
   ekranı kurulmadan hesaplarsa kare sanıp 400x400 BASIK çiziyordu), sonra solarak kaybolur. DİKKAT: şablondaki
   `config = {...}` noktalı virgülsüz biter → arkasına `(function...)` yazılırsa hiç çalışmaz (TypeError) → yeni JS
@@ -159,8 +165,20 @@
   `draw_record_line(screen, camera)` haritada rekor yüksekliğinde kesikli çizgi + "Rekor N m" (draw_world, gökten hemen sonra);
   `draw_lives(screen, lives, max_lives)` sağ üstte, durdur düğmesinin solunda kalpler (kaybedilen can gri); `draw_powers(screen, player)` kalplerin
   altında süren güçlendirmelerin simgesi + süre çubuğu (son `POWERUP_WARN_TIME` karede yanıp söner); `draw_text(screen, font, text,
-  color, center=/topleft=...)` gölgeli yazı (her yerde bu kullanılır; resimleri `TEXT_CACHE`'te, her karede
-  yeniden yazılmaz).
+  color, center=/topleft=...)` gölgeli yazı (her yerde bu kullanılır; yazıyı `lang.t` ile seçili dile ÇEVİRİR; resimleri
+  `TEXT_CACHE`'te, her karede yeniden yazılmaz).
+- `lang.py` — DİL (kullanıcı kararı: İngilizce eklensin, web oyun sitelerindeki oyuncuların çoğu Türk değil). `t(text,
+  count=None)`: Türkçe yazı anahtar, `EN` sözlüğünde İngilizcesi (tekil/çoğul farkı olanda ikili, `count` ile seçilir);
+  Türkçede ya da çevirisi yoksa aynen. Kurallar: sabit yazı doğrudan `draw_text`'e (kendisi çevirir); sayılı yazı
+  `t("Rekor: {} m").format(n)` (f-string ÇEVRİLEMEZ); değişkende saklanıp sonra çizilen yazı `mark("...")` (sadece
+  check_lang bulsun diye). Bölüm (stage) İngilizcede "Level". `LANGUAGES` (tr, en), `set_language`, `language()`,
+  `device_language(web)` (web: `navigator.language`, bilgisayar: `locale.getlocale()` "Turkish_Türkiye"/"tr_TR"; Türkçe
+  değilse İngilizce). Logo iki dilde de "PLATFORM OYUNU" (yeni ad yayından önce seçilecek → `LOGO_FONT` harfleri).
+- `check_lang.py` — çeviri testi (`python check_lang.py`, GitHub'da yayından önce de çalışır): kodda `t`/`mark` ve
+  `draw_text`/`draw_title`/`draw_note`/`show_note`'a verilen yazılar + bölüm adı/tanıtımı, skin adı, zorluk adı listeleri →
+  her birinin `EN`'de olması, `{}` yer tutucularının aynı olması; bu fonksiyonlara f-string verilmesi HATA. Yeni bir yazı
+  listesi (dict) eklenirse değerlerini `mark` ile işaretle ya da check_lang'in `data_texts`'ine ekle. Yazıların ekrana
+  sığdığını ölçmek için scratchpad betiği yazılabilir (font boyu × yer); İngilizcesi Türkçesi kadar kısa tutuldu.
 - `storage.py` — kalıcı kayıtlar, `STORES` = tür → (dosya, localStorage adı): "height" (`bestheight.txt`, asıl
   rekor), "score" (`highscore.txt`, en yüksek puan) — rekorlar HER MODUN AYRI: `load_record/save_record(..., mode)`,
   "stages" (`stages.json`: `{"stars": [...]}` her bölümün en iyi yıldızı; HER ZORLUĞUN AYRI — `load_dict/save_dict(kind,
@@ -180,8 +198,10 @@
   bölüm kutuları (4 sütun) + Geri; `handle_event(event, unlocked, mode)` → sıra / "locked" / "back" / zorluk adı (sekme);
   `set_focus(i)` (-1 = sekmeler: sağ/sol zorluğu değiştirir, count = Geri); `draw(screen, stars, unlocked, mode)`. `Slider(center_y)` kaydırma çubuğu: `value` 0..`VOLUME_STEPS`,
   parmak/fareyle sürükle veya dokun (`handle_event` → değişti mi), `nudge(±1)` klavye için. Düğme renk/boyları settings "Menü düğmeleri".
-- `screens.py` — `SOUND_MENU` (`SoundMenu`: ses ayarları ekranı; Müzik + Efektler çubukları, "sound" (Ses: Açık/Kapalı)
-  ve "back" düğmeleri; ↑↓ seçer, ←→ çubuğu ayarlar; `handle_event` → "music"/"effects"/"sound"/"back"),
+- `screens.py` — `SOUND_MENU` (`SoundMenu`: AYARLAR ekranı (eski adı Ses Ayarları; ana menüde "sound_menu" düğmesi
+  "Ayarlar"); Müzik + Efektler çubukları, "sound" (Ses: Açık/Kapalı), "language" (Dil: Türkçe / Language: English —
+  main `next_language()`, options `language`, boş = cihaz dili) ve "back" düğmeleri; ↑↓ seçer, ←→ çubuğu ayarlar;
+  `handle_event` → "music"/"effects"/"sound"/"language"/"back"),
   her ekranın `Buttons`'ı (`MAIN_BUTTONS` play/skins/difficulty/howto/records/sound_menu — 6 düğme, `gap=60`; web'de
   altta "Düşük Güç Modu" yazısı olduğu için daha fazla düğme sığmaz, `BACK_BUTTON`,
   `PAUSE_BUTTONS` resume/sound/menu, `PLAY_BUTTONS` stages/endless/back, `STAGE_GRID`, Devam Et: `revive_buttons(ad)`
@@ -196,7 +216,7 @@
   `draw_howto` (kontroller + `HOWTO_ROWS`: oyundaki resimlerle her şeyin açıklaması — yeni öğe eklenince buraya da
   ekle; 15 satır `HOWTO_TOP` (198) / `HOWTO_GAP` (29) ile sığıyor, daha fazlası için aralık daralt; `HOWTO_WARN_ROWS` sarı yazı), `draw_records(best_heights, high_scores, stats, current)` (her modun tırmanış + puan rekoru, seçili mod sarı; altında
   tüm modların toplamları), `draw_pause`, `draw_game_over(screen, score, mode_name, ...)` (başlık altında "Zorluk: ...";
-  düğmeler `ready` olunca). `draw_new_skins(screen, skinler, y)`: oyun sonu ekranlarında (`NEW_SKIN_Y` = durum → y)
+  düğmeleri main çizer: `draw_end_buttons`). `draw_new_skins(screen, skinler, y)`: oyun sonu ekranlarında (`NEW_SKIN_Y` = durum → y)
   görevi yeni tamamlanan efsanevinin küçük resmi + "Yeni karakter: Ejderha!". `draw_gems_earned(screen, found, bonus,
   reason, y)`: `gems_text` ile nereden geldiği (uzunsa küçük yazı; `GEMS_EARNED_Y`: game_over / stage_failed / stage_clear).
   Oyunun üstüne yarı saydam perde; büyük yazı yükseklik/rekor (m), puan küçük.
@@ -317,8 +337,8 @@
   iz bırakır): Şimşek (40 oyun), Ejderha (150 düşman), Kozmik (toplam 2500 m), Tekboynuz (toplam 1000 altın), Kral
   (75 yıldız), Buz (Zor'da 150 m, sonsuz), Gölge (Ultra Zor'da 75 m, sonsuz). Bir grupta en fazla `GROUP_SIZE` (15)
   skin. İKİ PARA (kullanıcı kararı): Renkler `coins=` ALTINLA (50-1200), Karakterler `gems=` ELMASLA (10-200; kullanıcı ödüller kalınca elmas fiyatlarını yükseltmek istedi, ~2 kat); skinde
-  `currency` ("coins"/"gems"/None) + `price`, `CURRENCY_NAMES`. Ucuzdan pahalıya dizili. `goal` = ("games"/"climbed"/"enemies"/"coins"/"stars"/
-  "height-<mod>", hedef), `goal_text(goal)`. Koyu gökte kaybolan bacaklar için açık renk "L" (lavanta, gece, gökkuşağı).
+  `currency` ("coins"/"gems"/None) + `price` (fiyat yazısı skin_menu `PRICE_TEXTS`/`SHORT_TEXTS`). Ucuzdan pahalıya dizili. `goal` = ("games"/"climbed"/"enemies"/"coins"/"stars"/
+  "height-<mod>", hedef), `goal_text(goal)` (`GOAL_TEXTS`, çevrilmiş döner). Koyu gökte kaybolan bacaklar için açık renk "L" (lavanta, gece, gökkuşağı).
   `frames(id)` resimleri bir kere hazırlar; `get(id)`, `in_group(g)`. `Wardrobe(lifetime_coins)`: kayıt (storage
   "skins"): `coins` = cüzdandaki altın (ilk açılışta şimdiye kadar toplanan altınlarla başlar — eski oyunlar da sayılsın),
   `gems` = elmas (0'dan başlar), `owned`, `selected`, `known` (görevi tamamlandığı söylenmiş efsaneviler);
@@ -433,7 +453,9 @@ Açık depoda çalışma durumu girişsiz bakılabilir: https://api.github.com/r
   (oyuncuyu kaçırır; kullanıcı kabul etti). Kullanıcı kararları: platform (CrazyGames web portalı önerildi / Google Play)
   SONRA, önce oyun hazır olsun; oyuncunun SEÇEREK izlediği 3 ödüllü reklama hazırlık ("reklam izle devam et", "elmasları
   2 kat", "bedava elmas"); oyun arası (zorunlu) reklam istenmedi; İngilizce eklenecek. Plan: 1) Devam Et elmasla —
-  YAPILDI; 2) reklam yeri (`ads.py`, şimdilik görünmez, `#reklam` ile deneme reklamı) — YAPILDI; 3) İngilizce (`lang.py`).
+  YAPILDI; 2) reklam yeri (`ads.py`, şimdilik görünmez, `#reklam` ile deneme reklamı) — YAPILDI; 3) İngilizce (`lang.py`)
+  — YAPILDI (306 yazı; görünmez Chrome'da en-US tarayıcıda İngilizce, tr-TR'de Türkçe açıldığı doğrulandı). Sırada
+  (kullanıcıyla konuşulacak): oyunun yeni (İngilizce de olan) adı, platform seçimi.
   CrazyGames kuralları (koda uyulacak): ödülün reklamsız yolu da olsun (elmas), oyun sırasında reklam yok, can her
   gidişte teklif yok, reklam düğmesi Hayır'la aynı boy ve reklam olduğu belli, reklam yoksa düğme görünmesin, reklamda
   ses kısılır. Ayrıca: Basic Launch'ta reklam kapalı (~2 hafta), oyuncular severse Full Launch'ta SDK + reklam + Data

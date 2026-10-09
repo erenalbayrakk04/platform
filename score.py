@@ -4,6 +4,7 @@
 import pygame
 
 from art import heart_images, magnet_image, shield_image
+from lang import t
 from settings import (
     TILE_SIZE,
     COIN_POINTS,
@@ -78,7 +79,10 @@ class Score:
 
     def loot_text(self):
         # Toplananlar: "Altın: 5" (elmas toplandıysa "Altın: 5   Elmas: 1")
-        return f"Altın: {self.coins}" + (f"   Elmas: {self.gems}" if self.gems else "")
+        text = t("Altın: {}").format(self.coins)
+        if self.gems:
+            text += "   " + t("Elmas: {}").format(self.gems)
+        return text
 
     def add_enemy(self):
         self.enemies += 1
@@ -100,7 +104,7 @@ class Score:
             return
         color = RECORD_COLOR if self.new_record and self.record > 0 else SCORE_COLOR
         draw_text(screen, self.font, f"{self.height} m", color, topleft=(12, 10))
-        draw_text(screen, self.small_font, f"Puan: {self.total}   {self.loot_text()}", topleft=(12, 44))
+        draw_text(screen, self.small_font, t("Puan: {}").format(self.total) + "   " + self.loot_text(), topleft=(12, 44))
         if self.toast and (self.toast // 10) % 2 == 0:  # yanıp söner
             draw_text(screen, self.font, "YENİ REKOR!", RECORD_COLOR, center=(SCREEN_WIDTH // 2, 120))
 
@@ -114,7 +118,8 @@ class Score:
         for x in range(0, SCREEN_WIDTH, 16):
             screen.fill(RECORD_COLOR, (x, y - 1, 10, 3))
         draw_text(
-            screen, self.small_font, f"Rekor {self.record} m", RECORD_COLOR, bottomright=(SCREEN_WIDTH - 8, y - 4)
+            screen, self.small_font, t("Rekor {} m").format(self.record), RECORD_COLOR,
+            bottomright=(SCREEN_WIDTH - 8, y - 4),
         )
 
 
@@ -124,7 +129,8 @@ TEXT_CACHE = {}
 
 def draw_text(screen, font, text, color=SCORE_COLOR, **position):
     # Gölgeli yazı: önce 2 piksel kaydırılmış gölge, sonra asıl yazı — her zeminde okunsun.
-    # Konum rect gibi verilir: topleft=(x, y) veya center=(x, y) vb.
+    # Konum rect gibi verilir: topleft=(x, y) veya center=(x, y) vb. Yazı seçili dile çevrilir (lang.py)
+    text = t(text)
     key = (font, text, color)
     if key not in TEXT_CACHE:
         if len(TEXT_CACHE) > 100:  # eski puan yazıları birikmesin

@@ -46,6 +46,7 @@ from settings import (
 import art
 import skins
 from score import draw_text
+from lang import mark
 from trail import Trail
 from ui import click_pos, take_click
 
@@ -56,7 +57,7 @@ ISLAND_Y = 470  # adacığın üst yüzü (karakter bunun üstünde durur)
 COIN_SPOTS = ((52, 440), (88, 384), (312, 384), (348, 440))  # adacığın iki yanında süzülen altınlar
 BUTTON_Y = 612  # "Dokun ve Başla" düğmesinin ortası
 LAVA_Y = 674  # lavın yüzeyi
-TAGLINE = "Lavdan kaç, en yükseğe tırman!"
+TAGLINE = mark("Lavdan kaç, en yükseğe tırman!")
 REST_TIME = 50  # karakter adacığın ucunda kaç kare durup sonra döner
 BAT_SPEED = 1.3  # yarasa her karede kaç piksel uçar
 # Logo harfleri sırayla yukarıdan düşer: ilki kaç kare sonra (web'de yükleme ekranı bu sırada kaybolur),
@@ -163,7 +164,7 @@ def button_glow(rect):
 class TitleScreen:
     def __init__(self, web, skin=skins.DEFAULT_SKIN):
         # web = tarayıcıda mı (telefonda "dokun", bilgisayarda "tıkla" yazsın), skin = giyilen skin (skins.py)
-        self.button_text = "Dokun ve Başla" if web else "Tıkla ve Başla"
+        self.button_text = mark("Dokun ve Başla") if web else mark("Tıkla ve Başla")
         self.time = 0  # ekrana geleli kaç adım (kare) oldu
         self.leaving = 0  # dokunulalı kaç adım oldu (0 = henüz dokunulmadı)
         self.rng = random.Random()

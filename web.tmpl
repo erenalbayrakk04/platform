@@ -28,9 +28,9 @@ async def custom_site():
     platform.window.transfer.hidden = true
     platform.window.canvas.style.visibility = "visible"
 
-    # Indirme bitti, Python calisiyor: yukleme ekraninda artik "Hazirlaniyor" yazsin. Python'dan tarayiciya
-    # giden yazida Turkce harfler bozuluyor: yazi sadece ASCII, harfler HTML koduyla (&#305; = noktasiz i)
-    platform.window.loader_say("Haz&#305;rlan&#305;yor")
+    # Indirme bitti, Python calisiyor: yukleme ekraninda artik "Hazirlaniyor" / "Starting" yazsin (yaziyi
+    # sayfa dile gore secer: loader_ready). Python'dan tarayiciya giden yazida Turkce harfler bozuluyor
+    platform.window.loader_ready()
 
 
     bundle = "{{cookiecutter.archive}}"
@@ -399,7 +399,7 @@ height="{{cookiecutter.height}}px"
     <div id="loader">
         <div id="loader_box">
             <canvas id="loader_coin" width="5" height="5"></canvas>
-            <div id="loader_text">Y&uuml;kleniyor</div>
+            <div id="loader_text"></div>
             <div id="loader_bar"><div id="loader_fill"></div></div>
         </div>
     </div>
@@ -420,7 +420,18 @@ height="{{cookiecutter.height}}px"
         const text = document.getElementById("loader_text")
         const bar = document.getElementById("loader_bar")
         const fill = document.getElementById("loader_fill")
-        let word = "Y&uuml;kleniyor"
+        // Dil: oyunda secilen (localStorage'daki secenekler, storage.py), yoksa tarayicinin dili (lang.py ile ayni
+        // kural). Turkce harfler HTML koduyla (&#305; = noktasiz i)
+        let lang = ""
+        try {
+            lang = JSON.parse(localStorage.getItem("platform-oyunu-secenekler") || "{}").language || ""
+        } catch (e) {}
+        if (lang !== "tr" && lang !== "en")
+            lang = (navigator.language || "").toLowerCase().startsWith("tr") ? "tr" : "en"
+        document.documentElement.lang = lang
+        const words = lang === "tr" ? ["Y&uuml;kleniyor", "Haz&#305;rlan&#305;yor"] : ["Loading", "Starting"]
+        let word = words[0]
+        text.innerHTML = word
         let tick = 0
         let downloaded = 0
 
@@ -447,9 +458,9 @@ height="{{cookiecutter.height}}px"
             tick++
         }, 120)
 
-        // Python yaziyi degistirir (Turkce harfler HTML koduyla gelir)
-        window.loader_say = function (html) {
-            word = html
+        // Indirme bitti, Python basladi: "Hazirlaniyor"
+        window.loader_ready = function () {
+            word = words[1]
             if (downloaded > 0)
                 fill.style.width = "100%"
         }
