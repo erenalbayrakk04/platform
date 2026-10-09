@@ -136,6 +136,9 @@ class Sounds:
         buy = []  # skin satın alındı: yükselen üç "çın"
         for midi, length in ((83, 0.06), (88, 0.06), (95, 0.2)):
             buy += t(freq(midi), freq(midi), length, "pulse", 0.4)
+        gem = []  # elmas: parlak, hızlı yükselen çınlama
+        for midi in (88, 91, 95, 100):
+            gem += t(freq(midi), freq(midi), 0.05, "pulse", 0.35)
         game_over = []
         for midi, length in ((67, 0.2), (64, 0.2), (60, 0.2), (55, 0.6)):
             game_over += t(freq(midi), freq(midi) * 0.98, length, "triangle", 0.8)
@@ -154,6 +157,7 @@ class Sounds:
             "powerup": powerup,
             "powerdown": powerdown,
             "buy": buy,
+            "gem": gem,
         }
         self.effects = {name: self.to_sound(s, SOUND_VOLUME) for name, s in sounds.items()}
 

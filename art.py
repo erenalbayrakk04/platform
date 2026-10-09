@@ -38,6 +38,7 @@ from settings import (
     LIFE_EMPTY_COLOR,
     MAGNET_COLOR,
     SHIELD_COLOR,
+    GEM_COLOR,
     FLAG_COLOR,
     STAR_COLOR,
     STAR_EMPTY_COLOR,
@@ -536,6 +537,38 @@ def shield_image():
         "W": WHITE,
     }
     return render(SHIELD_ROWS, palette)
+
+
+# --- Elmas (skin parası): ışıltısı iki resim arasında kayar ---
+GEM_ROWS = [
+    [
+        ".KKKKK.",
+        "KWhhBbK",
+        "KhBBBbK",
+        ".KBBbK.",
+        "..KbK..",
+        "...K...",
+    ],
+    [
+        ".KKKKK.",
+        "KhBhWbK",
+        "KBBhBbK",
+        ".KBhbK.",
+        "..KbK..",
+        "...K...",
+    ],
+]
+
+
+def gem_frames():
+    palette = {
+        "K": shade(GEM_COLOR, 0.4),
+        "B": GEM_COLOR,
+        "b": shade(GEM_COLOR, 0.75),
+        "h": tint(GEM_COLOR, 0.55),
+        "W": WHITE,
+    }
+    return [render(rows, palette) for rows in GEM_ROWS]
 
 
 def shield_bubble(radius):

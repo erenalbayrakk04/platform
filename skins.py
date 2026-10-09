@@ -5,7 +5,8 @@
 # "L" (bacak) verilmezse "K" (dış çizgi) rengi kullanılır. Resimler sağa bakar, sola bakan aynalanarak yapılır.
 #
 # Gruplar (Karakterler ekranındaki sekmeler): "colors" Renkler, "characters" Karakterler, "legendary" Efsanevi.
-# Açılma: price = kaç altın (0 = baştan açık); goal = görev (efsaneviler altınla alınmaz, görevle açılır):
+# Açılma: coins = kaç altın, gems = kaç elmas (ikisi de yoksa baştan açık; Renkler altınla, Karakterler elmasla);
+# goal = görev (efsaneviler parayla alınmaz, görevle açılır):
 #   ("games", N) N oyun oyna · ("climbed", N) toplam N m tırman · ("enemies", N) N düşman yen
 #   ("coins", N) toplam N altın topla · ("stars", N) bölümlerden N yıldız · ("height-hard", N) Zor'da N m (Sonsuz)
 # trail = efsanevilerin arkasında bıraktığı iz (trail.py): "spark", "fire", "stars", "gold", "snow", "rainbow", "shadow"
@@ -15,14 +16,17 @@ import art
 from art import shade, tint
 
 GROUP_NAMES = {"colors": "Renkler", "characters": "Karakterler", "legendary": "Efsanevi"}
+CURRENCY_NAMES = {"coins": "altın", "gems": "elmas"}  # paralar (Wardrobe'da aynı adla tutulur)
 DEFAULT_SKIN = "classic"
 
 
-def skin(id, name, group, body, palette, price=0, goal=None, legs=None, trail=None, color=None):
-    # color = karakterin ana rengi (can kaybedince saçılan parçacıklar); verilmezse "B"
+def skin(id, name, group, body, palette, coins=0, gems=0, goal=None, legs=None, trail=None, color=None):
+    # color = karakterin ana rengi (can kaybedince saçılan parçacıklar); verilmezse "B".
+    # Fiyat: currency = hangi parayla ("coins" / "gems" / None = bedava ya da görevli), price = kaç tane
     return {
         "id": id, "name": name, "group": group, "body": body, "palette": palette, "legs": legs,
-        "price": price, "goal": goal, "trail": trail, "color": color or palette.get("B", PLAYER_COLOR),
+        "currency": "gems" if gems else "coins" if coins else None, "price": gems or coins,
+        "goal": goal, "trail": trail, "color": color or palette.get("B", PLAYER_COLOR),
     }
 
 
@@ -409,83 +413,83 @@ RAINBOW_COLORS = [
 SKINS = [
     # --- Renkler ---
     skin("classic", "Klasik", "colors", BLOB, blob_palette(PLAYER_COLOR)),
-    skin("ocean", "Okyanus", "colors", BLOB, blob_palette((70, 150, 240)), price=15),
-    skin("mint", "Nane", "colors", BLOB, blob_palette((60, 205, 170)), price=15),
-    skin("candy", "Şeker", "colors", BLOB, blob_palette((245, 120, 175)), price=15),
-    skin("lavender", "Lavanta", "colors", BLOB, blob_palette((180, 145, 245), legs=0.5), price=25),
-    skin("snow", "Kar", "colors", BLOB, blob_palette((235, 240, 250)), price=25),
+    skin("ocean", "Okyanus", "colors", BLOB, blob_palette((70, 150, 240)), coins=50),
+    skin("mint", "Nane", "colors", BLOB, blob_palette((60, 205, 170)), coins=50),
+    skin("candy", "Şeker", "colors", BLOB, blob_palette((245, 120, 175)), coins=50),
+    skin("lavender", "Lavanta", "colors", BLOB, blob_palette((180, 145, 245), legs=0.5), coins=100),
+    skin("snow", "Kar", "colors", BLOB, blob_palette((235, 240, 250)), coins=100),
     skin("night", "Gece", "colors", BLOB, {
         **blob_palette((60, 70, 130)), "K": (130, 150, 220), "b": (45, 52, 100), "h": (95, 110, 175),
-    }, price=40),
+    }, coins=150),
     skin("tiger", "Kaplan", "colors", TIGER, {
         **blob_palette((245, 145, 40)), "s": (60, 35, 20), "m": (250, 240, 225),
-    }, price=60),
+    }, coins=250),
     skin("strawberry", "Çilek", "colors", STRAWBERRY, {
         **blob_palette((230, 55, 75)), "G": (80, 180, 70), "g": (50, 120, 50), "y": (255, 225, 120),
-    }, price=60),
+    }, coins=250),
     skin("rainbow", "Gökkuşağı", "colors", RAINBOW, {
         "K": (45, 35, 70), "L": (110, 95, 150), **{str(i + 1): color for i, color in enumerate(RAINBOW_COLORS)},
-    }, price=120, color=RAINBOW_COLORS[2]),
+    }, coins=600, color=RAINBOW_COLORS[2]),
     skin("gold", "Altın", "colors", GOLD, {
         "K": (115, 70, 10), "B": (250, 200, 50), "b": (205, 145, 25), "h": (255, 240, 160), "w": WHITE,
-    }, price=250),
+    }, coins=1200),
     # --- Karakterler ---
     skin("cat", "Kedi", "characters", CAT, {
         **blob_palette((165, 165, 180)), "K": (55, 55, 70), "s": (110, 110, 128), "p": (245, 160, 180),
         "n": (240, 110, 150), "m": (245, 245, 250),
-    }, price=50),
+    }, gems=5),
     skin("frog", "Kurbağa", "characters", FROG, {
         "K": (30, 70, 30), "B": (120, 205, 70), "b": (85, 160, 50), "h": (190, 240, 140),
         "R": (200, 60, 80), "Y": (235, 240, 170), "L": (70, 140, 50),
-    }, price=50),
+    }, gems=5),
     skin("penguin", "Penguen", "characters", PENGUIN, {
         "K": (15, 15, 25), "B": (50, 55, 75), "h": (90, 95, 120), "W": (240, 240, 250), "O": (250, 160, 40),
         "L": (250, 160, 40),
-    }, price=60),
+    }, gems=8),
     skin("panda", "Panda", "characters", PANDA, {
         "K": (30, 30, 35), "B": (240, 240, 240), "b": (195, 195, 205), "h": WHITE, "P": (30, 30, 35),
         "N": (30, 30, 35), "p": (250, 170, 190),
-    }, price=60),
+    }, gems=8),
     skin("bunny", "Tavşan", "characters", BUNNY, {
         "K": (90, 80, 100), "B": (245, 240, 245), "b": (215, 205, 220), "p": (250, 170, 190),
         "h": (250, 190, 205), "n": (240, 120, 150),
-    }, price=80),
+    }, gems=12),
     skin("mushroom", "Mantar", "characters", MUSHROOM, {
         "K": (70, 30, 30), "R": (225, 50, 50), "S": (245, 225, 190), "s": (210, 185, 150),
-    }, price=80, color=(225, 50, 50)),
+    }, gems=12, color=(225, 50, 50)),
     skin("snowman", "Kardan Adam", "characters", SNOWMAN, {
         "K": (40, 45, 60), "H": (60, 60, 80), "W": (245, 248, 255), "w": (200, 210, 230), "E": (25, 25, 40),
         "O": (250, 140, 40), "R": (220, 50, 60), "L": (120, 80, 50),
-    }, price=100, color=(245, 248, 255)),
+    }, gems=18, color=(245, 248, 255)),
     skin("octopus", "Ahtapot", "characters", OCTOPUS, {
         **blob_palette((240, 110, 150)), "K": (90, 30, 60), "p": (200, 80, 120),
-    }, price=100, legs=OCTOPUS_LEGS),
+    }, gems=18, legs=OCTOPUS_LEGS),
     skin("ghost", "Hayalet", "characters", GHOST, {
         "K": (110, 120, 170, 230), "B": (230, 235, 255, 215), "h": (255, 255, 255, 235), "E": (40, 40, 70),
         "p": (255, 170, 190, 220),
-    }, price=120, legs=GHOST_LEGS, color=(230, 235, 255)),
+    }, gems=25, legs=GHOST_LEGS, color=(230, 235, 255)),
     skin("alien", "Uzaylı", "characters", ALIEN, {
         **blob_palette((150, 225, 90)), "K": (30, 80, 30), "E": (20, 20, 30), "w": WHITE, "Y": (255, 230, 80),
-    }, price=120),
+    }, gems=25),
     skin("pirate", "Korsan", "characters", PIRATE, {
         "K": (40, 30, 30), "R": (210, 40, 50), "W": (250, 250, 250), "S": (240, 190, 150), "b": (200, 150, 115),
-    }, price=150, color=(210, 40, 50)),
+    }, gems=35, color=(210, 40, 50)),
     skin("robot", "Robot", "characters", ROBOT, {
         "K": (40, 45, 60), "M": (175, 180, 195), "m": (130, 135, 150), "h": (225, 230, 240),
         "V": (35, 40, 60), "C": (80, 240, 255), "o": (100, 105, 120), "R": (255, 60, 60), "L": (130, 135, 150),
-    }, price=150, color=(175, 180, 195)),
+    }, gems=35, color=(175, 180, 195)),
     skin("ninja", "Ninja", "characters", NINJA, {
         "K": (15, 15, 25), "B": (45, 45, 65), "b": (30, 30, 45), "h": (80, 80, 105), "R": (220, 40, 50),
         "S": (240, 200, 160),
-    }, price=180),
+    }, gems=50),
     skin("knight", "Şövalye", "characters", KNIGHT, {
         "K": (40, 40, 55), "M": (190, 195, 210), "m": (140, 145, 160), "h": (240, 240, 250),
         "R": (220, 40, 50),
-    }, price=200, color=(190, 195, 210)),
+    }, gems=75, color=(190, 195, 210)),
     skin("astronaut", "Astronot", "characters", ASTRONAUT, {
         "K": (60, 65, 85), "B": (235, 235, 245), "b": (190, 190, 210), "V": (40, 60, 120), "h": (150, 200, 255),
         "R": (220, 60, 60), "C": (70, 130, 230), "L": (200, 200, 215),
-    }, price=250),
+    }, gems=100),
     # --- Efsaneviler ---
     skin("lightning", "Şimşek", "legendary", LIGHTNING, {
         **blob_palette((255, 215, 50)), "K": (40, 40, 100), "z": (90, 200, 255), "E": (40, 120, 220),
@@ -557,15 +561,16 @@ def goal_text(goal):
 
 
 class Wardrobe:
-    # Oyuncunun skinleri (storage.py "skins" kaydı): cüzdandaki altın, satın alınanlar, seçili skin ve görevi
-    # tamamlandığı söylenmiş efsaneviler ("known"). progress = görev sayıları (main.py Game.progress()):
+    # Oyuncunun skinleri (storage.py "skins" kaydı): cüzdandaki altın ve elmas, satın alınanlar, seçili skin ve
+    # görevi tamamlandığı söylenmiş efsaneviler ("known"). progress = görev sayıları (main.py Game.progress()):
     # {"games", "climbed", "enemies", "coins", "stars", "height-easy", ...}
-    DEFAULTS = {"coins": -1, "owned": [], "selected": DEFAULT_SKIN, "known": []}
+    DEFAULTS = {"coins": -1, "gems": 0, "owned": [], "selected": DEFAULT_SKIN, "known": []}
 
     def __init__(self, lifetime_coins):
         data = load_dict("skins", self.DEFAULTS)
         # İlk açılışta cüzdan şimdiye kadar toplanan altınlarla başlar (eski oyunların altınları da sayılsın)
         self.coins = data["coins"] if data["coins"] >= 0 else lifetime_coins
+        self.gems = max(0, data["gems"])
         self.owned = [i for i in data["owned"] if i in SKIN_BY_ID]
         self.selected = data["selected"] if data["selected"] in SKIN_BY_ID else DEFAULT_SKIN
         self.known = [i for i in data["known"] if i in SKIN_BY_ID]
@@ -573,7 +578,17 @@ class Wardrobe:
             self.save()
 
     def save(self):
-        save_dict("skins", {"coins": self.coins, "owned": self.owned, "selected": self.selected, "known": self.known})
+        save_dict("skins", {
+            "coins": self.coins, "gems": self.gems, "owned": self.owned, "selected": self.selected,
+            "known": self.known,
+        })
+
+    def balance(self, currency):
+        # Cüzdanda o paradan kaç tane var ("coins" / "gems")
+        return getattr(self, currency)
+
+    def can_afford(self, skin):
+        return skin["currency"] is not None and self.balance(skin["currency"]) >= skin["price"]
 
     def goal_met(self, skin, progress):
         return skin["goal"] is not None and progress[skin["goal"][0]] >= skin["goal"][1]
@@ -584,13 +599,13 @@ class Wardrobe:
             return True
         if skin["goal"]:
             return self.goal_met(skin, progress)
-        return skin["price"] == 0
+        return skin["currency"] is None
 
     def buy(self, skin):
-        # Altın yetiyorsa satın al ve hemen giy. Alındıysa True
-        if skin["goal"] or skin["id"] in self.owned or self.coins < skin["price"]:
+        # Parası (altın ya da elmas) yetiyorsa satın al ve hemen giy. Alındıysa True
+        if skin["goal"] or skin["id"] in self.owned or not self.can_afford(skin):
             return False
-        self.coins -= skin["price"]
+        setattr(self, skin["currency"], self.balance(skin["currency"]) - skin["price"])
         self.owned.append(skin["id"])
         self.selected = skin["id"]
         self.save()
@@ -600,9 +615,11 @@ class Wardrobe:
         self.selected = skin_id
         self.save()
 
-    def add_coins(self, count):
-        if count:
-            self.coins += count
+    def add_money(self, coins=0, gems=0):
+        # Oyun bitince toplanan altın ve kazanılan elmas cüzdana
+        if coins or gems:
+            self.coins += coins
+            self.gems += gems
             self.save()
 
     def new_unlocks(self, progress):
@@ -639,10 +656,10 @@ def check_skins():
             raise ValueError(f"skins.py '{name}': rengi olmayan harf: {sorted(missing) or 'K'}")
         if skin["group"] not in GROUP_NAMES or skin["trail"] not in (None, *TRAILS):
             raise ValueError(f"skins.py '{name}': grup ya da iz yanlış")
-        if skin["goal"] and (skin["goal"][0] not in progress_keys or skin["price"]):
+        if skin["goal"] and (skin["goal"][0] not in progress_keys or skin["currency"]):
             raise ValueError(f"skins.py '{name}': görev yanlış (görevli skinin fiyatı olmaz)")
-        if skin["price"] < 0 or (skin["price"] == 0 and not skin["goal"] and name != DEFAULT_SKIN):
-            raise ValueError(f"skins.py '{name}': fiyat yanlış")
+        if skin["price"] < 0 or (skin["currency"] is None and not skin["goal"] and name != DEFAULT_SKIN):
+            raise ValueError(f"skins.py '{name}': fiyat yanlış (coins= ya da gems= verilmeli)")
 
 
 check_skins()

@@ -120,9 +120,17 @@ LOCKED_COLOR = (60, 56, 90)  # kilitli bölüm kutusu
 PROGRESS_EMPTY_COLOR = (60, 56, 90)  # oyunda sol üstteki "bayrağa ne kadar kaldı" çubuğunun boş kısmı
 
 # Karakterler (skinler) — ana menüdeki "Karakterler" ekranı. Çizimleri, fiyatları ve görevleri skins.py'de.
-# Sadece görünüş: hız ve zıplama her skinde aynı. Toplanan altınlar cüzdanda birikir, skin onunla alınır;
-# efsaneviler altınla değil görevle açılır ve arkalarında iz bırakır (trail.py)
+# Sadece görünüş: hız ve zıplama her skinde aynı. İki para var, toplanınca cüzdanda birikir: Renkler altınla,
+# Karakterler elmasla alınır; efsaneviler parayla değil görevle açılır ve arkalarında iz bırakır (trail.py)
 UNLOCK_ALL_SKINS = False  # True = bütün skinler açık (deneme için)
+# Elmas — haritada altının yerine nadiren çıkar (yükseldikçe biraz daha sık); ayrıca başarılar elmas verir
+GEM_CHANCE = 0.03  # bir altının elmasa dönüşme ihtimali, oyunun başında (0.03 = %3; 100 m'de ~1 elmas)
+GEM_CHANCE_MAX = 0.07  # en zorda / en yüksekte
+GEM_POINTS = 25  # her elmas kaç puan
+GEMS_PER_STAR = 1  # bölümde İLK KEZ kazanılan her yıldız kaç elmas verir
+GEM_RECORD_METERS = 10  # sonsuz oyunda rekoru her bu kadar m geçince 1 elmas (rekor kırılınca en az 1)
+GEM_COLOR = (60, 220, 150)  # zümrüt yeşili
+GEM_SPARKLE_SPEED = 14  # elmasın ışıltısı: her resim kaç kare ekranda kalır
 SKIN_SELECTED_COLOR = (90, 220, 120)  # giyilen skinin kutusundaki işaret
 LEGENDARY_COLOR = (255, 190, 60)  # efsanevi skinin adı
 TRAIL_LIMIT = 60  # izde aynı anda en fazla kaç parçacık olur (telefonda yavaşlamasın)

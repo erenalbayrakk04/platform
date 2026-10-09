@@ -15,6 +15,9 @@ from settings import (
     COIN_SPIN_SPEED,
     MAGNET_CHANCE,
     SHIELD_CHANCE,
+    GEM_CHANCE,
+    GEM_CHANCE_MAX,
+    GEM_SPARKLE_SPEED,
     MAGNET_RADIUS,
     MAGNET_PULL,
     SPRING_SQUASH_TIME,
@@ -70,6 +73,7 @@ def image(name):
             heart=art.heart_images()["full"],
             magnet=art.magnet_image(),
             shield=art.shield_image(),
+            gem=art.gem_frames(),
             spring=art.spring_frames(),
             crumble=art.crumble_frames(),
             flag=art.flag_frames(),
@@ -204,20 +208,23 @@ class Coin(pygame.sprite.Sprite):
 
 
 class Pickup(pygame.sprite.Sprite):
-    # Altın yerine nadiren çıkan toplanabilir (Level.pick_item): kind = "heart" (1 can) veya
-    # bir güçlendirme ("magnet", "shield"). Ne işe yaradığına main.py bakar
+    # Altın yerine nadiren çıkan toplanabilir (Level.pick_item): kind = "heart" (1 can), bir güçlendirme
+    # ("magnet", "shield") ya da "gem" (elmas: skin parası, ışıldar). Ne işe yaradığına main.py bakar
     def __init__(self, x, y, kind):
         super().__init__()
         self.kind = kind
-        self.image = image(kind)
+        frames = image(kind)
+        self.frames = frames if isinstance(frames, list) else [frames]
+        self.image = self.frames[0]
         self.rect = self.image.get_rect(center=(x + TILE_SIZE // 2, y + TILE_SIZE // 2))
         self.base_y = self.rect.y
         self.time = 0
 
     def update(self):
-        # Yavaşça aşağı yukarı süzülsün
+        # Yavaşça aşağı yukarı süzülsün (birden çok resmi varsa sırayla değişsin)
         self.time += 1
         self.rect.y = self.base_y + round(3 * math.sin(self.time / 12))
+        self.image = self.frames[(self.time // GEM_SPARKLE_SPEED) % len(self.frames)]
 
 
 class Spring(pygame.sprite.Sprite):
@@ -495,12 +502,14 @@ class Level:
         return high, low
 
     def pick_item(self, t=0.0):
-        # Altın karesine ne gelecek: çoğunlukla "coin", nadiren kalp veya güçlendirme.
-        # Kalpler zorluk (t) arttıkça seyrekleşir
+        # Altın karesine ne gelecek: çoğunlukla "coin", nadiren kalp, güçlendirme veya elmas.
+        # Kalpler zorluk (t) arttıkça seyrekleşir, elmaslar sıklaşır. Elmas sonda: bölüm haritalarındaki kalp ve
+        # güçlendirmelerin yeri değişmesin (aynı zar, sadece bazı altınlar elmas olur)
         chances = (
             ("heart", blend(self.mode["heart_chance"], self.mode["heart_chance_min"], t)),
             ("magnet", self.mode.get("magnet_chance", MAGNET_CHANCE)),
             ("shield", self.mode.get("shield_chance", SHIELD_CHANCE)),
+            ("gem", blend(GEM_CHANCE, GEM_CHANCE_MAX, t)),
         )
         roll = self.random.random()
         for kind, chance in chances:

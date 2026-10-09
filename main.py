@@ -23,6 +23,9 @@ from settings import (
     CRUMBLE_COLOR,
     MAGNET_COLOR,
     SHIELD_COLOR,
+    GEM_COLOR,
+    GEMS_PER_STAR,
+    GEM_RECORD_METERS,
     SHIELD_LAVA_BOUNCE,
     POWERUP_WARN_TIME,
     LAVA_COLOR,
@@ -53,7 +56,7 @@ from effects import burst
 import sound
 
 # Toplanınca saçılan parçacıkların rengi
-PICKUP_COLORS = {"heart": LIFE_COLOR, "magnet": MAGNET_COLOR, "shield": SHIELD_COLOR}
+PICKUP_COLORS = {"heart": LIFE_COLOR, "magnet": MAGNET_COLOR, "shield": SHIELD_COLOR, "gem": GEM_COLOR}
 # Kalkan sürerken karakterin etrafındaki baloncuk
 SHIELD_BUBBLE = []
 
@@ -204,12 +207,15 @@ def update_game(level, player, camera, score, controls, sounds):
         score.add_coin()
         sounds.play("coin")
         burst(level.effects, coin.rect.center, COIN_COLOR)
-    # Kalp bir can verir (can zaten doluysa puan); güçlendirme bir süre işe yarar
+    # Kalp bir can verir (can zaten doluysa puan); elmas cüzdana (oyun bitince); güçlendirme bir süre işe yarar
     for item in pygame.sprite.spritecollide(player, level.pickups, True):
         if item.kind == "heart":
             if not player.heal():
                 score.add_bonus(HEART_POINTS)
             sounds.play("life")
+        elif item.kind == "gem":
+            score.add_gem()
+            sounds.play("gem")
         else:
             player.power_up(item.kind)
             sounds.play("powerup")
@@ -352,6 +358,7 @@ class Game:
         if not self.wardrobe.owns(skins.get(self.wardrobe.selected), self.progress()):
             self.wardrobe.select(skins.DEFAULT_SKIN)  # artık açık değilse (ör. UNLOCK_ALL_SKINS kapatıldı)
         self.new_skins = []  # bu oyunda görevi tamamlanan efsaneviler (oyun sonu ekranında yazar)
+        self.gems_earned = 0  # bu oyunda kazanılan elmas: haritada toplanan + rekor / yeni yıldız ödülü
         self.state = "title"
         self.title = TitleScreen(WEB, self.wardrobe.selected)  # menüye geçiş bitince silinir
         self.game_over_timer = 0  # kaybettin ekranında düğmeler çıkana kadar kalan kare
@@ -470,6 +477,7 @@ class Game:
         self.reset()
         self.state = "playing"
         self.new_skins = []
+        self.gems_earned = 0
         self.intro = STAGE_INTRO_TIME if stage is not None else 0
         self.sounds.play("start")
         self.sounds.start_music()
@@ -508,6 +516,7 @@ class Game:
         stars = 1 + enough_coins + no_hurt
         has_next = self.stage + 1 < STAGE_COUNT
         next_was_locked = has_next and not self.unlocked(self.stage + 1)
+        new_stars = max(0, stars - self.stars[self.stage])  # ilk kez kazanılan yıldızlar elmas verir
         if stars > self.stars[self.stage]:
             self.stars[self.stage] = stars
             save_dict("stages", {"stars": self.stars}, self.mode)
@@ -526,17 +535,19 @@ class Game:
         self.sounds.play("win")
         for goal in self.level.goals:
             burst(self.level.effects, goal.rect.center, COIN_COLOR)
-        self.finish()
+        self.finish(gem_bonus=new_stars * GEMS_PER_STAR)
 
-    def finish(self, ended=True):
+    def finish(self, ended=True, gem_bonus=0):
         # Oyun bitti (kaybetti, bölümü bitirdi ya da yarıda menüye döndü): bu modun rekorlarını ve toplamları
         # kaydet. Bölümlerde rekor tutulmaz (sonsuz oyunun rekorları değişmez), sadece toplamlar.
-        # Toplanan altınlar cüzdana eklenir. ended = oyun sonu ekranı çıkacak mı (görevi yeni tamamlanan
-        # efsaneviler orada yazar; yarıda bırakınca bir sonraki oyunun sonunda)
+        # Toplanan altın ve elmaslar cüzdana eklenir; sonsuz oyunda rekor kırınca her GEM_RECORD_METERS m için
+        # 1 elmas (en az 1), gem_bonus = bölümde yeni yıldızların elması. ended = oyun sonu ekranı çıkacak mı
+        # (görevi yeni tamamlanan efsaneviler orada yazar; yarıda bırakınca bir sonraki oyunun sonunda)
         score = self.score
         endless = self.stage is None
         self.new_record = endless and score.new_record  # yükseklik rekoru
         if self.new_record:
+            gem_bonus += max(1, (score.height - score.record) // GEM_RECORD_METERS)
             self.best_heights[self.mode] = score.height
             save_record("height", score.height, self.mode)
         if endless and score.total > self.high_score:
@@ -547,7 +558,8 @@ class Game:
         self.stats["coins"] += score.coins
         self.stats["enemies"] += score.enemies
         save_dict("stats", self.stats)
-        self.wardrobe.add_coins(score.coins)
+        self.gems_earned = score.gems + gem_bonus
+        self.wardrobe.add_money(score.coins, self.gems_earned)
         if ended:
             self.new_skins = self.wardrobe.new_unlocks(self.progress())
 
@@ -766,8 +778,10 @@ class Game:
                     self.game_over_timer == 0,
                     slow,
                 )
-            if self.state in screens.NEW_SKIN_Y:  # görevle yeni açılan efsanevi skin
+            if self.state in screens.NEW_SKIN_Y:  # görevle yeni açılan efsanevi skin, kazanılan elmas
                 screens.draw_new_skins(screen, self.new_skins, screens.NEW_SKIN_Y[self.state])
+                end_screen = "stage_failed" if self.state == "game_over" and self.stage is not None else self.state
+                screens.draw_gems_earned(screen, self.gems_earned, screens.GEMS_EARNED_Y[end_screen])
 
 
 async def main():

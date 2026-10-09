@@ -117,6 +117,9 @@
   geri gelir, son `GHOST_TIME` karede `ghost` = silik çizilir; `unsafe = True`) sprite'ları (her `C` için `pick_item()`: `PICKUP_CHANCES`
   ihtimalleriyle altın yerine `Pickup(x, y, kind)` olur → `level.pickups`; kind "heart": `player.heal()` +1 can,
   can doluysa `score.add_bonus(HEART_POINTS)`; kind "magnet"/"shield" güçlendirme → `player.power_up(kind)`;
+  kind "gem" = ELMAS (skin parası, `art.gem_frames()` ışıldar — Pickup birden çok resmi sırayla gösterir; ihtimal
+  `blend(GEM_CHANCE, GEM_CHANCE_MAX, t)` → 100 m'de ~1; listede EN SONDA, böylece bölüm haritalarındaki kalp/güçlendirme
+  yerleri değişmedi, sadece bazı altınlar elmas oldu) → `score.add_gem()`, "gem" sesi;
   `Coin.attract(target)` mıknatısla `MAGNET_RADIUS` içindeyse `MAGNET_PULL` hızla uçar) ve `Level(mode, seed)` (mode = `DIFFICULTIES[...]` sözlüğü): y=0 zeminin altı, yukarı çıktıkça
   y EKSİ. `add_chunk`, `pick_chunk` (giriş = önceki çıkışın tersi; yükseklik = tırmanılan + `map_head_start`,
   zorluk ≤ 1 + yükseklik // `DIFFICULTY_STEP`; `random.choices` ağırlığı `1 + t·HARD_CHUNK_BIAS·(zorluk−1)` → yukarıda zor parçalar sık), `update(view_top, view_bottom)` (`GENERATE_AHEAD` kadar yukarıyı doldurur,
@@ -147,8 +150,9 @@
   karakterin kafasına inmesin diye `PLAYER_HEIGHT` kadar kısaltılır; `BEE_MIN_PATH` bloktan kısaysa None → yarasa). Tile/Platform/Coin resimleri `level.image()`
   ile bir kere hazırlanıp paylaşılır; `Coin.update()` dönme animasyonu., `bottom` = en alttaki parçanın altı, `width` piksel.
 - `score.py` — `Score(start_y, record, goal)` (goal = bölümde bayrak yüksekliği: `draw` "37 / 62 m" + altın + ilerleme çubuğu): `height` = üstüne basılan en yüksek yer (blok = ekranda "m", sadece `on_ground`
-  iken sayılır, düşünce azalmaz), `coins`, `enemies`, `total` = height × `HEIGHT_POINTS` + coins × `COIN_POINTS`
-  + enemies × `ENEMY_POINTS`. ASIL HEDEF YÜKSEKLİK (kullanıcı kararı: oyuncu kendi tırmanış rekorunu geçmek ister):
+  iken sayılır, düşünce azalmaz), `coins`, `gems` (haritada toplanan elmas), `enemies`, `total` = height × `HEIGHT_POINTS`
+  + coins × `COIN_POINTS` + gems × `GEM_POINTS` + enemies × `ENEMY_POINTS`; `loot_text()` = "Altın: 5" (elmas varsa
+  "   Elmas: 1" eklenir; HUD ve oyun sonu ekranları). ASIL HEDEF YÜKSEKLİK (kullanıcı kararı: oyuncu kendi tırmanış rekorunu geçmek ister):
   `draw(screen)` sol üstte BÜYÜK "37 m", altında küçük "Puan / Altın" (kameradan bağımsız); `record` = oyun
   başındaki yükseklik rekoru, `new_record` = geçildi mi; `update(player)` rekor o an kırıldıysa True döner
   (main "powerup" sesi çalar) ve `toast` = `RECORD_TOAST_TIME` kare "YENİ REKOR!" (ilk oyunda, rekor 0 iken yok);
@@ -163,8 +167,8 @@
   data, mode)`, Orta eski ad, diğerleri `stages-easy.json`...; `main.load_stars(mode)` uzunluğu STAGE_COUNT'a uydurur),
   `names(kind, mode)`: Orta eski adları kullanır, diğerlerinde ada `-easy`/`-hard`/`-ultra` eklenir (ör.
   `bestheight-ultra.txt`; .gitignore ve pygbag.ini'de de var), "stats" (`stats.json`: games/climbed/coins/enemies toplamları),
-  "options" (`options.json`: muted, difficulty, music_volume, effects_volume), "skins" (`skins.json`: coins = cüzdan,
-  owned, selected, known — bkz. skins.py `Wardrobe`). `load_record/save_record` (sayı), `load_dict(kind, defaults)/save_dict`
+  "options" (`options.json`: muted, difficulty, music_volume, effects_volume), "skins" (`skins.json`: coins + gems =
+  cüzdan, owned, selected, known — bkz. skins.py `Wardrobe`). `load_record/save_record` (sayı), `load_dict(kind, defaults)/save_dict`
   (JSON; eksik/bozuk/yanlış tipli değer → default). Dosyalar oyun klasöründe, git ve pygbag dışı; okunamazsa
   default, yazılamazsa sessiz; web'de (`settings.WEB`, `sys.platform == "emscripten"`) `platform.window.localStorage`.
 - `ui.py` — `Buttons(actions, top, gap)`: alt alta ortalı düğmeler; `handle_event(event)` basılan düğmenin adını
@@ -186,10 +190,11 @@
   sırayla, 3 şart: bayrak / altın ≥ `stars_needed(total)` (`STAR_COIN_SHARE`) / hiç can kaybetmeden), `draw_stage_failed`, `LABELS` sabit yazılar (değişenleri main
   verir); `draw_main_menu` (logo = `title.draw_logo`, "Rekor: N m", düğmeler, web'de HEP `draw_slow_hint` — kullanıcı isteği),
   `draw_howto` (kontroller + `HOWTO_ROWS`: oyundaki resimlerle her şeyin açıklaması — yeni öğe eklenince buraya da
-  ekle; 14 satır `HOWTO_TOP`/`HOWTO_GAP` (31) ile sığıyor, daha fazlası için aralık daralt; `HOWTO_WARN_ROWS` sarı yazı), `draw_records(best_heights, high_scores, stats, current)` (her modun tırmanış + puan rekoru, seçili mod sarı; altında
+  ekle; 15 satır `HOWTO_TOP` (198) / `HOWTO_GAP` (29) ile sığıyor, daha fazlası için aralık daralt; `HOWTO_WARN_ROWS` sarı yazı), `draw_records(best_heights, high_scores, stats, current)` (her modun tırmanış + puan rekoru, seçili mod sarı; altında
   tüm modların toplamları), `draw_pause`, `draw_game_over(screen, score, mode_name, ...)` (başlık altında "Zorluk: ...";
   düğmeler `ready` olunca). `draw_new_skins(screen, skinler, y)`: oyun sonu ekranlarında (`NEW_SKIN_Y` = durum → y)
-  görevi yeni tamamlanan efsanevinin küçük resmi + "Yeni karakter: Ejderha!".
+  görevi yeni tamamlanan efsanevinin küçük resmi + "Yeni karakter: Ejderha!". `draw_gems_earned(screen, n, y)`:
+  "+3 elmas kazandın" (`GEMS_EARNED_Y`: game_over / stage_failed / stage_clear).
   Oyunun üstüne yarı saydam perde; büyük yazı yükseklik/rekor (m), puan küçük.
 - Can sistemi `Player`'da: `Player(x, y, level_width, lives, max_lives)` (moddan), `lives`, `max_lives` (kalp sınırı), `invincible` (kalan kare; `visible` ile yanıp söner), `hurt()`
   (can −1, dokunulmazlık, küçük sıçrama), `bounce(power)`, `check_springs(springs)` (ayak şeridi yaya
@@ -234,7 +239,10 @@
   sayıları (stats toplamları, `all_stars()` toplamı, `height-<mod>` = her modun tırmanış rekoru); menü "skins" → "skins"
   durumu (`SKIN_MENU.open(selected)`, `update`'te `SKIN_MENU.update(steps)`) → `choose_skin(action, id)`: "select" →
   `wear(id)` ("coin" sesi; menünün arkasındaki karakter de `set_skin` ile değişir), "buy" → `wardrobe.buy` + `celebrate()`
-  ("buy" sesi), "locked"/"poor" → "powerdown". `finish(ended=True)` toplanan altınları cüzdana ekler; `ended` ise
+  ("buy" sesi), "locked"/"poor" → "powerdown". `finish(ended=True, gem_bonus=0)` toplanan altını ve elması cüzdana
+  ekler (`wardrobe.add_money`); ELMAS ÖDÜLLERİ: sonsuz oyunda rekor kırınca her `GEM_RECORD_METERS` (10) m için 1
+  (en az 1; durdurup çıkınca da), bölümde `clear_stage` İLK KEZ kazanılan her yıldız için `GEMS_PER_STAR` (aynı yıldızı
+  tekrar almak vermez) → `gems_earned` (oyun sonu ekranlarında `screens.draw_gems_earned`, "+3 elmas kazandın"); `ended` ise
   `new_skins` = `wardrobe.new_unlocks(progress)` (oyun sonu ekranlarında yazar; durdurup ana menüye dönünce `ended=False`
   → bir sonraki oyunun sonunda söylenir). `new_game(..., skin)`; `update_game` sonunda `player.trail.update(...)`,
   `draw_world` izi karakterden hemen önce çizer.
@@ -282,24 +290,28 @@
   (her kare 2x2 "ince kareye" bölünür, ince kare `LOGO_PIXEL` px: koyu kenar 1, alttaki 3B kalınlık `LOGO_DEPTH` ince
   kare; içi renk geçişli, çizgilerin üst kenarı parlak; harf başına (resim, parıltı, x)).
 - `skins.py` — SKİNLER (karakter görünüşleri; SADECE GÖRÜNÜŞ: hitbox/hız/zıplama aynı, rekorlar adil). `SKINS` listesi,
-  her biri `skin(id, ad, grup, gövde, renkler, price, goal, legs, trail, color)`: gövde 10x10 harf (+2 satır bacak:
+  her biri `skin(id, ad, grup, gövde, renkler, coins/gems, goal, legs, trail, color)`: gövde 10x10 harf (+2 satır bacak:
   `art.PLAYER_LEGS` ya da kendi `legs`'i, ör. hayalet/ahtapot), harfler art.py gibi. Gruplar (`GROUP_NAMES`, ekranda
   sekme): "colors" Renkler (11; klasik karakterin renk/desenleri, `blob_palette(renk, legs)`), "characters" Karakterler
   (15; kedi, kurbağa, penguen, panda, tavşan, mantar, kardan adam, ahtapot, hayalet (yarı saydam: renkte 4. sayı),
-  uzaylı, korsan, robot, ninja, şövalye, astronot), "legendary" Efsanevi (7; GÖREVLE açılır, altınla alınmaz, arkasında
+  uzaylı, korsan, robot, ninja, şövalye, astronot), "legendary" Efsanevi (7; GÖREVLE açılır, parayla alınmaz, arkasında
   iz bırakır): Şimşek (40 oyun), Ejderha (150 düşman), Kozmik (toplam 2500 m), Tekboynuz (toplam 1000 altın), Kral
   (75 yıldız), Buz (Zor'da 150 m, sonsuz), Gölge (Ultra Zor'da 75 m, sonsuz). Bir grupta en fazla `GROUP_SIZE` (15)
-  skin. Fiyatlar 10-250 altın (ucuzdan pahalıya dizili). `goal` = ("games"/"climbed"/"enemies"/"coins"/"stars"/
+  skin. İKİ PARA (kullanıcı kararı): Renkler `coins=` ALTINLA (50-1200), Karakterler `gems=` ELMASLA (5-100); skinde
+  `currency` ("coins"/"gems"/None) + `price`, `CURRENCY_NAMES`. Ucuzdan pahalıya dizili. `goal` = ("games"/"climbed"/"enemies"/"coins"/"stars"/
   "height-<mod>", hedef), `goal_text(goal)`. Koyu gökte kaybolan bacaklar için açık renk "L" (lavanta, gece, gökkuşağı).
   `frames(id)` resimleri bir kere hazırlar; `get(id)`, `in_group(g)`. `Wardrobe(lifetime_coins)`: kayıt (storage
-  "skins"): `coins` = cüzdan (ilk açılışta şimdiye kadar toplanan altınlarla başlar — eski oyunlar da sayılsın), `owned`,
-  `selected`, `known` (görevi tamamlandığı söylenmiş efsaneviler); `owns(skin, progress)` (`UNLOCK_ALL_SKINS` deneme
-  için hepsi), `buy` (giyer de), `select`, `add_coins`, `new_unlocks(progress)`. `check_skins()` açılışta (boy, harf
+  "skins"): `coins` = cüzdandaki altın (ilk açılışta şimdiye kadar toplanan altınlarla başlar — eski oyunlar da sayılsın),
+  `gems` = elmas (0'dan başlar), `owned`, `selected`, `known` (görevi tamamlandığı söylenmiş efsaneviler);
+  `balance(currency)`, `can_afford(skin)`, `owns(skin, progress)` (`UNLOCK_ALL_SKINS` deneme için hepsi), `buy` (doğru
+  paradan düşer, giyer de), `select`, `add_money(coins, gems)`, `new_unlocks(progress)`. Eskiden altınla alınmış
+  karakterler `owned`'da kalır (kullanıcı kararı: alınanlar kalsın). `check_skins()` açılışta (boy, harf
   renkleri, fiyat/görev). Yeni skin eklerken önizleme betiğiyle büyütülmüş resmine bak (koyu gökte okunuyor mu).
 - `skin_menu.py` — KARAKTERLER EKRANI `SKIN_MENU` (`SkinMenu`): üstte grup sekmeleri, ortada koyu panoda önizlenen skin
-  2 kat büyük platformda yürüyüp zıplar (efsanevinin izi de görünür), adı + bilgi (giyiliyor / fiyat / "N altın daha
-  topla" / görev ve ilerleme), 5 sütun kutular (sahip olunmayan sönük + fiyat etiketi ya da kilit; giyilende yeşil tik),
-  cüzdan ("Altının: N"; yetmeyince kırmızı yanar), "Seç / Seçili / Satın Al: N / Kilitli" düğmesi, Geri. Kutuya dokunmak
+  2 kat büyük platformda yürüyüp zıplar (efsanevinin izi de görünür), adı + bilgi (giyiliyor / fiyat / "N elmas daha
+  topla" / görev ve ilerleme), 5 sütun kutular (sahip olunmayan sönük + fiyat etiketi (altın ya da elmas resmi) ya da kilit;
+  giyilende yeşil tik), cüzdan (altın ve elmas resmi + sayı; yetmeyen para kırmızı yanar, `flash_currency`), "Seç /
+  Seçili / Satın Al: N (para resmi) / Kilitli" düğmesi, Geri. Kutuya dokunmak
   önizler; sahip olunan skine dokunmak hemen giyer; SATIN ALMAK sadece alttaki düğmeyle (yanlışlıkla alınmasın). Fare
   üstünden geçmek önizlemeyi DEĞİŞTİRMEZ (düğmeye giderken geçilen kutu alınmasın). Klavye: oklar (en üst satırdan
   yukarı = sekmeler, sağ/sol grup değiştirir), Enter (sahip olunmayan kutuda alttaki düğmeye geçer). `handle_event(event,
@@ -322,7 +334,8 @@
   Yerleşim sabitleri dosyanın başında; ayarlar settings "Oyunun adı (logo)" ve "Giriş ekranı".
 - `sound.py` — `pre_init()` (pygame.init'ten önce; 22050 Hz mono 16 bit; tampon masaüstünde 512,
   web'de `WEB_AUDIO_BUFFER` = 2048 — tarayıcı 512'de cızırdıyordu; tarayıcı frekansı kendisi seçer, 48000), `Sounds()`: efektler
-  (jump, coin, stomp, hurt, start, game_over, win, life, spring, crumble, shoot, powerup, powerdown, buy = skin satın alındı) ve 8 ölçülük döngü müzik (`MELODY`/`BASS` nota
+  (jump, coin, stomp, hurt, start, game_over, win, life, spring, crumble, shoot, powerup, powerdown, buy = skin satın alındı,
+  gem = elmas toplandı) ve 8 ölçülük döngü müzik (`MELODY`/`BASS` nota
   numaraları) `array` ile üretilir (numpy YOK); `play(name)`, `start_music/stop_music`, `toggle_mute`,
   `set_levels(music, effects)` (0-1 çarpan; tam = `MUSIC_VOLUME`/`SOUND_VOLUME`)
   (M). Mixer yoksa/biçim farklıysa `enabled=False`, her şey sessizce çalışır. Stereo da desteklenir.
@@ -379,5 +392,12 @@ Açık depoda çalışma durumu girişsiz bakılabilir: https://api.github.com/r
   açılma = ALTIN + GÖREV (çoğu toplanan altınla alınır, en havalıları sadece görevle), çeşit = KARAKTERLER + RENKLER,
   en nadirlerde İZ/PARILTI efekti. Toplam 33 (11 renk, 15 karakter, 7 efsanevi). Ana menüde "Karakterler" düğmesi.
   Skinler sadece görünüş (Claude kararı: fizik/hitbox aynı, yoksa rekorlar ve check_chunks bozulur). Kullanıcı
-  oynayıp fiyat/görev zorluğu için geri bildirim verecek (skins.py; bir oyunda ~0,15 altın/m toplanır → 100 m ≈ 15
-  altın, hepsini almak ~2250 altın). Tarayıcıda (görünmez Chrome) denendi: satın alma, localStorage kaydı, iz çalışıyor.
+  oynayıp fiyat/görev zorluğu için geri bildirim verecek. Tarayıcıda (görünmez Chrome) denendi: satın alma,
+  localStorage kaydı, iz çalışıyor.
+- İKİNCİ PARA: ELMAS (aynı gün; kullanıcı: "fiyatlar çok ucuz, altın harici bir para birimi olmalı"). Kullanıcı kararları:
+  elmas haritada nadir (yükseldikçe biraz sık) + başarılar (yeni bölüm yıldızı, sonsuz oyunda rekor); Renkler altınla,
+  Karakterler elmasla; "pahalı" (eskinin ~6 katı: ilk skin ~5 oyunda, en pahalısı ~120 oyunda — 100 m'lik oyunla);
+  alınan skinler ve cüzdandaki altın kalsın. ÖLÇÜM (30 rastgele harita): 100 m'de haritada ~12 altın ve ~0,7-1 elmas
+  (ilk 100 m ~0,7, yükseklerde ~1) çıkar; oyuncu hepsini toplayamaz. Ucuz gelmesinin bir sebebi: cüzdan ilk açılışta
+  eski oyunların bütün altınıyla dolmuştu. Elmas yeşil (Türkçe oyunlarda elmas çoğu zaman yeşil; mavi kalkanla
+  karışıyordu).

@@ -7,6 +7,7 @@ from art import heart_images, magnet_image, shield_image
 from settings import (
     TILE_SIZE,
     COIN_POINTS,
+    GEM_POINTS,
     ENEMY_POINTS,
     HEIGHT_POINTS,
     SCORE_COLOR,
@@ -30,6 +31,7 @@ class Score:
         self.goal = goal  # bölümde bayrağın yüksekliği (blok); sonsuz oyunda None
         self.height = 0  # üstüne basılan en yüksek yer (blok sayısı)
         self.coins = 0  # toplanan altın sayısı
+        self.gems = 0  # haritada toplanan elmas sayısı
         self.enemies = 0  # üstüne basılıp yenilen düşman sayısı
         self.bonus = 0  # diğer puanlar (ör. canın doluyken alınan kalp)
         self.toast = 0  # "YENİ REKOR!" yazısının kalan süresi
@@ -47,6 +49,7 @@ class Score:
         return (
             self.height * HEIGHT_POINTS
             + self.coins * COIN_POINTS
+            + self.gems * GEM_POINTS
             + self.enemies * ENEMY_POINTS
             + self.bonus
         )
@@ -70,6 +73,13 @@ class Score:
     def add_coin(self):
         self.coins += 1
 
+    def add_gem(self):
+        self.gems += 1
+
+    def loot_text(self):
+        # Toplananlar: "Altın: 5" (elmas toplandıysa "Altın: 5   Elmas: 1")
+        return f"Altın: {self.coins}" + (f"   Elmas: {self.gems}" if self.gems else "")
+
     def add_enemy(self):
         self.enemies += 1
 
@@ -81,7 +91,7 @@ class Score:
         # Rekor kırıldıysa yükseklik rekor renginde. Bölümde: "37 / 62 m", altın ve bayrağa ilerleme çubuğu
         if self.goal:
             draw_text(screen, self.font, f"{self.height} / {self.goal} m", topleft=(12, 10))
-            draw_text(screen, self.small_font, f"Altın: {self.coins}", topleft=(12, 44))
+            draw_text(screen, self.small_font, self.loot_text(), topleft=(12, 44))
             bar = pygame.Rect(12, 66, 140, 6)
             screen.fill(SCORE_SHADOW_COLOR, bar.move(2, 2))
             screen.fill(PROGRESS_EMPTY_COLOR, bar)
@@ -90,9 +100,7 @@ class Score:
             return
         color = RECORD_COLOR if self.new_record and self.record > 0 else SCORE_COLOR
         draw_text(screen, self.font, f"{self.height} m", color, topleft=(12, 10))
-        draw_text(
-            screen, self.small_font, f"Puan: {self.total}   Altın: {self.coins}", topleft=(12, 44)
-        )
+        draw_text(screen, self.small_font, f"Puan: {self.total}   {self.loot_text()}", topleft=(12, 44))
         if self.toast and (self.toast // 10) % 2 == 0:  # yanıp söner
             draw_text(screen, self.font, "YENİ REKOR!", RECORD_COLOR, center=(SCREEN_WIDTH // 2, 120))
 

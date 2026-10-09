@@ -1,6 +1,6 @@
 # Karakterler ekranı: skin seçme ve satın alma. Üstte gruplar (Renkler / Karakterler / Efsanevi), ortada
 # önizlenen skin büyük çizilmiş, platformda yürüyüp zıplar (efsanevilerin izi de görünür), altında kutular,
-# cüzdandaki altın ve "Seç / Satın Al" düğmesi.
+# cüzdandaki altın ve elmas, "Seç / Satın Al" düğmesi. Renkler altınla, Karakterler elmasla alınır.
 # Kutuya dokununca o skin önizlenir; senin olan bir skine dokununca hemen giyilir. Satın almak (ya da kilitli
 # skini denemek) için alttaki düğmeye basılır. Klavyede oklar + Enter. Ne olacağına main.py karar verir.
 import math
@@ -28,6 +28,7 @@ from settings import (
     LOCKED_COLOR,
     SKIN_SELECTED_COLOR,
     LEGENDARY_COLOR,
+    GEM_COLOR,
 )
 from score import draw_text
 from ui import Buttons, click_pos, take_click, ACTIVATE_KEYS, UP_KEYS, DOWN_KEYS, LEFT_KEYS, RIGHT_KEYS
@@ -54,6 +55,7 @@ HOP_TIME = 95  # kaç adımda bir zıplar
 HOP_POWER = 7
 FLASH_TIME = 50  # altın yetmeyince cüzdan yazısı kaç adım kırmızı yanar
 CONFETTI_COLORS = [COIN_COLOR, WHITE, (255, 150, 200), (120, 220, 255)]
+CURRENCY_COLORS = {"coins": RECORD_COLOR, "gems": art.tint(GEM_COLOR, 0.3)}  # cüzdandaki sayıların rengi
 
 
 def scaled(image, factor):
@@ -104,7 +106,8 @@ class SkinMenu:
         self.rest = 0
         self.trail = None
         self.confetti = []  # satın alınca saçılan parçalar: [x, y, vx, vy, yaş, renk]
-        self.flash = 0  # altın yetmedi uyarısı
+        self.flash = 0  # para yetmedi uyarısı (kalan adım)
+        self.flash_currency = "coins"  # hangi para yetmedi
 
     # --- Açma, seçim ---
     def skins_shown(self):
@@ -178,8 +181,9 @@ class SkinMenu:
             return None if skin["id"] == wardrobe.selected else ("select", skin["id"])
         if skin["goal"]:
             return "locked", skin["id"]
-        if wardrobe.coins < skin["price"]:
+        if not wardrobe.can_afford(skin):
             self.flash = FLASH_TIME
+            self.flash_currency = skin["currency"]
             return "poor", skin["id"]
         return "buy", skin["id"]
 
@@ -307,14 +311,17 @@ class SkinMenu:
         fonts = {size: pygame.font.Font(None, size) for size in (TITLE_FONT_SIZE, MENU_FONT_SIZE + 4, MENU_FONT_SIZE,
                                                                    MENU_SMALL_FONT_SIZE, self.TAB_FONT_SIZE, 20)}
         coin = art.coin_frames()[0]
+        gem = art.gem_frames()[0]
         platform = art.platform_image()
         panel = pygame.Surface(PANEL[2:], pygame.SRCALPHA)
         pygame.draw.rect(panel, (0, 0, 0, PANEL_ALPHA), panel.get_rect(), border_radius=16)
         self.images = {
             "panel": panel,
             "fonts": fonts,
-            "coin": coin,
-            "small_coin": scaled(coin, 0.5),
+            "coins": coin,  # para resimleri: adları cüzdandaki paralarla aynı
+            "gems": gem,
+            "small_coins": scaled(coin, 0.5),
+            "small_gems": scaled(gem, 0.5),
             "lock": scaled(art.lock_image(), 0.5),
             "platform": scaled(platform, PREVIEW_SCALE),
         }
@@ -342,7 +349,7 @@ class SkinMenu:
         info, info_color = self.info(skin, owned, wardrobe, progress)
         draw_text(screen, fonts[MENU_SMALL_FONT_SIZE], info, info_color, center=(CENTER_X, INFO_Y))
         self.draw_grid(screen, wardrobe, progress)
-        self.draw_wallet(screen, wardrobe.coins, fonts[MENU_FONT_SIZE])
+        self.draw_wallet(screen, wardrobe, fonts[MENU_FONT_SIZE])
         self.draw_action(screen, skin, owned, wardrobe)
         self.back.draw(screen, {"back": "Geri"})
 
@@ -355,9 +362,11 @@ class SkinMenu:
         if skin["goal"]:
             kind, target = skin["goal"]
             return f"{skins.goal_text(skin['goal'])}  ({min(progress[kind], target)} / {target})", RECORD_COLOR
-        if wardrobe.coins < skin["price"]:
-            return f"Fiyatı: {skin['price']} altın ({skin['price'] - wardrobe.coins} altın daha topla)", HINT_COLOR
-        return f"Fiyatı: {skin['price']} altın", RECORD_COLOR
+        money = skins.CURRENCY_NAMES[skin["currency"]]
+        if not wardrobe.can_afford(skin):
+            need = skin["price"] - wardrobe.balance(skin["currency"])
+            return f"Fiyatı: {skin['price']} {money} ({need} {money} daha topla)", HINT_COLOR
+        return f"Fiyatı: {skin['price']} {money}", CURRENCY_COLORS[skin["currency"]]
 
     def draw_tabs(self, screen, font):
         for group, rect in zip(self.groups, self.tabs):
@@ -399,20 +408,21 @@ class SkinMenu:
                 lock = self.images["lock"]
                 screen.blit(lock, lock.get_rect(bottomright=(rect.right - 4, rect.bottom - 4)))
             elif not owned:
-                self.draw_price(screen, font, skin["price"], rect, wardrobe.coins >= skin["price"])
+                self.draw_price(screen, font, skin, rect, wardrobe.can_afford(skin))
             if skin["id"] == wardrobe.selected:
                 self.draw_check(screen, (rect.right - 10, rect.top + 10))
 
-    def draw_price(self, screen, font, price, rect, affordable):
-        # Kutunun altında fiyat etiketi: küçük altın + sayı (alınabiliyorsa sarı); her etiket bir kere hazırlanır
-        key = (price, affordable)
+    def draw_price(self, screen, font, skin, rect, affordable):
+        # Kutunun altında fiyat etiketi: küçük altın / elmas + sayı (alınabiliyorsa renkli); bir kere hazırlanır
+        key = (skin["currency"], skin["price"], affordable)
         if key not in self.tags:
-            coin = self.images["small_coin"]
-            text = font.render(str(price), True, RECORD_COLOR if affordable else HINT_COLOR)
-            tag = pygame.Surface((coin.get_width() + text.get_width() + 11, 16), pygame.SRCALPHA)
+            icon = self.images["small_" + skin["currency"]]
+            color = CURRENCY_COLORS[skin["currency"]] if affordable else HINT_COLOR
+            text = font.render(str(skin["price"]), True, color)
+            tag = pygame.Surface((icon.get_width() + text.get_width() + 11, 16), pygame.SRCALPHA)
             pygame.draw.rect(tag, (20, 18, 40), tag.get_rect(), border_radius=6)
-            tag.blit(coin, coin.get_rect(midleft=(4, 8)))
-            tag.blit(text, text.get_rect(midleft=(7 + coin.get_width(), 9)))
+            tag.blit(icon, icon.get_rect(midleft=(4, 8)))
+            tag.blit(text, text.get_rect(midleft=(7 + icon.get_width(), 9)))
             self.tags[key] = tag
         tag = self.tags[key]
         screen.blit(tag, tag.get_rect(midbottom=(rect.centerx, rect.bottom - 3)))
@@ -424,18 +434,22 @@ class SkinMenu:
         pygame.draw.circle(screen, SKIN_SELECTED_COLOR, center, 8)
         pygame.draw.lines(screen, WHITE, False, [(x - 4, y), (x - 1, y + 3), (x + 4, y - 3)], 2)
 
-    def draw_wallet(self, screen, coins, font):
-        # Cüzdan: altın resmi + "Altının: 245" (altın yetmeyince bir süre kırmızı yanıp söner)
-        color = GAME_OVER_COLOR if self.flash and (self.flash // 6) % 2 == 0 else RECORD_COLOR
-        text = f"Altının: {coins}"
-        coin = self.images["coin"]
-        width = coin.get_width() + 8 + font.size(text)[0]
-        left = CENTER_X - width // 2
-        screen.blit(coin, coin.get_rect(midleft=(left, WALLET_Y)))
-        draw_text(screen, font, text, color, midleft=(left + coin.get_width() + 8, WALLET_Y + 1))
+    def draw_wallet(self, screen, wardrobe, font):
+        # Cüzdan: altın ve elmas (resim + sayı); para yetmeyince o para bir süre kırmızı yanıp söner
+        items = []
+        for currency in ("coins", "gems"):
+            flashing = self.flash and self.flash_currency == currency and (self.flash // 6) % 2 == 0
+            color = GAME_OVER_COLOR if flashing else CURRENCY_COLORS[currency]
+            items.append((self.images[currency], str(wardrobe.balance(currency)), color))
+        widths = [icon.get_width() + 6 + font.size(text)[0] for icon, text, _ in items]
+        left = CENTER_X - (sum(widths) + 32 * (len(items) - 1)) // 2
+        for (icon, text, color), width in zip(items, widths):
+            screen.blit(icon, icon.get_rect(midleft=(left, WALLET_Y)))
+            draw_text(screen, font, text, color, midleft=(left + icon.get_width() + 6, WALLET_Y + 1))
+            left += width + 32
 
     def draw_action(self, screen, skin, owned, wardrobe):
-        # Alttaki düğme: Seç / Seçili / Satın Al: 150 / Kilitli
+        # Alttaki düğme: Seç / Seçili / Satın Al: 150 (altın ya da elmas resmiyle) / Kilitli
         disabled = ()
         if skin["id"] == wardrobe.selected:
             label, disabled = "Seçili", ("action",)
@@ -445,13 +459,13 @@ class SkinMenu:
             label, disabled = "Kilitli", ("action",)
         else:
             label = f"Satın Al: {skin['price']}"
-            if wardrobe.coins < skin["price"]:
+            if not wardrobe.can_afford(skin):
                 disabled = ("action",)
         self.action.draw(screen, {"action": label}, disabled)
         if not owned and not skin["goal"]:
             rect = self.action.rects[0]
-            coin = self.images["coin"]
-            screen.blit(coin, coin.get_rect(midright=(rect.right - 14, rect.centery)))
+            icon = self.images[skin["currency"]]
+            screen.blit(icon, icon.get_rect(midright=(rect.right - 14, rect.centery)))
 
 
 SKIN_MENU = SkinMenu()

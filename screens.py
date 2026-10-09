@@ -19,6 +19,7 @@ from settings import (
     SLOW_HINT_COLOR,
     LAVA_TOP_COLOR,
     LEGENDARY_COLOR,
+    GEM_COLOR,
     COIN_POINTS,
     MUTE_KEY,
     VOLUME_STEPS,
@@ -180,6 +181,7 @@ def howto_icons():
 
         _cache["howto"] = {
             "coin": fit(art.coin_frames()[0]),
+            "gem": fit(art.gem_frames()[0]),
             "heart": fit(art.heart_images()["full"]),
             "magnet": fit(art.magnet_image()),
             "shield": fit(art.shield_image()),
@@ -199,7 +201,8 @@ def howto_icons():
 
 HOWTO_ROWS = (
     ("flag", "Bayrak: bölümün sonu, ona ulaş!"),
-    ("coin", f"Altın: +{COIN_POINTS} puan, karakter al"),
+    ("coin", f"Altın: +{COIN_POINTS} puan, yeni renk al"),
+    ("gem", "Elmas: nadir! Yeni karakter al"),
     ("heart", "Kalp: +1 can"),
     ("magnet", "Mıknatıs: altınları çeker"),
     ("shield", "Kalkan: düşman ve lavdan korur"),
@@ -215,8 +218,8 @@ HOWTO_ROWS = (
 )
 HOWTO_WARN_ROWS = ("spiky", "lava")  # yazısı uyarı renginde olanlar
 HOWTO_ICON = 30  # resimlerin en fazla boyu (piksel)
-HOWTO_TOP = 200  # ilk satırın ortası (y)
-HOWTO_GAP = 31  # satırlar arası (piksel)
+HOWTO_TOP = 198  # ilk satırın ortası (y)
+HOWTO_GAP = 29  # satırlar arası (piksel) — 15 satır Geri düğmesinin üstünde bitsin
 
 
 def draw_howto(screen):
@@ -283,7 +286,7 @@ def draw_game_over(screen, score, mode_name, best_height, high_score, new_record
     # Büyük yazı: ne kadar tırmandın (asıl hedef). Puan ve ayrıntılar altında küçük
     draw_text(screen, font(TITLE_FONT_SIZE), f"{score.height} m", center=(CENTER_X, 290))
     small = font(MENU_SMALL_FONT_SIZE)
-    details = f"Puan: {score.total}   Altın: {score.coins}   Düşman: {score.enemies}"
+    details = f"Puan: {score.total}   {score.loot_text()}   Düşman: {score.enemies}"
     draw_text(screen, small, details, HINT_COLOR, center=(CENTER_X, 335))
     if new_record:
         draw_text(screen, font(MENU_FONT_SIZE), "YENİ REKOR!", RECORD_COLOR, center=(CENTER_X, 390))
@@ -319,6 +322,25 @@ def draw_new_skins(screen, new_skins, y):
     left = CENTER_X - width // 2
     screen.blit(icon, icon.get_rect(midleft=(left, y)))
     draw_text(screen, small, text, LEGENDARY_COLOR, midleft=(left + icon.get_width() + 8, y + 1))
+
+
+# Oyun sonu ekranlarında "+3 elmas kazandın" yazısının yüksekliği (y)
+GEMS_EARNED_Y = {"game_over": 452, "stage_failed": 418, "stage_clear": 412}
+
+
+def draw_gems_earned(screen, count, y):
+    # Bu oyunda kazanılan elmas (haritada toplanan + rekor / yeni yıldız ödülü): elmas resmi + "+3 elmas kazandın"
+    if count <= 0:
+        return
+    if "gem" not in _cache:
+        _cache["gem"] = art.gem_frames()[0]
+    icon = _cache["gem"]
+    small = font(MENU_SMALL_FONT_SIZE + 4)
+    text = f"+{count} elmas kazandın"
+    width = icon.get_width() + 8 + small.size(text)[0]
+    left = CENTER_X - width // 2
+    screen.blit(icon, icon.get_rect(midleft=(left, y)))
+    draw_text(screen, small, text, art.tint(GEM_COLOR, 0.3), midleft=(left + icon.get_width() + 8, y + 1))
 
 
 def stars_needed(total):
@@ -409,7 +431,7 @@ def draw_stage_clear(screen, mode, index, result, shown, ready):
     images = star_images()
     for k in range(3):
         image = images["big" if k < shown else "big_empty"]
-        y = 255 - (12 if k == 1 else 0)  # ortadaki biraz yukarıda
+        y = 245 - (12 if k == 1 else 0)  # ortadaki biraz yukarıda
         screen.blit(image, image.get_rect(center=(CENTER_X + (k - 1) * 80, y)))
     need = stars_needed(result["coins_total"])
     conditions = (
@@ -419,7 +441,7 @@ def draw_stage_clear(screen, mode, index, result, shown, ready):
     )
     small = font(MENU_SMALL_FONT_SIZE + 2)
     for i, (done, text) in enumerate(conditions):
-        y = 330 + i * 32
+        y = 316 + i * 30
         icon = images["small" if done else "small_empty"]
         screen.blit(icon, icon.get_rect(center=(80, y)))
         draw_text(screen, small, text, (255, 255, 255) if done else HINT_COLOR, midleft=(102, y))
@@ -442,7 +464,7 @@ def draw_stage_failed(screen, mode, index, score, ready, slow=False):
     draw_text(screen, font(TITLE_FONT_SIZE), f"{score.height} / {score.goal} m", center=(CENTER_X, 295))
     left = max(0, score.goal - score.height)
     draw_text(screen, font(MENU_FONT_SIZE), f"Bayrağa {left} m kalmıştı", RECORD_COLOR, center=(CENTER_X, 350))
-    draw_text(screen, font(MENU_SMALL_FONT_SIZE), f"Altın: {score.coins}", HINT_COLOR, center=(CENTER_X, 385))
+    draw_text(screen, font(MENU_SMALL_FONT_SIZE), score.loot_text(), HINT_COLOR, center=(CENTER_X, 385))
     if ready:
         GAME_OVER_BUTTONS.draw(screen, {**LABELS, "again": "Tekrar Dene", "menu": "Bölümler"})
     if slow:
