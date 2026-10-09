@@ -128,7 +128,9 @@ GEM_CHANCE = 0.03  # bir altının elmasa dönüşme ihtimali, oyunun başında 
 GEM_CHANCE_MAX = 0.07  # en zorda / en yüksekte
 GEM_POINTS = 25  # her elmas kaç puan
 GEMS_PER_STAR = 1  # bölümde İLK KEZ kazanılan her yıldız kaç elmas verir
-GEM_RECORD_METERS = 10  # sonsuz oyunda rekoru her bu kadar m geçince 1 elmas (rekor kırılınca en az 1)
+GEM_RECORD_METERS = 10  # sonsuz oyunda rekoru her bu kadar m geçince 1 elmas (rekor kırılınca en az 1).
+# O modda ilk oyunda (rekor 0) ödül yok — yoksa bütün tırmanış "rekoru geçmek" sayılıp çok elmas veriyordu
+GEM_RECORD_MAX = 5  # rekor ödülü bir oyunda en fazla kaç elmas
 GEM_COLOR = (60, 220, 150)  # zümrüt yeşili
 GEM_SPARKLE_SPEED = 14  # elmasın ışıltısı: her resim kaç kare ekranda kalır
 SKIN_SELECTED_COLOR = (90, 220, 120)  # giyilen skinin kutusundaki işaret

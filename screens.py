@@ -324,19 +324,31 @@ def draw_new_skins(screen, new_skins, y):
     draw_text(screen, small, text, LEGENDARY_COLOR, midleft=(left + icon.get_width() + 8, y + 1))
 
 
-# Oyun sonu ekranlarında "+3 elmas kazandın" yazısının yüksekliği (y)
+# Oyun sonu ekranlarında kazanılan elmas yazısının yüksekliği (y)
 GEMS_EARNED_Y = {"game_over": 452, "stage_failed": 418, "stage_clear": 412}
 
 
-def draw_gems_earned(screen, count, y):
-    # Bu oyunda kazanılan elmas (haritada toplanan + rekor / yeni yıldız ödülü): elmas resmi + "+3 elmas kazandın"
-    if count <= 0:
+def gems_text(found, bonus, reason):
+    # Kazanılan elmasın yazısı, nereden geldiğiyle: "+2 elmas topladın", "+3 elmas: rekor ödülü",
+    # "+5 elmas: 2 toplandı + 3 rekor ödülü" (reason = "rekor" / "yıldız")
+    if not bonus:
+        return f"+{found} elmas topladın"
+    if not found:
+        return f"+{bonus} elmas: {reason} ödülü"
+    return f"+{found + bonus} elmas: {found} toplandı + {bonus} {reason} ödülü"
+
+
+def draw_gems_earned(screen, found, bonus, reason, y):
+    # Bu oyunda kazanılan elmas: elmas resmi + nereden geldiği (haritada toplanan, rekor / yeni yıldız ödülü)
+    if found + bonus <= 0:
         return
     if "gem" not in _cache:
         _cache["gem"] = art.gem_frames()[0]
     icon = _cache["gem"]
+    text = gems_text(found, bonus, reason)
     small = font(MENU_SMALL_FONT_SIZE + 4)
-    text = f"+{count} elmas kazandın"
+    if icon.get_width() + 8 + small.size(text)[0] > SCREEN_WIDTH - 24:
+        small = font(MENU_SMALL_FONT_SIZE)  # uzun yazı sığsın
     width = icon.get_width() + 8 + small.size(text)[0]
     left = CENTER_X - width // 2
     screen.blit(icon, icon.get_rect(midleft=(left, y)))

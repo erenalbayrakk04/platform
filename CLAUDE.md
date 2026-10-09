@@ -193,8 +193,8 @@
   ekle; 15 satır `HOWTO_TOP` (198) / `HOWTO_GAP` (29) ile sığıyor, daha fazlası için aralık daralt; `HOWTO_WARN_ROWS` sarı yazı), `draw_records(best_heights, high_scores, stats, current)` (her modun tırmanış + puan rekoru, seçili mod sarı; altında
   tüm modların toplamları), `draw_pause`, `draw_game_over(screen, score, mode_name, ...)` (başlık altında "Zorluk: ...";
   düğmeler `ready` olunca). `draw_new_skins(screen, skinler, y)`: oyun sonu ekranlarında (`NEW_SKIN_Y` = durum → y)
-  görevi yeni tamamlanan efsanevinin küçük resmi + "Yeni karakter: Ejderha!". `draw_gems_earned(screen, n, y)`:
-  "+3 elmas kazandın" (`GEMS_EARNED_Y`: game_over / stage_failed / stage_clear).
+  görevi yeni tamamlanan efsanevinin küçük resmi + "Yeni karakter: Ejderha!". `draw_gems_earned(screen, found, bonus,
+  reason, y)`: `gems_text` ile nereden geldiği (uzunsa küçük yazı; `GEMS_EARNED_Y`: game_over / stage_failed / stage_clear).
   Oyunun üstüne yarı saydam perde; büyük yazı yükseklik/rekor (m), puan küçük.
 - Can sistemi `Player`'da: `Player(x, y, level_width, lives, max_lives)` (moddan), `lives`, `max_lives` (kalp sınırı), `invincible` (kalan kare; `visible` ile yanıp söner), `hurt()`
   (can −1, dokunulmazlık, küçük sıçrama), `bounce(power)`, `check_springs(springs)` (ayak şeridi yaya
@@ -241,8 +241,11 @@
   `wear(id)` ("coin" sesi; menünün arkasındaki karakter de `set_skin` ile değişir), "buy" → `wardrobe.buy` + `celebrate()`
   ("buy" sesi), "locked"/"poor" → "powerdown". `finish(ended=True, gem_bonus=0)` toplanan altını ve elması cüzdana
   ekler (`wardrobe.add_money`); ELMAS ÖDÜLLERİ: sonsuz oyunda rekor kırınca her `GEM_RECORD_METERS` (10) m için 1
-  (en az 1; durdurup çıkınca da), bölümde `clear_stage` İLK KEZ kazanılan her yıldız için `GEMS_PER_STAR` (aynı yıldızı
-  tekrar almak vermez) → `gems_earned` (oyun sonu ekranlarında `screens.draw_gems_earned`, "+3 elmas kazandın"); `ended` ise
+  (en az 1, en fazla `GEM_RECORD_MAX` (5); o MODDAKİ İLK oyunda — rekor 0 — YOK: eskiden bütün tırmanış ödül sayılıyordu,
+  kullanıcı 2 elmas toplayıp 36 aldı, "bug" sandı; durdurup çıkınca da verilir), bölümde `clear_stage` İLK KEZ kazanılan
+  her yıldız için `GEMS_PER_STAR` (aynı yıldızı tekrar almak vermez) → `gems_found` / `gems_bonus` / `gems_reason`
+  ("rekor"/"yıldız"; oyun sonu ekranlarında `screens.draw_gems_earned`, nereden geldiğiyle: "+5 elmas: 2 toplandı + 3
+  rekor ödülü" — ekranda neden yazmayınca kullanıcı hata sanıyor); `ended` ise
   `new_skins` = `wardrobe.new_unlocks(progress)` (oyun sonu ekranlarında yazar; durdurup ana menüye dönünce `ended=False`
   → bir sonraki oyunun sonunda söylenir). `new_game(..., skin)`; `update_game` sonunda `player.trail.update(...)`,
   `draw_world` izi karakterden hemen önce çizer.
