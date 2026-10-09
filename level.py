@@ -263,6 +263,7 @@ class Level:
         self.random = random.Random(seed)
         # Düşman türleri ve ağırlıkları (bölümde sadece o bölümünkiler)
         self.walker_kinds = mode.get("walker_kinds", WALKER_KINDS)
+        self.boost = stage["boost"] if stage else None  # henüz konmamış tanıtılan güçlendirme
         self.flyer_kinds = mode.get("flyer_kinds", FLYER_KINDS)
         # Karakterin çarptığı her şey (bloklar ve ince platformlar)
         self.tiles = pygame.sprite.Group()
@@ -299,16 +300,24 @@ class Level:
             self.make_plan()
 
     def make_plan(self):
+        # Bölümün tanıttığı şey (focus) rastgele seçimde hiç gelmediyse baştan seç: bu sefer ilk parça onlardan
+        self.plan, self.goal_height = self.plan_chunks()
+        if self.stage["focus"] and not any(focused(self.stage, chunk) for chunk in self.plan):
+            self.plan, self.goal_height = self.plan_chunks(force_focus=True)
+
+    def plan_chunks(self, force_focus=False):
+        # Bölümün parça sırası (sonunda bitiş parçası) ve bayrağın zirvesinin yüksekliği (blok)
         finish_rise = len(FINISH_CHUNKS["L"]["rows"]) - FINISH_CHUNKS["L"]["goal_row"]  # zirve, parçanın altından kaç blok yukarıda
         goal_y = self.player_start[1] - self.stage["goal"] * TILE_SIZE
+        plan = []
         top, side = self.top, self.exit_side
         while top - finish_rise * TILE_SIZE > goal_y:
-            chunk = self.pick_chunk(top, side)
-            self.plan.append(chunk)
+            chunk = self.pick_chunk(top, side, force_focus and not plan)
+            plan.append(chunk)
             top -= len(chunk["rows"]) * TILE_SIZE
             side = chunk["exit"]
-        self.plan.append(FINISH_CHUNKS["R" if side == "L" else "L"])
-        self.goal_height = (self.player_start[1] - (top - finish_rise * TILE_SIZE)) // TILE_SIZE
+        plan.append(FINISH_CHUNKS["R" if side == "L" else "L"])
+        return plan, (self.player_start[1] - (top - finish_rise * TILE_SIZE)) // TILE_SIZE
 
     def add_chunk(self, chunk):
         # Parçayı şu anki tepenin hemen üstüne yerleştir
@@ -339,6 +348,9 @@ class Level:
                 elif cell == "C":
                     # Altın; nadiren de kalp veya güçlendirme
                     kind = self.pick_item(t)
+                    # Bölümün tanıttığı güçlendirme (stages "boost") ilk altının yerine kesin gelsin
+                    if self.boost and chunk is not START_CHUNK:
+                        kind, self.boost = self.boost, None
                     if kind != "coin":
                         item = Pickup(x, y, kind)
                         sprites.append(item)
@@ -370,15 +382,17 @@ class Level:
                     sprites.append(enemy)
                     self.enemies.add(enemy)
                 elif cell == "F":
-                    # Uçan düşman yeri: yarasa satırında duvara veya kenara kadar uçar, arı sütununda
-                    # aşağı-yukarı (yeri yoksa arı gelmez)
-                    path = self.bee_path(rows, top, row_index, col_index)
-                    kind = self.pick_enemy(self.flyer_kinds, t, () if path else ("bee",))
+                    # Uçan düşman yeri: yarasa satırında duvara veya kenara kadar uçar, arı aşağı-yukarı
+                    # (aynı satırda yeri olan en yakın sütunda; hiç yeri yoksa arı gelmez)
+                    spot = self.bee_spot(rows, top, row_index, col_index)
+                    kind = self.pick_enemy(self.flyer_kinds, t, () if spot else ("bee",))
                     center = (x + TILE_SIZE // 2, y + TILE_SIZE // 2)
                     speed = blend(mode["flyer_speed"], mode["flyer_speed_max"], t)
                     if kind is None:
                         continue
                     if kind == "bee":
+                        bee_col, path = spot
+                        center = (bee_col * TILE_SIZE + TILE_SIZE // 2, center[1])
                         facing = 1 if center[0] < self.width // 2 else -1  # ortaya baksın
                         flyer = Bee(*center, *path, speed, facing)
                     else:
@@ -439,6 +453,16 @@ class Level:
         weights = [blend(*kinds[kind], t) for kind in options]
         return self.random.choices(options, weights)[0]
 
+    def bee_spot(self, rows, top, row, col):
+        # Arının uçabileceği yer: bu satırda col'a en yakın, aşağı-yukarı uçacak yeri olan boş sütun.
+        # (sütun, bee_path) ya da None. Uçan düşman yerleri çoğu zaman bir platformun hemen üstünde, orada yer yok
+        for c in sorted(range(len(rows[row])), key=lambda c: abs(c - col)):
+            if c == col or rows[row][c] == ".":
+                path = self.bee_path(rows, top, row, c)
+                if path:
+                    return c, path
+        return None
+
     def bee_path(self, rows, top, row, col):
         # Arının uçabileceği yol: (üst, alt) piksel; yeterince yer yoksa None. top = parçanın tepesi
         first, last = column_span(rows, row, col, BEE_RANGE)
@@ -469,8 +493,9 @@ class Level:
             roll -= chance
         return "coin"
 
-    def pick_chunk(self, top, exit_side):
+    def pick_chunk(self, top, exit_side, force_focus=False):
         # top = parçanın konacağı yer (alttaki parçanın tepesi), exit_side = alttaki parçanın çıkışı.
+        # force_focus = bölümde sadece tanıtılan şeyin olduğu parçalardan seç (varsa).
         # Girişi, alttaki parçanın çıkışının karşı tarafında olan parçalardan rastgele seç
         entry = "R" if exit_side == "L" else "L"
         # Yükseldikçe daha zor parçalar da seçilebilir. Zor modlarda harita baştan yukarıdaymış gibi seçilir
@@ -479,6 +504,8 @@ class Level:
         if stage:
             # Bölümde: sadece bölümün izin verdiği parçalar; tanıttığı şeyin olduğu parçalar daha sık
             options = allowed_chunks(stage, entry)
+            if force_focus:
+                options = [c for c in options if focused(stage, c)] or options
         else:
             max_difficulty = 1 + int(height // DIFFICULTY_STEP)
             options = [c for c in CHUNKS if c["entry"] == entry and c["difficulty"] <= max_difficulty]

@@ -105,7 +105,9 @@ DIFFICULTIES = {
 
 # Bölümler — "Oyna → Bölümler"; her bölümün haritası, düşmanları, lavı stages.py'de. Bir bölüm bitince
 # (en az 1 yıldız) sıradakinin kilidi açılır. Yıldızlar: bitirdin / altınların çoğu / hiç can kaybetmeden
-STAGE_LIVES = 3  # bölüme kaç canla başlanır (kalp toplayarak da en fazla bu kadar)
+# Her zorluğun kendi bölüm listesi var (stages.py STAGE_SETS); bölüme kaç canla başlanır, kalple en fazla kaç can
+STAGE_LIVES = {"easy": (4, 4), "normal": (3, 3), "hard": (2, 3), "ultra": (1, 3)}
+ITEM_BOOST = 5  # bölümde tanıtılan güçlendirme (stages.py "boost") kaç kat sık çıksın
 STAR_COIN_SHARE = 0.6  # 2. yıldız için bölümdeki altınların en az ne kadarı toplanmalı (0.6 = %60)
 FOCUS_WEIGHT = 4  # bölümde yeni tanıtılan şeyin (ör. yay) olduğu parçalar kaç kat sık gelsin
 STAGE_INTRO_TIME = 180  # bölüm başlarken adı ve "Yeni: ..." yazısı kaç kare görünür

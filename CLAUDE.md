@@ -76,13 +76,21 @@
   tarafı için her zorlukta parça olsun. `FINISH_CHUNKS` = {giriş tarafı: bitiş parçası} (bölüm modu; çıkışı `None`,
   `goal_row` = zirve satırı, `G` = bayrak; `mirror` çıkışsızı da aynalar).
 - `stages.py` — BÖLÜM MODU (kullanıcı kararı: sonsuz oyun da kalır; bölümler mevcut parçalardan, 3 yıldız, lav bazı
-  bölümlerde): `STAGES` = 20 bölüm, `stage(name, goal, intro, ...)` ile yazılır (alanlar dosyanın başında: `max_chunk`,
-  `features` (SMK), `focus` (bu işaretli parçalar `FOCUS_WEIGHT` kat sık), `walkers`/`flyers` tür ağırlıkları (boşsa
-  o düşman yok), `items`, `lava` (None / (bekleme, hız, en yüksek)), `hardness` (t aralığı), `base` mod, `extra`).
-  `seed` = 1000 + sıra (harita hep aynı). İlk 12 bölüm mekanikleri tek tek tanıtır. `stage_mode(stage)` → Level/Lava'nın
+  bölümlerde). HER ZORLUĞUN KENDİ 20 BÖLÜMÜ (kullanıcı kararı: "tamamen farklı bölümler", hepsi baştan açık, seçim
+  bölümler ekranındaki sekmelerden = ana menüdeki zorluk ayarıyla aynı): `STAGE_SETS` = {"easy": EASY_STAGES, "normal":
+  NORMAL_STAGES (ilk yazılan liste, haritaları korunsun diye seed 1000+), "hard": HARD_STAGES, "ultra": ULTRA_STAGES},
+  `STAGE_COUNT` = 20 (hepsinde aynı olmalı). Kolay/Orta mekanikleri tek tek tanıtır; Zor/Ultra'da her bölüm bir şeyin
+  sınavı (ör. "Diken Tarlası", "Lav Nehri"); `hard`/`ultra` = o listelerin varsayılanlı `partial(stage, ...)`'ı.
+  `stage(name, goal, intro, ...)` alanları dosyanın başında: `max_chunk`, `features` (SMK), `focus` (bu işaretli parçalar
+  `FOCUS_WEIGHT` kat sık; planda hiç yoksa Level ilk parçayı onlardan seçer), `walkers`/`flyers` tür ağırlıkları (boşsa
+  o düşman yok), `items`, `boost` (tanıtılan eşya: `ITEM_BOOST` kat sık + ilk altının yerine kesin gelir), `lava`
+  (None / (bekleme, hız, en yüksek)), `hardness` (t aralığı), `base` mod, `extra`. Her bölüme `seed` (SEED_BASE[mod] +
+  sıra) ve `difficulty` yazılır; canlar settings `STAGE_LIVES[mod]`. `stage_mode(stage)` → Level/Lava'nın
   mod sözlüğü (base + `walker_kinds`, `flyer_kinds`, `magnet_chance`, `shield_chance`, `lava` bool, `hardness`);
-  `allowed_chunks(stage, entry)`, `focused`, `check_stages()` (açılışta). Bölüm değişince scratchpad'deki gibi
-  bir betikle her bölümü üretip bak (bayrak yüksekliği, çıkan düşman/yapı).
+  `allowed_chunks(stage, entry)`, `focused`, `check_stages()` (açılışta). Bölüm değişince bir betikle her bölümü
+  üretip bak (Level kur, plan bitene kadar `update` → bayrak yüksekliği, çıkan düşman/yapı/eşya, aynı seed aynı harita).
+  ARI: `Level.bee_spot` aynı satırda aşağı-yukarı uçacak yeri olan en yakın sütunu arar (uçan düşman yerleri çoğu zaman
+  platformun hemen üstünde, orada yer yok; eskiden hep yarasaya dönüyordu).
 - `enemy.py` — ortak `Patrol` (`patrol()`: `start`-`end` piksel arasında gidip gelir, `vertical` ise dikeyde; ondalıklı `pos`,
   `old_top` = önceki karedeki üst kenar, `spiky` = üstüne basılamaz); resimler `frames(tür)` ile bir kere hazırlanır.
   Hepsinin `update(target)`'ı karakterin kutusunu alır (`level.enemies.update(player.rect)`; sadece topçu kullanır).
@@ -143,7 +151,8 @@
   yeniden yazılmaz).
 - `storage.py` — kalıcı kayıtlar, `STORES` = tür → (dosya, localStorage adı): "height" (`bestheight.txt`, asıl
   rekor), "score" (`highscore.txt`, en yüksek puan) — rekorlar HER MODUN AYRI: `load_record/save_record(..., mode)`,
-  "stages" (`stages.json`: `{"stars": [...]}` her bölümün en iyi yıldızı; Game uzunluğu STAGES'e uydurur),
+  "stages" (`stages.json`: `{"stars": [...]}` her bölümün en iyi yıldızı; HER ZORLUĞUN AYRI — `load_dict/save_dict(kind,
+  data, mode)`, Orta eski ad, diğerleri `stages-easy.json`...; `main.load_stars(mode)` uzunluğu STAGE_COUNT'a uydurur),
   `names(kind, mode)`: Orta eski adları kullanır, diğerlerinde ada `-easy`/`-hard`/`-ultra` eklenir (ör.
   `bestheight-ultra.txt`; .gitignore ve pygbag.ini'de de var), "stats" (`stats.json`: games/climbed/coins/enemies toplamları),
   "options" (`options.json`: muted, difficulty, music_volume, effects_volume). `load_record/save_record` (sayı), `load_dict(kind, defaults)/save_dict`
@@ -153,15 +162,17 @@
   döndürür (dokunma `FINGERDOWN`, sol tık, klavye ↑↓/W-S + Enter/Boşluk; `MOUSEMOTION` ile seçili olan değişir;
   `focus` = seçili); `draw(screen, labels)`. `take_click()`: `BUTTON_CLICK_GAP` ms içindeki ikinci tıklama sayılmaz
   (telefonda bir dokunuş hem parmak hem fare olayı gelebilir; ör. menüden dönünce alttaki düğmeye de basılıyordu).
-  `PauseButton` oyunda sağ üstte ⏸ (`clicked(event)`). `StageGrid(count, back_top)`: bölüm kutuları (4 sütun) + Geri;
-  `handle_event(event, unlocked)` → sıra / "locked" / "back"; `set_focus(i)` (i = count → Geri); `draw(screen, stars, unlocked)`. `Slider(center_y)` kaydırma çubuğu: `value` 0..`VOLUME_STEPS`,
+  `PauseButton` oyunda sağ üstte ⏸ (`clicked(event)`). `StageGrid(count, modes, back_top)`: üstte zorluk sekmeleri,
+  bölüm kutuları (4 sütun) + Geri; `handle_event(event, unlocked, mode)` → sıra / "locked" / "back" / zorluk adı (sekme);
+  `set_focus(i)` (-1 = sekmeler: sağ/sol zorluğu değiştirir, count = Geri); `draw(screen, stars, unlocked, mode)`. `Slider(center_y)` kaydırma çubuğu: `value` 0..`VOLUME_STEPS`,
   parmak/fareyle sürükle veya dokun (`handle_event` → değişti mi), `nudge(±1)` klavye için. Düğme renk/boyları settings "Menü düğmeleri".
 - `screens.py` — `SOUND_MENU` (`SoundMenu`: ses ayarları ekranı; Müzik + Efektler çubukları, "sound" (Ses: Açık/Kapalı)
   ve "back" düğmeleri; ↑↓ seçer, ←→ çubuğu ayarlar; `handle_event` → "music"/"effects"/"sound"/"back"),
   her ekranın `Buttons`'ı (`MAIN_BUTTONS` play/difficulty/howto/records/sound_menu, `BACK_BUTTON`,
   `PAUSE_BUTTONS` resume/sound/menu, `GAME_OVER_BUTTONS` again/menu, `PLAY_BUTTONS` stages/endless/back, `STAGE_GRID`,
   `CLEAR_BUTTONS` next/again/stages, `LAST_CLEAR_BUTTONS`), bölüm ekranları: `draw_play_select`, `draw_stages`,
-  `draw_stage_intro` (bölüm başında ad + intro + hedef), `draw_stage_clear(screen, index, result, shown, ready)` (yıldızlar
+  ekran fonksiyonları `mode` alır (`STAGE_SETS[mode]`), `stage_title(mode, index)`;
+  `draw_stage_intro` (bölüm başında ad + intro + hedef), `draw_stage_clear(screen, mode, index, result, shown, ready)` (yıldızlar
   sırayla, 3 şart: bayrak / altın ≥ `stars_needed(total)` (`STAR_COIN_SHARE`) / hiç can kaybetmeden), `draw_stage_failed`, `LABELS` sabit yazılar (değişenleri main
   verir); `draw_main_menu` (logo = `title.draw_logo`, "Rekor: N m", düğmeler, web'de HEP `draw_slow_hint` — kullanıcı isteği),
   `draw_howto` (kontroller + `HOWTO_ROWS`: oyundaki resimlerle her şeyin açıklaması — yeni öğe eklenince buraya da
@@ -201,7 +212,8 @@
   (kaybedince VE durdurup ana menüye dönünce) rekorları + istatistikleri kaydeder. `handle_event`, `update(steps, touch)`,
   `draw(...)`. M tuşu her yerde `toggle_sound()` (kaydedilir).
   BÖLÜM AKIŞI: menü "play" → "play_select" (Bölümler / Sonsuz Oyun / Geri) → "stages" (`open_stages()`; arkada sonsuz harita)
-  → `start(index)` (`Game.stage` = sıra, None = sonsuz; `intro` = `STAGE_INTRO_TIME`) → bayrağa değince `clear_stage()`
+  → `start(index)` (`Game.stage` = seçili zorluğun listesinde sıra, None = sonsuz; `Game.stages`/`Game.stars` seçili
+  zorluğunkiler, `stage_stars` = mod → liste, `all_stars()` toplam; sekme → `set_difficulty(mode)`; `intro` = `STAGE_INTRO_TIME`) → bayrağa değince `clear_stage()`
   → "stage_clear" (`clear_result`, `stars_shown`, `STAGE_CLEAR_DELAY`; "win" sesi) → Sonraki/Tekrar/Bölümler. Bölümde can
   biterse `draw_stage_failed` (Tekrar Dene / Bölümler); durdurunca "menu" düğmesi "Bölümler" yazar, `to_menu()` bölümdeyse
   `open_stages()`. `unlocked(i)`: ilki hep açık, sonraki önceki ≥1 yıldızla (`UNLOCK_ALL_STAGES` deneme için). `finish()`
@@ -297,8 +309,8 @@ Açık depoda çalışma durumu girişsiz bakılabilir: https://api.github.com/r
   Kolay/orta/zor MODLARI sonra, ana menüyle birlikte (her modun ayrı rekoru olsun).
 - Sonra belki: başka güçlendirmeler (ör. jetpack).
 - BÖLÜM MODU yapıldı (2026-10-09; kullanıcı fikri: "Oyna'ya basınca bölümler, biri bitince sonrakinin kilidi açılsın").
-  20 bölüm, 3 yıldız, lav bazı bölümlerde, sonsuz oyun da duruyor. Kullanıcı oynayıp bölüm zorluğu/sayıları için geri
-  bildirim verecek (stages.py).
+  20 bölüm, 3 yıldız, lav bazı bölümlerde, sonsuz oyun da duruyor. Sonra her zorluğa ayrı 20 bölüm (toplam 80;
+  canlar Kolay 4, Orta 3, Zor 2, Ultra 1). Kullanıcı oynayıp bölüm zorluğu/sayıları için geri bildirim verecek (stages.py).
 - YENİ DÜŞMANLAR yapıldı (kullanıcı dördünü de seçti): zıplayan sümük, dikenli kirpi, ateş atan topçu, dikey uçan arı.
   Düşman sayısı/oranı değişmedi (kullanıcı isteği). Tür sıklığı settings `WALKER_KINDS`/`FLYER_KINDS`.
 - ANA MENÜ yapıldı (Oyna, Zorluk, Nasıl Oynanır, Rekorlar, Ses Ayarları (müzik/efekt seviyesi) + oyunda durdur). Web'de menüde "Düşük Güç Modu'nu

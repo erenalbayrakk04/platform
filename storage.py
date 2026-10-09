@@ -25,7 +25,7 @@ STORES = {
     "score": (HIGHSCORE_FILE, HIGHSCORE_KEY),  # en yüksek puan
     "stats": (STATS_FILE, STATS_KEY),  # toplamlar (oynanan oyun, altın...)
     "options": (OPTIONS_FILE, OPTIONS_KEY),  # ses kapalı mı, zorluk
-    "stages": (STAGES_FILE, STAGES_KEY),  # her bölümün en iyi yıldızı
+    "stages": (STAGES_FILE, STAGES_KEY),  # her bölümün en iyi yıldızı (her zorluğun ayrı)
 }
 
 
@@ -82,11 +82,12 @@ def save_record(kind, value, mode=None):
     save_text(kind, str(value), mode)
 
 
-def load_dict(kind, defaults):
-    # Sözlük olarak kayıt (JSON). Eksik veya bozuk değerler yerine defaults kullanılır
+def load_dict(kind, defaults, mode=None):
+    # Sözlük olarak kayıt (JSON). Eksik veya bozuk değerler yerine defaults kullanılır.
+    # mode = zorluk modu (bölüm yıldızları gibi her modun ayrı olan kayıtlar için)
     data = dict(defaults)
     try:
-        saved = json.loads(load_text(kind))
+        saved = json.loads(load_text(kind, mode))
         for key, value in saved.items():
             if key in defaults and type(value) is type(defaults[key]):
                 data[key] = value
@@ -95,5 +96,5 @@ def load_dict(kind, defaults):
     return data
 
 
-def save_dict(kind, data):
-    save_text(kind, json.dumps(data))
+def save_dict(kind, data, mode=None):
+    save_text(kind, json.dumps(data), mode)

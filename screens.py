@@ -25,7 +25,7 @@ from settings import (
     STAR_COIN_SHARE,
 )
 from score import draw_text
-from stages import STAGES
+from stages import STAGE_SETS, STAGE_COUNT
 from title import draw_logo
 from ui import Buttons, Slider, StageGrid, take_click, ACTIVATE_KEYS, UP_KEYS, DOWN_KEYS
 import art
@@ -38,7 +38,7 @@ BACK_BUTTON = Buttons(["back"], top=655)
 PAUSE_BUTTONS = Buttons(["resume", "sound", "menu"], top=330)
 GAME_OVER_BUTTONS = Buttons(["again", "menu"], top=505)
 PLAY_BUTTONS = Buttons(["stages", "endless", "back"], top=345)
-STAGE_GRID = StageGrid(len(STAGES), back_top=655)
+STAGE_GRID = StageGrid(STAGE_COUNT, list(DIFFICULTY_NAMES), back_top=655)
 CLEAR_BUTTONS = Buttons(["next", "again", "stages"], top=505)
 LAST_CLEAR_BUTTONS = Buttons(["again", "stages"], top=505)  # son bölüm bitince "Sonraki" yok
 
@@ -298,12 +298,12 @@ def stars_needed(total):
     return math.ceil(round(total * STAR_COIN_SHARE, 6))
 
 
-def stage_title(index):
-    return f"{index + 1}. Bölüm: {STAGES[index]['name']}"
+def stage_title(mode, index):
+    return f"{index + 1}. Bölüm: {STAGE_SETS[mode][index]['name']}"
 
 
 def draw_play_select(screen, labels, mode_name, stars):
-    # Oyna'ya basınca: bölümler mi sonsuz oyun mu
+    # Oyna'ya basınca: bölümler mi sonsuz oyun mu. stars = bütün zorlukların yıldızları
     draw_overlay(screen)
     draw_logo(screen)
     draw_text(
@@ -312,37 +312,43 @@ def draw_play_select(screen, labels, mode_name, stars):
     )
     PLAY_BUTTONS.draw(screen, {**LABELS, **labels})
     small = font(MENU_SMALL_FONT_SIZE)
-    draw_text(screen, small, "Bölümler: sırayla bitir, yıldız topla", HINT_COLOR, center=(CENTER_X, 560))
+    draw_text(screen, small, "Bölümler: her zorlukta 20 bölüm, yıldız topla", HINT_COLOR, center=(CENTER_X, 560))
     draw_text(screen, small, f"Sonsuz Oyun: rekor için tırman ({mode_name})", HINT_COLOR, center=(CENTER_X, 586))
 
 
-def draw_stages(screen, stars, unlocked):
-    # Bölüm seçme ekranı: kutular + seçili bölümün adı ve hedefi
+def draw_stages(screen, mode, stars, unlocked):
+    # Bölüm seçme ekranı: üstte zorluk sekmeleri, kutular, seçili bölümün adı ve hedefi
     draw_overlay(screen)
-    draw_title(screen, "Bölümler", 60)
+    draw_title(screen, "Bölümler", 40)
     draw_text(
         screen, font(MENU_SMALL_FONT_SIZE + 2), f"Yıldızlar: {sum(stars)} / {3 * len(stars)}", RECORD_COLOR,
-        center=(CENTER_X, 108),
+        center=(CENTER_X, 130),
     )
-    STAGE_GRID.draw(screen, stars, unlocked)
+    STAGE_GRID.draw(screen, stars, unlocked, mode)
     focus = STAGE_GRID.focus
-    if focus < len(STAGES):
+    stages = STAGE_SETS[mode]
+    if 0 <= focus < len(stages):
         if unlocked(focus):
-            draw_text(screen, font(MENU_FONT_SIZE), stage_title(focus), center=(CENTER_X, 588))
-            info = f"Hedef: {STAGES[focus]['goal']} m" + ("   Lav var!" if STAGES[focus]["lava"] else "")
-            draw_text(screen, font(MENU_SMALL_FONT_SIZE), info, HINT_COLOR, center=(CENTER_X, 614))
+            draw_text(screen, font(MENU_FONT_SIZE), stage_title(mode, focus), center=(CENTER_X, 584))
+            info = f"Hedef: {stages[focus]['goal']} m" + ("   Lav var!" if stages[focus]["lava"] else "")
+            draw_text(screen, font(MENU_SMALL_FONT_SIZE), info, HINT_COLOR, center=(CENTER_X, 610))
         else:
-            draw_text(screen, font(MENU_FONT_SIZE), "Kilitli", HINT_COLOR, center=(CENTER_X, 588))
+            draw_text(screen, font(MENU_FONT_SIZE), "Kilitli", HINT_COLOR, center=(CENTER_X, 584))
             draw_text(
                 screen, font(MENU_SMALL_FONT_SIZE), "Önceki bölümü bitirince açılır", HINT_COLOR,
-                center=(CENTER_X, 614),
+                center=(CENTER_X, 610),
             )
+    elif focus < 0:
+        draw_text(
+            screen, font(MENU_SMALL_FONT_SIZE), "Her zorluğun bölümleri ayrı", HINT_COLOR, center=(CENTER_X, 597)
+        )
 
 
-def draw_stage_intro(screen, index, goal):
-    # Bölüm başlarken birkaç saniye: bölümün adı, hedefi ve yeni tanıtılan şey
-    stage = STAGES[index]
-    draw_text(screen, font(MENU_FONT_SIZE), f"{index + 1}. Bölüm", HINT_COLOR, center=(CENTER_X, 170))
+def draw_stage_intro(screen, mode, index, goal):
+    # Bölüm başlarken birkaç saniye: bölümün adı, hedefi ve tanıttığı şey
+    stage = STAGE_SETS[mode][index]
+    title = f"{index + 1}. Bölüm ({DIFFICULTY_NAMES[mode]})"
+    draw_text(screen, font(MENU_FONT_SIZE), title, HINT_COLOR, center=(CENTER_X, 170))
     draw_text(screen, font(MENU_FONT_SIZE + 14), stage["name"], TITLE_COLOR, center=(CENTER_X, 210))
     draw_text(screen, font(MENU_SMALL_FONT_SIZE + 2), stage["intro"], center=(CENTER_X, 250))
     draw_text(screen, font(MENU_SMALL_FONT_SIZE), f"Hedef: {goal} m", HINT_COLOR, center=(CENTER_X, 278))
@@ -360,12 +366,13 @@ def star_images():
     return STAR_IMAGES
 
 
-def draw_stage_clear(screen, index, result, shown, ready):
+def draw_stage_clear(screen, mode, index, result, shown, ready):
     # Bölüm bitti: yıldızlar (shown = şimdiye kadar beliren), hangi şart tuttu, düğmeler (ready olunca).
     # result = {"stars", "coins", "coins_total", "no_hurt", "unlocked"} (main.py)
     draw_overlay(screen)
     draw_title(screen, "Tebrikler!", 140)
-    draw_text(screen, font(MENU_SMALL_FONT_SIZE + 2), stage_title(index), HINT_COLOR, center=(CENTER_X, 185))
+    subtitle = f"{DIFFICULTY_NAMES[mode]} - {stage_title(mode, index)}"
+    draw_text(screen, font(MENU_SMALL_FONT_SIZE + 2), subtitle, HINT_COLOR, center=(CENTER_X, 185))
     images = star_images()
     for k in range(3):
         image = images["big" if k < shown else "big_empty"]
@@ -385,18 +392,20 @@ def draw_stage_clear(screen, index, result, shown, ready):
         draw_text(screen, small, text, (255, 255, 255) if done else HINT_COLOR, midleft=(102, y))
     if result["unlocked"]:
         draw_text(screen, font(MENU_FONT_SIZE), "Yeni bölüm açıldı!", RECORD_COLOR, center=(CENTER_X, 450))
-    elif index == len(STAGES) - 1:
-        draw_text(screen, font(MENU_FONT_SIZE), "Bütün bölümler bitti!", RECORD_COLOR, center=(CENTER_X, 450))
+    elif index == STAGE_COUNT - 1:
+        text = f"{DIFFICULTY_NAMES[mode]} bölümleri bitti!"
+        draw_text(screen, font(MENU_FONT_SIZE), text, RECORD_COLOR, center=(CENTER_X, 450))
     if ready:
-        buttons = CLEAR_BUTTONS if index < len(STAGES) - 1 else LAST_CLEAR_BUTTONS
+        buttons = CLEAR_BUTTONS if index < STAGE_COUNT - 1 else LAST_CLEAR_BUTTONS
         buttons.draw(screen, LABELS)
 
 
-def draw_stage_failed(screen, index, score, ready, slow=False):
+def draw_stage_failed(screen, mode, index, score, ready, slow=False):
     # Bölümde canlar bitti: ne kadar kalmıştı; Tekrar Dene / Bölümler
     draw_overlay(screen)
     draw_title(screen, "Kaybettin!", 200, GAME_OVER_COLOR)
-    draw_text(screen, font(MENU_SMALL_FONT_SIZE + 2), stage_title(index), HINT_COLOR, center=(CENTER_X, 243))
+    subtitle = f"{DIFFICULTY_NAMES[mode]} - {stage_title(mode, index)}"
+    draw_text(screen, font(MENU_SMALL_FONT_SIZE + 2), subtitle, HINT_COLOR, center=(CENTER_X, 243))
     draw_text(screen, font(TITLE_FONT_SIZE), f"{score.height} / {score.goal} m", center=(CENTER_X, 295))
     left = max(0, score.goal - score.height)
     draw_text(screen, font(MENU_FONT_SIZE), f"Bayrağa {left} m kalmıştı", RECORD_COLOR, center=(CENTER_X, 350))
