@@ -7,6 +7,7 @@ import random
 import pygame
 
 from settings import (
+    AD_COLOR,
     PIXEL_SCALE,
     LOGO_PIXEL,
     LOGO_OUTLINE_COLOR,
@@ -650,6 +651,22 @@ def lock_image():
     # Kilitli bölümün üstündeki asma kilit
     body = (170, 170, 190)
     return render(LOCK_ROWS, {"k": (210, 210, 225), "L": body, "l": shade(body, 0.7), "d": EYE_DARK})
+
+
+AD_ROWS = [
+    ".YYYYYY.",
+    "YYdYYYYY",
+    "YYddYYYY",
+    "YYdddYYY",
+    "YYddYYYY",
+    "YYdYYYYY",
+    ".yyyyyy.",
+]
+
+
+def ad_image():
+    # Reklam düğmelerindeki ▶ (video) işareti: oyuncu düğmenin reklam açtığını bilsin
+    return render(AD_ROWS, {"Y": AD_COLOR, "y": shade(AD_COLOR, 0.7), "d": EYE_DARK})
 
 
 LAVA_WAVE_ROWS = 8  # dalga şeridinin yüksekliği (piksel sanatı karesi)

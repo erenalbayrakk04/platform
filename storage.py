@@ -1,5 +1,5 @@
 # Kalıcı kayıtlar: rekorlar (her zorluk modunun ayrı), istatistikler, seçenekler (ses, zorluk), bölüm yıldızları,
-# skinler (cüzdan, satın alınanlar).
+# skinler (cüzdan, satın alınanlar), reklam sayısı (günlük bedava elmas).
 # Bilgisayarda oyun klasöründeki dosyalarda; tarayıcıda dosyaya yazılan şey sayfa kapanınca kaybolduğu için
 # tarayıcının kendi hafızasında (localStorage) saklanır. pygbag, tarayıcıya platform.window ile eriştirir.
 import json
@@ -19,6 +19,8 @@ from settings import (
     STAGES_KEY,
     SKINS_FILE,
     SKINS_KEY,
+    ADS_FILE,
+    ADS_KEY,
     DEFAULT_DIFFICULTY,
 )
 
@@ -30,6 +32,7 @@ STORES = {
     "options": (OPTIONS_FILE, OPTIONS_KEY),  # ses kapalı mı, zorluk
     "stages": (STAGES_FILE, STAGES_KEY),  # her bölümün en iyi yıldızı (her zorluğun ayrı)
     "skins": (SKINS_FILE, SKINS_KEY),  # cüzdan, satın alınan ve seçili skinler (skins.py Wardrobe)
+    "ads": (ADS_FILE, ADS_KEY),  # bugün reklamla kaç kez bedava elmas alındı (ads.py)
 }
 
 

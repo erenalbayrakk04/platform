@@ -19,6 +19,10 @@ from settings import (
     REVIVE_GEMS,
     REVIVE_TIME,
     REVIVE_INVINCIBLE,
+    ADS_TEST,
+    ADS_AFTER_GAMES,
+    FREE_GEMS,
+    NOTE_TIME,
     MUTE_KEY,
     COIN_COLOR,
     LIFE_COLOR,
@@ -53,6 +57,7 @@ import screens
 from title import TitleScreen
 from ui import PauseButton
 from skin_menu import SKIN_MENU
+from ads import Ads
 import skins
 from art import Background, shield_bubble
 from controls import TouchButtons, read_controls
@@ -99,18 +104,26 @@ class StepTimer:
         return steps
 
 
-def fps_wanted():
-    # Kare sayacı açık mı: settings.py'de SHOW_FPS ya da web'de adresin sonunda #fps
-    if SHOW_FPS:
-        return True
+def web_hash():
+    # Web'de adresin # işaretinden sonrası (deneme ayarları: .../platform/#fps#reklam); bilgisayarda boş
     if WEB:
         try:
             from platform import window
 
-            return "fps" in str(window.location.hash)
+            return str(window.location.hash)
         except Exception:
-            return False
-    return False
+            pass
+    return ""
+
+
+def fps_wanted():
+    # Kare sayacı açık mı: settings.py'de SHOW_FPS ya da web'de adresin sonunda #fps
+    return SHOW_FPS or "fps" in web_hash()
+
+
+def ads_test_wanted():
+    # Deneme reklamı (ads.py): settings.py'de ADS_TEST ya da web'de adresin sonunda #reklam
+    return ADS_TEST or "reklam" in web_hash()
 
 
 def hide_web_loader():
@@ -331,8 +344,8 @@ class Game:
     # Oyunun bütün durumu: hangi ekrandayız, rekorlar, seçenekler ve şu an oynanan bölüm.
     # Ekranlar (state): "title" (giriş ekranı, oyun bununla açılır), "menu" (ana menü), "play_select" (bölümler mi
     # sonsuz mu), "stages" (bölüm seçme), "skins" (karakterler), "sound" (ses ayarları), "howto" (nasıl oynanır),
-    # "records" (rekorlar), "playing" (oyun), "paused" (durdu), "revive" (canlar bitti: elmasla devam teklifi),
-    # "game_over" (kaybettin), "stage_clear" (bölüm bitti)
+    # "records" (rekorlar), "playing" (oyun), "paused" (durdu), "revive" (canlar bitti: elmasla / reklamla devam
+    # teklifi), "game_over" (kaybettin), "stage_clear" (bölüm bitti), "ad" (oyuncunun seçtiği reklam oynuyor)
     def __init__(self, sounds):
         self.sounds = sounds
         # Rekorlar her zorluk modunun ayrı: asıl hedef en yüksek tırmanış (blok), ayrıca en yüksek puan
@@ -372,6 +385,16 @@ class Game:
         self.game_over_timer = 0  # kaybettin ekranında düğmeler çıkana kadar kalan kare
         self.revived = False  # bu oyunda Devam Et kullanıldı mı (oyun başına bir kez)
         self.revive_timer = 0  # Devam Et teklifinin bitmesine kalan kare (düğmeler çıkana kadarki bekleme dahil)
+        # Ödüllü reklamlar (ads.py): şimdilik sadece deneme reklamı (#reklam), yoksa hiç teklif edilmez
+        self.ads = Ads(ads_test_wanted())
+        self.session_games = 0  # bu açılışta biten oyun (ADS_AFTER_GAMES: önce biraz oynasın)
+        self.revive_ad = None  # Devam Et'te reklam seçeneği: None (yok), "offer", "failed" (reklam gelmedi)
+        self.double = None  # oyun sonunda 2 kat elmas (reklamla): None (teklif yok), "offer", "done", "failed"
+        self.ad_reward = None  # oynayan reklamın ödülü: "revive" / "double" / "free_gems"
+        self.ad_back = None  # reklam bitince dönülecek ekran
+        self.ad_quiet = False  # reklam için ses kısıldı mı
+        self.note = ""  # ekranın altında kısa bilgi yazısı ("+2 elmas!", "Şu an reklam yok...")
+        self.note_timer = 0
         self.new_record = False
         self.pause_button = PauseButton()
         self.reset()
@@ -541,27 +564,31 @@ class Game:
         self.state = "stage_clear"
         self.clear_timer = STAGE_CLEAR_DELAY
         self.stars_shown = 0
-        (screens.CLEAR_BUTTONS if has_next else screens.LAST_CLEAR_BUTTONS).focus = 0
         self.sounds.stop_music()
         self.sounds.play("win")
         for goal in self.level.goals:
             burst(self.level.effects, goal.rect.center, COIN_COLOR)
         self.finish(gem_bonus=new_stars * GEMS_PER_STAR)
+        self.offer_double()
 
     def lose(self):
-        # Canlar bitti: oyun başına bir kez "Devam Et?" teklifi (cüzdanda elmas yetiyorsa), yoksa hemen kaybettin
+        # Canlar bitti: oyun başına bir kez "Devam Et?" teklifi (cüzdanda elmas yetiyorsa ya da reklam izlenebiliyorsa),
+        # yoksa hemen kaybettin
         self.sounds.stop_music()
-        if self.revived or self.wardrobe.balance("gems") < REVIVE_GEMS:
+        can_pay = self.wardrobe.balance("gems") >= REVIVE_GEMS
+        self.revive_ad = "offer" if self.ads_allowed() else None
+        if self.revived or not (can_pay or self.revive_ad):
             self.game_over()
             return
         self.state = "revive"
         self.revive_timer = REVIVE_TIME + GAME_OVER_DELAY  # düğmeler GAME_OVER_DELAY kare sonra çıkar
-        screens.REVIVE_BUTTONS.focus = 0
+        screens.revive_buttons(self.revive_ad).focus = 0 if can_pay else 1  # elmas yetmiyorsa reklam seçili
 
-    def revive(self):
-        # Devam Et: elmas cüzdandan düşer; karakter son durduğu güvenli yerde 1 canla, bir süre dokunulmaz devam
-        # eder, lav aşağı çekilir
-        if not self.wardrobe.spend("gems", REVIVE_GEMS):
+    def revive(self, paid=True):
+        # Devam Et: elmas cüzdandan düşer (paid; reklam izlendiyse bedava); karakter son durduğu güvenli yerde 1 canla,
+        # bir süre dokunulmaz devam eder, lav aşağı çekilir
+        if paid and not self.wardrobe.spend("gems", REVIVE_GEMS):
+            self.sounds.play("powerdown")  # elmas yetmiyor (düğme gri)
             return
         self.revived = True
         player = self.player
@@ -578,9 +605,76 @@ class Game:
         # Kaybettin ekranı; oyun burada kaydedilir (rekor, toplamlar, cüzdan)
         self.state = "game_over"
         self.game_over_timer = GAME_OVER_DELAY
-        screens.GAME_OVER_BUTTONS.focus = 0
         self.sounds.play("game_over")
         self.finish()
+        self.offer_double()
+
+    def end_buttons(self):
+        # Oyun sonu ekranının düğmeleri (kaybettin / bölüm bitti), 2 kat elmas teklifi varsa onunla
+        if self.state == "stage_clear":
+            kind = "clear" if self.stage + 1 < STAGE_COUNT else "last_clear"
+        else:
+            kind = "game_over"
+        return screens.end_buttons(kind, self.double)
+
+    def offer_double(self):
+        # Oyun sonunda: bu oyunda elmas kazanıldıysa reklamla 2 katı teklif edilir (reklam varsa); düğmeler sıfırlanır
+        earned = self.gems_found + self.gems_bonus
+        self.double = "offer" if earned > 0 and self.ads_allowed() else None
+        self.end_buttons().focus = 0
+
+    def ads_allowed(self):
+        # Reklam teklif edilebilir mi: reklam sistemi var ve oyuncu bu açılışta en az ADS_AFTER_GAMES oyun bitirdi
+        return self.ads.available() and self.session_games >= ADS_AFTER_GAMES
+
+    def free_gems_offer(self):
+        # Karakterler ekranında reklamla bedava elmas: kaç elmas (0 = teklif yok; günde FREE_GEM_ADS kez)
+        return FREE_GEMS if self.ads_allowed() and self.ads.free_gems_left() > 0 else 0
+
+    def watch_ad(self, reward):
+        # Oyuncu ödüllü reklamı seçti: oyun durur, reklam oynar ("ad"); bitince end_ad ödülü verir
+        self.ad_reward = reward
+        self.ad_back = self.state
+        self.state = "ad"
+        self.ads.show()
+
+    def quiet_for_ad(self, quiet):
+        # Reklam oynarken oyunun sesi kısılır, bitince ayarlardaki seviyesine döner
+        if quiet != self.ad_quiet:
+            self.ad_quiet = quiet
+            if quiet:
+                self.sounds.set_levels(0, 0)
+            else:
+                self.apply_volume()
+
+    def end_ad(self, watched):
+        # Reklam bitti: sonuna kadar izlendiyse ödül, yoksa "reklam yok" (ödül yok, düğme gri)
+        self.quiet_for_ad(False)
+        self.state = self.ad_back
+        reward = self.ad_reward
+        if not watched:
+            self.show_note("Şu an reklam yok, sonra tekrar dene")
+            if reward == "revive":
+                self.revive_ad = "failed"
+            elif reward == "double":
+                self.double = "failed"
+            return
+        if reward == "revive":
+            self.revive(paid=False)
+            return
+        gems = self.gems_found + self.gems_bonus if reward == "double" else FREE_GEMS
+        self.wardrobe.add_money(gems=gems)
+        if reward == "double":
+            self.double = "done"
+        else:
+            self.ads.count_free_gems()
+            SKIN_MENU.celebrate()
+        self.sounds.play("gem")
+        self.show_note(f"+{gems} elmas!")
+
+    def show_note(self, text):
+        self.note = text
+        self.note_timer = NOTE_TIME
 
     def finish(self, ended=True, gem_bonus=0):
         # Oyun bitti (kaybetti, bölümü bitirdi ya da yarıda menüye döndü): bu modun rekorlarını ve toplamları
@@ -601,6 +695,7 @@ class Game:
             self.high_scores[self.mode] = score.total
             save_record("score", score.total, self.mode)
         self.stats["games"] += 1
+        self.session_games += 1
         self.stats["climbed"] += score.height
         self.stats["coins"] += score.coins
         self.stats["enemies"] += score.enemies
@@ -630,6 +725,7 @@ class Game:
             elif action == "skins":
                 self.state = "skins"
                 SKIN_MENU.open(self.wardrobe.selected)
+                SKIN_MENU.offer = self.free_gems_offer()
             elif action == "difficulty":
                 self.next_difficulty()
             elif action == "sound_menu":
@@ -662,9 +758,10 @@ class Game:
                 self.start(choice)
 
         elif self.state == "stage_clear" and self.clear_timer == 0:
-            has_next = self.stage + 1 < STAGE_COUNT
-            action = (screens.CLEAR_BUTTONS if has_next else screens.LAST_CLEAR_BUTTONS).handle_event(event)
-            if action == "next":
+            action = self.end_buttons().handle_event(event)
+            if action == "double":
+                self.double_gems()
+            elif action == "next":
                 self.start(self.stage + 1)
             elif action == "again":
                 self.start(self.stage)
@@ -675,6 +772,9 @@ class Game:
             result = SKIN_MENU.handle_event(event, self.wardrobe, self.progress())
             if key == pygame.K_ESCAPE or result == "back":
                 self.state = "menu"
+            elif result == "free_gems":
+                if self.free_gems_offer():
+                    self.watch_ad("free_gems")
             elif result:
                 self.choose_skin(*result)
 
@@ -707,19 +807,29 @@ class Game:
                 self.to_menu()
 
         elif self.state == "revive" and self.revive_timer <= REVIVE_TIME:  # düğmeler çıktıysa
-            action = screens.REVIVE_BUTTONS.handle_event(event)
+            action = screens.revive_buttons(self.revive_ad).handle_event(event)
             if action == "revive":
                 self.revive()
+            elif action == "revive_ad":
+                if self.revive_ad == "offer":
+                    self.watch_ad("revive")
             elif action == "give_up" or key in PAUSE_KEYS:
                 self.game_over()
 
         elif self.state == "game_over" and self.game_over_timer == 0:
-            action = screens.GAME_OVER_BUTTONS.handle_event(event)
-            if action == "again":
+            action = self.end_buttons().handle_event(event)
+            if action == "double":
+                self.double_gems()
+            elif action == "again":
                 self.start(self.stage)
             elif action == "menu" or key == pygame.K_ESCAPE:
                 self.to_menu()
         return True
+
+    def double_gems(self):
+        # Oyun sonunda "2 Kat" düğmesi: reklamı izleyince bu oyunda kazanılan elmas bir kez daha verilir
+        if self.double == "offer":
+            self.watch_ad("double")
 
     def choose_skin(self, action, skin_id):
         # Karakterler ekranında bir şeye basıldı (skin_menu.py): giy, satın al, ya da olmadı (kilitli / altın yetmedi)
@@ -736,6 +846,7 @@ class Game:
 
     def update(self, steps, touch):
         # Oyun, geçen süre kadar adım ilerler (StepTimer)
+        self.note_timer = max(0, self.note_timer - steps)
         if self.state == "playing":
             controls = read_controls(touch)
             for _ in range(steps):
@@ -759,7 +870,14 @@ class Game:
         elif self.state == "game_over":
             self.game_over_timer = max(0, self.game_over_timer - steps)
         elif self.state == "skins":
+            SKIN_MENU.offer = self.free_gems_offer()
             SKIN_MENU.update(steps)
+        elif self.state == "ad":
+            # Reklam oynuyor: oyun bekler, ses kısılır; bitince ödül (ya da "reklam yok")
+            result = self.ads.update(steps)
+            self.quiet_for_ad(self.ads.playing)
+            if result:
+                self.end_ad(result == "done")
         elif self.state == "stage_clear":
             # Yıldızlar sırayla belirir (her biri bir "çın" sesiyle), sonra düğmeler çıkar
             self.clear_timer = max(0, self.clear_timer - steps)
@@ -782,6 +900,9 @@ class Game:
         # Giriş ekranının kendi sahnesi var; dokununca altında ana menü çizilir, giriş ekranı üstünde silinir
         if self.state == "title" and not self.title.leaving:
             self.title.draw(screen, background)
+            return
+        if self.state == "ad":
+            self.ads.draw(screen)
             return
         # Oyun dünyası diğer her ekranda arkada görünür
         draw_world(screen, background, self.level, self.player, self.camera, self.score)
@@ -820,13 +941,11 @@ class Game:
                 screens.draw_pause(screen, self.labels())
             elif self.state == "revive":
                 time_left = self.revive_timer / REVIVE_TIME if self.revive_timer <= REVIVE_TIME else None
-                screens.draw_revive(screen, self.score, self.wardrobe.balance("gems"), time_left)
+                screens.draw_revive(screen, self.score, self.wardrobe.balance("gems"), time_left, self.revive_ad)
             elif self.state == "stage_clear":
-                screens.draw_stage_clear(
-                    screen, self.mode, self.stage, self.clear_result, self.stars_shown, self.clear_timer == 0
-                )
+                screens.draw_stage_clear(screen, self.mode, self.stage, self.clear_result, self.stars_shown)
             elif self.state == "game_over" and self.stage is not None:
-                screens.draw_stage_failed(screen, self.mode, self.stage, self.score, self.game_over_timer == 0, slow)
+                screens.draw_stage_failed(screen, self.mode, self.stage, self.score, slow)
             elif self.state == "game_over":
                 screens.draw_game_over(
                     screen,
@@ -835,15 +954,22 @@ class Game:
                     self.best_height,
                     self.high_score,
                     self.new_record,
-                    self.game_over_timer == 0,
                     slow,
                 )
+            # Oyun sonu düğmeleri biraz bekledikten sonra çıkar (yanlışlıkla basılmasın)
+            ready = self.game_over_timer == 0 if self.state == "game_over" else self.clear_timer == 0
+            if self.state in ("game_over", "stage_clear") and ready:
+                stage_failed = self.state == "game_over" and self.stage is not None
+                earned = self.gems_found + self.gems_bonus
+                screens.draw_end_buttons(screen, self.end_buttons(), stage_failed, self.double, earned)
             if self.state in screens.NEW_SKIN_Y:  # görevle yeni açılan efsanevi skin, kazanılan elmas
                 screens.draw_new_skins(screen, self.new_skins, screens.NEW_SKIN_Y[self.state])
                 end_screen = "stage_failed" if self.state == "game_over" and self.stage is not None else self.state
                 screens.draw_gems_earned(
                     screen, self.gems_found, self.gems_bonus, self.gems_reason, screens.GEMS_EARNED_Y[end_screen]
                 )
+        if self.note_timer:  # kısa bilgi ("+2 elmas!", "Şu an reklam yok...")
+            screens.draw_note(screen, self.note)
 
 
 async def main():

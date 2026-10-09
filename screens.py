@@ -42,13 +42,33 @@ CENTER_X = SCREEN_WIDTH // 2
 MAIN_BUTTONS = Buttons(["play", "skins", "difficulty", "howto", "records", "sound_menu"], top=335, gap=60)
 BACK_BUTTON = Buttons(["back"], top=655)
 PAUSE_BUTTONS = Buttons(["resume", "sound", "menu"], top=330)
-GAME_OVER_BUTTONS = Buttons(["again", "menu"], top=505)
-REVIVE_BUTTONS = Buttons(["revive", "give_up"], top=470)
 PLAY_BUTTONS = Buttons(["stages", "endless", "back"], top=322, gap=84)  # aralık geniş: Sonsuz Oyun'un altında rekor yazar
 PLAY_RECORD_Y = 448  # "Sonsuz Oyun" düğmesinin altındaki rekor yazısı
 STAGE_GRID = StageGrid(STAGE_COUNT, list(DIFFICULTY_NAMES), back_top=655)
-CLEAR_BUTTONS = Buttons(["next", "again", "stages"], top=505)
-LAST_CLEAR_BUTTONS = Buttons(["again", "stages"], top=505)  # son bölüm bitince "Sonraki" yok
+# Devam Et teklifi: elmasla / (reklam varsa) reklamla / Hayır
+REVIVE_BUTTONS = Buttons(["revive", "give_up"], top=470)
+REVIVE_AD_BUTTONS = Buttons(["revive", "revive_ad", "give_up"], top=455)
+# Oyun sonu ekranları: (ekran, 2 kat elmas teklifi var mı) → düğmeler. "game_over" = kaybettin (bölümde de),
+# "clear" = bölüm bitti, "last_clear" = son bölüm bitti ("Sonraki" yok). 2 kat elmas (reklamla) hep en altta
+END_BUTTONS = {
+    ("game_over", False): Buttons(["again", "menu"], top=505),
+    ("game_over", True): Buttons(["again", "menu", "double"], top=505),
+    ("clear", False): Buttons(["next", "again", "stages"], top=505),
+    ("clear", True): Buttons(["next", "again", "stages", "double"], top=478, gap=58),  # alttaki bilgi yazısına değmesin
+    ("last_clear", False): Buttons(["again", "stages"], top=505),
+    ("last_clear", True): Buttons(["again", "stages", "double"], top=505),
+}
+# 2 kat elmas düğmesinin yazısı ({} = bu oyunda kazanılan elmas): teklif / alındı / reklam gelmedi
+DOUBLE_LABELS = {"offer": "2 Kat: +{}", "done": "+{} elmas alındı!", "failed": "Reklam yok"}
+
+
+def revive_buttons(ad):
+    # Devam Et ekranının düğmeleri; ad = reklam seçeneği (None = yok, "offer", "failed")
+    return REVIVE_AD_BUTTONS if ad else REVIVE_BUTTONS
+
+
+def end_buttons(kind, double):
+    return END_BUTTONS[kind, double is not None]
 
 # Düğme yazıları; değişenler ("sound", "difficulty") main.py'den gelir
 LABELS = {
@@ -65,6 +85,7 @@ LABELS = {
     "endless": "Sonsuz Oyun",
     "next": "Sonraki Bölüm",
     "revive": f"Devam Et: {REVIVE_GEMS}",
+    "revive_ad": "Reklam İzle",
     "give_up": "Hayır",
 }
 
@@ -84,6 +105,31 @@ def draw_overlay(screen):
         overlay.fill((0, 0, 0, OVERLAY_ALPHA))
         _cache["overlay"] = overlay
     screen.blit(_cache["overlay"], (0, 0))
+
+
+def ad_icon():
+    if "ad" not in _cache:
+        _cache["ad"] = art.ad_image()
+    return _cache["ad"]
+
+
+def draw_button_icons(screen, buttons, action, left=None, right=None):
+    # Düğmenin içinde solda / sağda küçük resim (▶ reklam, elmas)
+    rect = buttons.rects[buttons.actions.index(action)]
+    if left is not None:
+        screen.blit(left, left.get_rect(midleft=(rect.left + 14, rect.centery)))
+    if right is not None:
+        screen.blit(right, right.get_rect(midright=(rect.right - 14, rect.centery)))
+
+
+def draw_note(screen, text):
+    # Ekranın altında kısa bilgi ("+2 elmas!", "Şu an reklam yok..."): koyu zemin üstünde
+    small = font(MENU_SMALL_FONT_SIZE + 2)
+    box = pygame.Rect(0, 0, small.size(text)[0] + 28, 32)
+    box.center = (CENTER_X, 700)
+    pygame.draw.rect(screen, (20, 18, 40), box, border_radius=10)
+    pygame.draw.rect(screen, HINT_COLOR, box, 2, border_radius=10)
+    draw_text(screen, small, text, center=box.center)
 
 
 def draw_slow_hint(screen):
@@ -284,8 +330,8 @@ def draw_pause(screen, labels):
     PAUSE_BUTTONS.draw(screen, {**LABELS, **labels})
 
 
-def draw_game_over(screen, score, mode_name, best_height, high_score, new_record, ready, slow=False):
-    # mode_name = oynanan zorluk modu (rekorlar o modun rekorları)
+def draw_game_over(screen, score, mode_name, best_height, high_score, new_record, slow=False):
+    # mode_name = oynanan zorluk modu (rekorlar o modun rekorları). Düğmeleri main.py çizer (draw_end_buttons)
     draw_overlay(screen)
     draw_title(screen, "Kaybettin!", 200, GAME_OVER_COLOR)
     draw_text(screen, font(MENU_SMALL_FONT_SIZE), f"Zorluk: {mode_name}", HINT_COLOR, center=(CENTER_X, 243))
@@ -299,16 +345,15 @@ def draw_game_over(screen, score, mode_name, best_height, high_score, new_record
     else:
         draw_text(screen, font(MENU_FONT_SIZE), f"Rekor: {best_height} m", RECORD_COLOR, center=(CENTER_X, 390))
     draw_text(screen, small, f"En yüksek puan: {high_score}", HINT_COLOR, center=(CENTER_X, 420))
-    # Düğmeler biraz bekledikten sonra çıkar (yanlışlıkla basılmasın)
-    if ready:
-        GAME_OVER_BUTTONS.draw(screen, LABELS)
     if slow:
         draw_slow_hint(screen)
 
 
-def draw_revive(screen, score, gems, time_left):
-    # Canlar bitti: oyun başına bir kez elmasla kaldığın yerden devam (main.py "revive"). gems = cüzdandaki elmas,
-    # time_left = geri sayım çubuğu (1 → 0); None = düğmeler henüz çıkmadı
+def draw_revive(screen, score, gems, time_left, ad):
+    # Canlar bitti: oyun başına bir kez elmasla (ya da reklam izleyerek) kaldığın yerden devam (main.py "revive").
+    # gems = cüzdandaki elmas, time_left = geri sayım çubuğu (1 → 0; None = düğmeler henüz çıkmadı),
+    # ad = reklam seçeneği (None = yok, "offer", "failed" = reklam gelmedi)
+    buttons = revive_buttons(ad)
     draw_overlay(screen)
     draw_title(screen, "Devam Et?", 185)
     small = font(MENU_SMALL_FONT_SIZE)
@@ -332,14 +377,30 @@ def draw_revive(screen, score, gems, time_left):
         fill.width = round(bar.width * time_left)
         if fill.width > 0:
             pygame.draw.rect(screen, GEM_COLOR, fill, border_radius=5)
-        REVIVE_BUTTONS.draw(screen, LABELS)
-        rect = REVIVE_BUTTONS.rects[0]
-        screen.blit(icon, icon.get_rect(midright=(rect.right - 14, rect.centery)))
-    # Cüzdandaki elmas
+        disabled = [name for name, off in (("revive", gems < REVIVE_GEMS), ("revive_ad", ad == "failed")) if off]
+        labels = {**LABELS, "revive_ad": "Reklam yok"} if ad == "failed" else LABELS
+        buttons.draw(screen, labels, disabled)
+        draw_button_icons(screen, buttons, "revive", right=icon)
+        if ad == "offer":
+            draw_button_icons(screen, buttons, "revive_ad", left=ad_icon())
+    # Cüzdandaki elmas (düğmelerin altında)
     text = f"Cüzdan: {gems}"
+    y = buttons.rects[-1].bottom + 36
     left = CENTER_X - (icon.get_width() + 6 + small.size(text)[0]) // 2
-    screen.blit(icon, icon.get_rect(midleft=(left, 600)))
-    draw_text(screen, small, text, art.tint(GEM_COLOR, 0.3), midleft=(left + icon.get_width() + 6, 601))
+    screen.blit(icon, icon.get_rect(midleft=(left, y)))
+    draw_text(screen, small, text, art.tint(GEM_COLOR, 0.3), midleft=(left + icon.get_width() + 6, y + 1))
+
+
+def draw_end_buttons(screen, buttons, stage_failed, double, earned):
+    # Oyun sonu ekranının düğmeleri (main.py hangi düğmeler olduğunu end_buttons ile seçer). stage_failed = bölümde
+    # kaybedildi (Tekrar Dene / Bölümler), double = 2 kat elmas (None / "offer" / "done" / "failed"),
+    # earned = bu oyunda kazanılan elmas
+    labels = {**LABELS, "double": DOUBLE_LABELS.get(double, "").format(earned)}
+    if stage_failed:
+        labels.update(again="Tekrar Dene", menu="Bölümler")
+    buttons.draw(screen, labels, ("double",) if double in ("done", "failed") else ())
+    if double == "offer":
+        draw_button_icons(screen, buttons, "double", left=ad_icon(), right=gem_icon())
 
 
 # Oyun sonu ekranlarında görevi yeni tamamlanan efsanevi skinlerin yazısının yüksekliği (y)
@@ -367,7 +428,7 @@ def draw_new_skins(screen, new_skins, y):
 
 
 # Oyun sonu ekranlarında kazanılan elmas yazısının yüksekliği (y)
-GEMS_EARNED_Y = {"game_over": 452, "stage_failed": 418, "stage_clear": 412}
+GEMS_EARNED_Y = {"game_over": 452, "stage_failed": 418, "stage_clear": 405}
 
 
 def gems_text(found, bonus, reason):
@@ -479,8 +540,8 @@ def star_images():
     return STAR_IMAGES
 
 
-def draw_stage_clear(screen, mode, index, result, shown, ready):
-    # Bölüm bitti: yıldızlar (shown = şimdiye kadar beliren), hangi şart tuttu, düğmeler (ready olunca).
+def draw_stage_clear(screen, mode, index, result, shown):
+    # Bölüm bitti: yıldızlar (shown = şimdiye kadar beliren), hangi şart tuttu. Düğmeleri main.py çizer.
     # result = {"stars", "coins", "coins_total", "no_hurt", "unlocked"} (main.py)
     draw_overlay(screen)
     draw_title(screen, "Tebrikler!", 140)
@@ -504,17 +565,14 @@ def draw_stage_clear(screen, mode, index, result, shown, ready):
         screen.blit(icon, icon.get_rect(center=(80, y)))
         draw_text(screen, small, text, (255, 255, 255) if done else HINT_COLOR, midleft=(102, y))
     if result["unlocked"]:
-        draw_text(screen, font(MENU_FONT_SIZE), "Yeni bölüm açıldı!", RECORD_COLOR, center=(CENTER_X, 450))
+        draw_text(screen, font(MENU_FONT_SIZE), "Yeni bölüm açıldı!", RECORD_COLOR, center=(CENTER_X, 438))
     elif index == STAGE_COUNT - 1:
         text = f"{DIFFICULTY_NAMES[mode]} bölümleri bitti!"
-        draw_text(screen, font(MENU_FONT_SIZE), text, RECORD_COLOR, center=(CENTER_X, 450))
-    if ready:
-        buttons = CLEAR_BUTTONS if index < STAGE_COUNT - 1 else LAST_CLEAR_BUTTONS
-        buttons.draw(screen, LABELS)
+        draw_text(screen, font(MENU_FONT_SIZE), text, RECORD_COLOR, center=(CENTER_X, 438))
 
 
-def draw_stage_failed(screen, mode, index, score, ready, slow=False):
-    # Bölümde canlar bitti: ne kadar kalmıştı; Tekrar Dene / Bölümler
+def draw_stage_failed(screen, mode, index, score, slow=False):
+    # Bölümde canlar bitti: ne kadar kalmıştı (düğmeler Tekrar Dene / Bölümler: draw_end_buttons)
     draw_overlay(screen)
     draw_title(screen, "Kaybettin!", 200, GAME_OVER_COLOR)
     subtitle = f"{DIFFICULTY_NAMES[mode]} - {stage_title(mode, index)}"
@@ -523,7 +581,5 @@ def draw_stage_failed(screen, mode, index, score, ready, slow=False):
     left = max(0, score.goal - score.height)
     draw_text(screen, font(MENU_FONT_SIZE), f"Bayrağa {left} m kalmıştı", RECORD_COLOR, center=(CENTER_X, 350))
     draw_text(screen, font(MENU_SMALL_FONT_SIZE), score.loot_text(), HINT_COLOR, center=(CENTER_X, 385))
-    if ready:
-        GAME_OVER_BUTTONS.draw(screen, {**LABELS, "again": "Tekrar Dene", "menu": "Bölümler"})
     if slow:
         draw_slow_hint(screen)

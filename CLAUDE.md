@@ -168,7 +168,8 @@
   `names(kind, mode)`: Orta eski adları kullanır, diğerlerinde ada `-easy`/`-hard`/`-ultra` eklenir (ör.
   `bestheight-ultra.txt`; .gitignore ve pygbag.ini'de de var), "stats" (`stats.json`: games/climbed/coins/enemies toplamları),
   "options" (`options.json`: muted, difficulty, music_volume, effects_volume), "skins" (`skins.json`: coins + gems =
-  cüzdan, owned, selected, known — bkz. skins.py `Wardrobe`). `load_record/save_record` (sayı), `load_dict(kind, defaults)/save_dict`
+  cüzdan, owned, selected, known — bkz. skins.py `Wardrobe`), "ads" (`ads.json`: day + free_gems = bugün reklamla kaç
+  kez bedava elmas alındı). `load_record/save_record` (sayı), `load_dict(kind, defaults)/save_dict`
   (JSON; eksik/bozuk/yanlış tipli değer → default). Dosyalar oyun klasöründe, git ve pygbag dışı; okunamazsa
   default, yazılamazsa sessiz; web'de (`settings.WEB`, `sys.platform == "emscripten"`) `platform.window.localStorage`.
 - `ui.py` — `Buttons(actions, top, gap)`: alt alta ortalı düğmeler; `handle_event(event)` basılan düğmenin adını
@@ -183,10 +184,13 @@
   ve "back" düğmeleri; ↑↓ seçer, ←→ çubuğu ayarlar; `handle_event` → "music"/"effects"/"sound"/"back"),
   her ekranın `Buttons`'ı (`MAIN_BUTTONS` play/skins/difficulty/howto/records/sound_menu — 6 düğme, `gap=60`; web'de
   altta "Düşük Güç Modu" yazısı olduğu için daha fazla düğme sığmaz, `BACK_BUTTON`,
-  `PAUSE_BUTTONS` resume/sound/menu, `GAME_OVER_BUTTONS` again/menu, `PLAY_BUTTONS` stages/endless/back, `STAGE_GRID`,
-  `CLEAR_BUTTONS` next/again/stages, `LAST_CLEAR_BUTTONS`), bölüm ekranları: `draw_play_select` (Sonsuz Oyun düğmesinin altında seçili zorluğun "Rekor: N m"si), `draw_stages`,
+  `PAUSE_BUTTONS` resume/sound/menu, `PLAY_BUTTONS` stages/endless/back, `STAGE_GRID`, Devam Et: `revive_buttons(ad)`
+  (`REVIVE_BUTTONS` revive/give_up, reklam varsa `REVIVE_AD_BUTTONS` revive/revive_ad/give_up), oyun sonu:
+  `end_buttons(kind, double)` → `END_BUTTONS[(game_over|clear|last_clear, 2 kat teklifi var mı)]` (2 kat = "double", hep
+  en altta); oyun sonu ekran fonksiyonları düğme ÇİZMEZ, main `draw_end_buttons(screen, buttons, stage_failed, double,
+  earned)` ile çizer (`DOUBLE_LABELS`; ▶ = `ad_icon()`, `draw_button_icons`), `draw_note` = alttaki kısa bilgi kutusu), bölüm ekranları: `draw_play_select` (Sonsuz Oyun düğmesinin altında seçili zorluğun "Rekor: N m"si), `draw_stages`,
   ekran fonksiyonları `mode` alır (`STAGE_SETS[mode]`), `stage_title(mode, index)`;
-  `draw_stage_intro` (bölüm başında ad + intro + hedef), `draw_stage_clear(screen, mode, index, result, shown, ready)` (yıldızlar
+  `draw_stage_intro` (bölüm başında ad + intro + hedef), `draw_stage_clear(screen, mode, index, result, shown)` (yıldızlar
   sırayla, 3 şart: bayrak / altın ≥ `stars_needed(total)` (`STAR_COIN_SHARE`) / hiç can kaybetmeden), `draw_stage_failed`, `LABELS` sabit yazılar (değişenleri main
   verir); `draw_main_menu` (logo = `title.draw_logo`, "Rekor: N m", düğmeler, web'de HEP `draw_slow_hint` — kullanıcı isteği),
   `draw_howto` (kontroller + `HOWTO_ROWS`: oyundaki resimlerle her şeyin açıklaması — yeni öğe eklenince buraya da
@@ -229,7 +233,14 @@
   Devam Et / Hayır — `GAME_OVER_DELAY` kare sonra çıkar, ölürken basılan tuş elması harcamasın; cüzdan). Devam Et →
   `revive()`: `wardrobe.spend("gems", ...)`, 1 can, `respawn()`, `REVIVE_INVINCIBLE`, lav `push_back`, müzik baştan.
   Hayır / ESC / `REVIVE_TIME` bitince → `game_over()` → "game_over"
-  (`GAME_OVER_DELAY` kare düğme yok; `finish()` burada) → Tekrar Oyna (`start()`) / Ana Menü (`to_menu()`). `finish()` oyun bitince
+  (`GAME_OVER_DELAY` kare düğme yok; `finish()` burada) → Tekrar Oyna (`start()`) / Ana Menü (`to_menu()`).
+  REKLAMLAR (ödüllü, oyuncu seçer; `ads` = `ads.Ads`): `ads_allowed()` = reklam var VE bu açılışta `session_games` ≥
+  `ADS_AFTER_GAMES`. Devam Et'te `revive_ad` (None/"offer"/"failed"): elmas yetmese de reklamla teklif çıkar (Devam Et
+  gri, reklam düğmesi seçili). Oyun sonunda `offer_double()` (game_over ve clear_stage'de finish'ten sonra): kazanılan
+  elmas > 0 ise `double` = "offer" → "2 Kat: +N" → reklam → elmas bir daha ("done", gri "+N elmas alındı!"). Karakterler
+  ekranında `free_gems_offer()` → `SKIN_MENU.offer`. `watch_ad(reward)` → "ad" durumu (oyun durur, `ads.draw`; ses
+  `quiet_for_ad` ile kısılır) → `end_ad(watched)`: ödül ya da "Şu an reklam yok" (`show_note`, `NOTE_TIME`) + düğme
+  "failed" (gri). `web_hash()` = web adresinin # sonrası (`#fps`, `#reklam`). `finish()` oyun bitince
   (kaybedince VE durdurup ana menüye dönünce) rekorları + istatistikleri kaydeder. `handle_event`, `update(steps, touch)`,
   `draw(...)`. M tuşu her yerde `toggle_sound()` (kaydedilir).
   BÖLÜM AKIŞI: menü "play" → "play_select" (Bölümler / Sonsuz Oyun / Geri) → "stages" (`open_stages()`; arkada sonsuz harita)
@@ -323,7 +334,16 @@
   önizler; sahip olunan skine dokunmak hemen giyer; SATIN ALMAK sadece alttaki düğmeyle (yanlışlıkla alınmasın). Fare
   üstünden geçmek önizlemeyi DEĞİŞTİRMEZ (düğmeye giderken geçilen kutu alınmasın). Klavye: oklar (en üst satırdan
   yukarı = sekmeler, sağ/sol grup değiştirir), Enter (sahip olunmayan kutuda alttaki düğmeye geçer). `handle_event(event,
-  wardrobe, progress)` → ("select"/"buy"/"locked"/"poor", id) / "back" / None; `celebrate()` satın alınca konfeti.
+  wardrobe, progress)` → ("select"/"buy"/"locked"/"poor", id) / "back" / "free_gems" / None; `celebrate()` satın alınca
+  konfeti. `offer` > 0 ise cüzdan sola kayar, sağında "▶ +2 (elmas)" düğmesi (`free_rect`; klavye odağı n+2: kutulardan
+  aşağı → bu → Seç → Geri).
+- `ads.py` — ÖDÜLLÜ REKLAMLAR (para kazanma hazırlığı; kullanıcı kararı: oyuncu reklamı KENDİSİ seçer, zorunlu reklam
+  yok): `Ads(test)`: `available()` (reklam sistemi var ve `retry_at` geçti), `show()`, `update(steps)` → "done" /
+  "failed" / None, `end(result)` ("failed" → `AD_RETRY_TIME` ms teklif yok), `playing`, `free_gems_left()` /
+  `count_free_gems()` (günde `FREE_GEM_ADS`, storage "ads"), `draw(screen)`. ŞİMDİLİK GERÇEK REKLAM YOK (backend None →
+  reklam düğmeleri hiç görünmez); `ADS_TEST` ya da web adresi sonu `#reklam` → "test" backend: `AD_TEST_TIME` karelik
+  sahte "REKLAM" ekranı, sonra ödül. Platform seçilince (CrazyGames SDK `requestAd("rewarded", {adStarted, adFinished,
+  adError})` vb.) sadece buraya bağlayıcı yazılacak: web.tmpl'de JS reklamın durumunu window'a yazar, `update` okur.
 - `trail.py` — `Trail(kind, scale)`: efsanevi izleri (kısa ömürlü parçacıklar, çıktıkları yerde kalır; en fazla
   `TRAIL_LIMIT`): "spark" şimşek kıvılcımı + elektrik tozu, "fire" yükselen alev, "stars" yıldız tozu, "gold" dökülen
   altın pırıltı, "snow" süzülen kar, "rainbow" gökkuşağı şeridi (sadece hareket ederken), "shadow" silinen gölgeler
@@ -413,7 +433,7 @@ Açık depoda çalışma durumu girişsiz bakılabilir: https://api.github.com/r
   (oyuncuyu kaçırır; kullanıcı kabul etti). Kullanıcı kararları: platform (CrazyGames web portalı önerildi / Google Play)
   SONRA, önce oyun hazır olsun; oyuncunun SEÇEREK izlediği 3 ödüllü reklama hazırlık ("reklam izle devam et", "elmasları
   2 kat", "bedava elmas"); oyun arası (zorunlu) reklam istenmedi; İngilizce eklenecek. Plan: 1) Devam Et elmasla —
-  YAPILDI; 2) reklam yeri (`ads.py`, şimdilik görünmez, `#reklam` ile deneme reklamı); 3) İngilizce (`lang.py`).
+  YAPILDI; 2) reklam yeri (`ads.py`, şimdilik görünmez, `#reklam` ile deneme reklamı) — YAPILDI; 3) İngilizce (`lang.py`).
   CrazyGames kuralları (koda uyulacak): ödülün reklamsız yolu da olsun (elmas), oyun sırasında reklam yok, can her
   gidişte teklif yok, reklam düğmesi Hayır'la aynı boy ve reklam olduğu belli, reklam yoksa düğme görünmesin, reklamda
   ses kısılır. Ayrıca: Basic Launch'ta reklam kapalı (~2 hafta), oyuncular severse Full Launch'ta SDK + reklam + Data

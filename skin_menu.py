@@ -1,6 +1,7 @@
 # Karakterler ekranı: skin seçme ve satın alma. Üstte gruplar (Renkler / Karakterler / Efsanevi), ortada
 # önizlenen skin büyük çizilmiş, platformda yürüyüp zıplar (efsanevilerin izi de görünür), altında kutular,
-# cüzdandaki altın ve elmas, "Seç / Satın Al" düğmesi. Renkler altınla, Karakterler elmasla alınır.
+# cüzdandaki altın ve elmas (reklam varsa yanında "reklam izle, bedava elmas" düğmesi), "Seç / Satın Al" düğmesi.
+# Renkler altınla, Karakterler elmasla alınır.
 # Kutuya dokununca o skin önizlenir; senin olan bir skine dokununca hemen giyilir. Satın almak (ya da kilitli
 # skini denemek) için alttaki düğmeye basılır. Klavyede oklar + Enter. Ne olacağına main.py karar verir.
 import math
@@ -76,7 +77,8 @@ class SkinMenu:
         self.groups = list(skins.GROUP_NAMES)
         self.group = self.groups[0]
         self.current = skins.DEFAULT_SKIN  # önizlenen skin (alttaki düğme bunun için)
-        # Klavye odağı: -1 = sekmeler, 0..n-1 = kutular, n = Seç/Satın Al, n+1 = Geri (n = gruptaki skin sayısı)
+        # Klavye odağı: -1 = sekmeler, 0..n-1 = kutular, n = Seç/Satın Al, n+1 = Geri, n+2 = bedava elmas (reklam)
+        # (n = gruptaki skin sayısı)
         self.focus = 0
         width = SCREEN_WIDTH - 40
         tab_width = (width - (len(self.groups) - 1) * self.TAB_GAP) // len(self.groups)
@@ -108,6 +110,8 @@ class SkinMenu:
         self.confetti = []  # satın alınca saçılan parçalar: [x, y, vx, vy, yaş, renk]
         self.flash = 0  # para yetmedi uyarısı (kalan adım)
         self.flash_currency = "coins"  # hangi para yetmedi
+        self.offer = 0  # reklamla bedava elmas: kaç elmas (0 = teklif yok; main.py her karede söyler)
+        self.free_rect = pygame.Rect(0, 0, 0, 0)  # bedava elmas düğmesi (çizerken yeri hesaplanır)
 
     # --- Açma, seçim ---
     def skins_shown(self):
@@ -161,12 +165,17 @@ class SkinMenu:
             elif key in UP_KEYS:
                 f = f - self.COLUMNS if f >= self.COLUMNS else -1
             elif key in DOWN_KEYS:
-                f = f + self.COLUMNS if f + self.COLUMNS < n else n
+                f = f + self.COLUMNS if f + self.COLUMNS < n else n + 2 if self.offer else n
             if 0 <= f < n:
                 self.show(self.skins_shown()[f]["id"])
-        elif f == n:  # Seç / Satın Al
+        elif f == n + 2:  # bedava elmas (cüzdanın yanında)
             if key in UP_KEYS:
                 f = self.index_of(self.current)
+            elif key in DOWN_KEYS:
+                f = n
+        elif f == n:  # Seç / Satın Al
+            if key in UP_KEYS:
+                f = n + 2 if self.offer else self.index_of(self.current)
             elif key in DOWN_KEYS:
                 f = n + 1
         elif key in UP_KEYS:  # Geri
@@ -188,7 +197,7 @@ class SkinMenu:
         return "buy", skin["id"]
 
     def handle_event(self, event, wardrobe, progress):
-        # Döner: ("select" | "buy" | "locked" | "poor", skin adı), "back" ya da None
+        # Döner: ("select" | "buy" | "locked" | "poor", skin adı), "back", "free_gems" (reklam izle) ya da None
         n = len(self.skins_shown())
         if event.type == pygame.KEYDOWN:
             if event.key in ACTIVATE_KEYS:
@@ -196,6 +205,8 @@ class SkinMenu:
                     return None
                 if self.focus == n + 1:
                     return "back"
+                if self.focus == n + 2:
+                    return "free_gems"
                 if self.focus == n:
                     return self.press(wardrobe, progress)
                 if 0 <= self.focus < n:
@@ -214,6 +225,8 @@ class SkinMenu:
                 self.focus = n
             elif self.back.rects[0].collidepoint(event.pos):
                 self.focus = n + 1
+            elif self.offer and self.free_rect.collidepoint(event.pos):
+                self.focus = n + 2
             self.sync_buttons()
             return None
         pos = click_pos(event)
@@ -240,6 +253,10 @@ class SkinMenu:
             return self.press(wardrobe, progress)
         if self.back.rects[0].inflate(0, 8).collidepoint(pos) and take_click():
             return "back"
+        if self.offer and self.free_rect.inflate(0, 8).collidepoint(pos) and take_click():
+            self.focus = n + 2
+            self.sync_buttons()
+            return "free_gems"
         return None
 
     def celebrate(self):
@@ -256,6 +273,10 @@ class SkinMenu:
 
     # --- Önizlemedeki karakterin hareketi ---
     def update(self, steps):
+        n = len(self.skins_shown())
+        if self.focus == n + 2 and not self.offer:  # bedava elmas düğmesi kalktı (bugünlük bitti)
+            self.focus = n
+            self.sync_buttons()
         for _ in range(steps):
             self.time += 1
             self.flash = max(0, self.flash - 1)
@@ -323,6 +344,7 @@ class SkinMenu:
             "small_coins": scaled(coin, 0.5),
             "small_gems": scaled(gem, 0.5),
             "lock": scaled(art.lock_image(), 0.5),
+            "ad": scaled(art.ad_image(), 0.75),
             "platform": scaled(platform, PREVIEW_SCALE),
         }
 
@@ -349,7 +371,11 @@ class SkinMenu:
         info, info_color = self.info(skin, owned, wardrobe, progress)
         draw_text(screen, fonts[MENU_SMALL_FONT_SIZE], info, info_color, center=(CENTER_X, INFO_Y))
         self.draw_grid(screen, wardrobe, progress)
-        self.draw_wallet(screen, wardrobe, fonts[MENU_FONT_SIZE])
+        if self.offer:  # cüzdan sola kayar, sağında bedava elmas düğmesi
+            self.draw_free_gems(screen, fonts[MENU_FONT_SIZE])
+            self.draw_wallet(screen, wardrobe, fonts[MENU_FONT_SIZE], (20 + self.free_rect.left - 12) // 2)
+        else:
+            self.draw_wallet(screen, wardrobe, fonts[MENU_FONT_SIZE])
         self.draw_action(screen, skin, owned, wardrobe)
         self.back.draw(screen, {"back": "Geri"})
 
@@ -434,7 +460,26 @@ class SkinMenu:
         pygame.draw.circle(screen, SKIN_SELECTED_COLOR, center, 8)
         pygame.draw.lines(screen, WHITE, False, [(x - 4, y), (x - 1, y + 3), (x + 4, y - 3)], 2)
 
-    def draw_wallet(self, screen, wardrobe, font):
+    def draw_free_gems(self, screen, font):
+        # Cüzdanın sağında: ▶ (reklam) +2 (elmas resmi) — reklam izleyince bedava elmas
+        ad, gem = self.images["ad"], self.images["gems"]
+        text = f"+{self.offer}"
+        width = 10 + ad.get_width() + 6 + font.size(text)[0] + 4 + gem.get_width() + 10
+        self.free_rect = pygame.Rect(0, 0, width, 38)
+        self.free_rect.midright = (SCREEN_WIDTH - 18, WALLET_Y)
+        rect = self.free_rect
+        focused = self.focus == len(self.skins_shown()) + 2
+        pygame.draw.rect(screen, BUTTON_FOCUS_COLOR if focused else BUTTON_COLOR, rect, border_radius=10)
+        border = BUTTON_FOCUS_BORDER_COLOR if focused else BUTTON_BORDER_COLOR
+        pygame.draw.rect(screen, border, rect, 3 if focused else 2, border_radius=10)
+        x = rect.left + 10
+        screen.blit(ad, ad.get_rect(midleft=(x, rect.centery)))
+        x += ad.get_width() + 6
+        draw_text(screen, font, text, CURRENCY_COLORS["gems"], midleft=(x, rect.centery + 1))
+        x += font.size(text)[0] + 4
+        screen.blit(gem, gem.get_rect(midleft=(x, rect.centery)))
+
+    def draw_wallet(self, screen, wardrobe, font, center_x=CENTER_X):
         # Cüzdan: altın ve elmas (resim + sayı); para yetmeyince o para bir süre kırmızı yanıp söner
         items = []
         for currency in ("coins", "gems"):
@@ -442,7 +487,7 @@ class SkinMenu:
             color = GAME_OVER_COLOR if flashing else CURRENCY_COLORS[currency]
             items.append((self.images[currency], str(wardrobe.balance(currency)), color))
         widths = [icon.get_width() + 6 + font.size(text)[0] for icon, text, _ in items]
-        left = CENTER_X - (sum(widths) + 32 * (len(items) - 1)) // 2
+        left = center_x - (sum(widths) + 32 * (len(items) - 1)) // 2
         for (icon, text, color), width in zip(items, widths):
             screen.blit(icon, icon.get_rect(midleft=(left, WALLET_Y)))
             draw_text(screen, font, text, color, midleft=(left + icon.get_width() + 6, WALLET_Y + 1))

@@ -265,6 +265,8 @@ STAGES_FILE = "stages.json"  # her bölümün en iyi yıldızı
 STAGES_KEY = "platform-oyunu-bolumler"
 SKINS_FILE = "skins.json"  # cüzdandaki altın, satın alınan ve seçili skin
 SKINS_KEY = "platform-oyunu-karakterler"
+ADS_FILE = "ads.json"  # bugün reklamla kaç kez bedava elmas alındı (ads.py)
+ADS_KEY = "platform-oyunu-reklam"
 
 # Menü düğmeleri
 BUTTON_WIDTH = 250
@@ -300,6 +302,17 @@ GAME_OVER_DELAY = 60  # kaybettin ekranında tuşların kaç kare sonra çalış
 REVIVE_GEMS = 3  # kaç elmas (cüzdanda bu kadar yoksa teklif hiç çıkmaz)
 REVIVE_TIME = 480  # düğmeler çıktıktan sonra teklif kaç kare durur (60 kare = 1 saniye); bitince "Kaybettin"
 REVIVE_INVINCIBLE = 150  # devam edince kaç kare dokunulmaz (normal can kaybında INVINCIBLE_TIME)
+
+# Reklamlar (ads.py; para kazanma hazırlığı). Oyuncu reklamı KENDİSİ seçer: Devam Et, oyun sonunda 2 kat elmas,
+# Karakterler ekranında bedava elmas. Şimdilik gerçek reklam yok → reklam düğmeleri görünmez
+ADS_TEST = False  # True = deneme reklamı (sahte, AD_TEST_TIME kare) ile reklamlı ekranları dene; web'de adres sonu #reklam
+AD_TEST_TIME = 180  # deneme reklamı kaç kare sürer (60 kare = 1 saniye)
+AD_RETRY_TIME = 30000  # reklam gelmezse kaç milisaniye yeniden teklif edilmez
+ADS_AFTER_GAMES = 1  # oyun açıldıktan sonra bu kadar oyun bitmeden reklam teklif edilmez (önce biraz oynasın)
+FREE_GEMS = 2  # Karakterler ekranında bir reklam kaç elmas verir
+FREE_GEM_ADS = 3  # günde en fazla kaç kez
+NOTE_TIME = 150  # ekranın altındaki kısa bilgi yazısı ("Şu an reklam yok...") kaç kare görünür
+AD_COLOR = (255, 210, 40)  # reklam düğmelerindeki ▶ işareti
 
 # Oyunun adı (logo): giriş ekranında ve ana menüde aynı yerde, kalın piksel harflerle (art.py, LOGO_FONT)
 LOGO_PIXEL = 3  # harflerin her ince karesi kaç piksel (büyürse logo büyür)
