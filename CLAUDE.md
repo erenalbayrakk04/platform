@@ -300,7 +300,7 @@
   uzaylı, korsan, robot, ninja, şövalye, astronot), "legendary" Efsanevi (7; GÖREVLE açılır, parayla alınmaz, arkasında
   iz bırakır): Şimşek (40 oyun), Ejderha (150 düşman), Kozmik (toplam 2500 m), Tekboynuz (toplam 1000 altın), Kral
   (75 yıldız), Buz (Zor'da 150 m, sonsuz), Gölge (Ultra Zor'da 75 m, sonsuz). Bir grupta en fazla `GROUP_SIZE` (15)
-  skin. İKİ PARA (kullanıcı kararı): Renkler `coins=` ALTINLA (50-1200), Karakterler `gems=` ELMASLA (5-100); skinde
+  skin. İKİ PARA (kullanıcı kararı): Renkler `coins=` ALTINLA (50-1200), Karakterler `gems=` ELMASLA (10-200; kullanıcı ödüller kalınca elmas fiyatlarını yükseltmek istedi, ~2 kat); skinde
   `currency` ("coins"/"gems"/None) + `price`, `CURRENCY_NAMES`. Ucuzdan pahalıya dizili. `goal` = ("games"/"climbed"/"enemies"/"coins"/"stars"/
   "height-<mod>", hedef), `goal_text(goal)`. Koyu gökte kaybolan bacaklar için açık renk "L" (lavanta, gece, gökkuşağı).
   `frames(id)` resimleri bir kere hazırlar; `get(id)`, `in_group(g)`. `Wardrobe(lifetime_coins)`: kayıt (storage
