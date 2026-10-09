@@ -659,7 +659,9 @@ class Game:
             if self.state == "title":
                 self.title.draw_fading(screen, background)
         elif self.state == "play_select":
-            screens.draw_play_select(screen, self.labels(), DIFFICULTY_NAMES[self.mode], self.all_stars())
+            screens.draw_play_select(
+                screen, self.labels(), DIFFICULTY_NAMES[self.mode], self.all_stars(), self.best_height
+            )
         elif self.state == "stages":
             screens.draw_stages(screen, self.mode, self.stars, self.unlocked)
         elif self.state == "sound":

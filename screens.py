@@ -37,7 +37,8 @@ MAIN_BUTTONS = Buttons(["play", "difficulty", "howto", "records", "sound_menu"],
 BACK_BUTTON = Buttons(["back"], top=655)
 PAUSE_BUTTONS = Buttons(["resume", "sound", "menu"], top=330)
 GAME_OVER_BUTTONS = Buttons(["again", "menu"], top=505)
-PLAY_BUTTONS = Buttons(["stages", "endless", "back"], top=345)
+PLAY_BUTTONS = Buttons(["stages", "endless", "back"], top=322, gap=84)  # aralık geniş: Sonsuz Oyun'un altında rekor yazar
+PLAY_RECORD_Y = 448  # "Sonsuz Oyun" düğmesinin altındaki rekor yazısı
 STAGE_GRID = StageGrid(STAGE_COUNT, list(DIFFICULTY_NAMES), back_top=655)
 CLEAR_BUTTONS = Buttons(["next", "again", "stages"], top=505)
 LAST_CLEAR_BUTTONS = Buttons(["again", "stages"], top=505)  # son bölüm bitince "Sonraki" yok
@@ -302,8 +303,9 @@ def stage_title(mode, index):
     return f"{index + 1}. Bölüm: {STAGE_SETS[mode][index]['name']}"
 
 
-def draw_play_select(screen, labels, mode_name, stars):
-    # Oyna'ya basınca: bölümler mi sonsuz oyun mu. stars = bütün zorlukların yıldızları
+def draw_play_select(screen, labels, mode_name, stars, best_height):
+    # Oyna'ya basınca: bölümler mi sonsuz oyun mu. stars = bütün zorlukların yıldızları,
+    # best_height = seçili zorlukta sonsuz oyunun tırmanış rekoru (Sonsuz Oyun düğmesinin altında)
     draw_overlay(screen)
     draw_logo(screen)
     draw_text(
@@ -311,6 +313,10 @@ def draw_play_select(screen, labels, mode_name, stars):
         center=(CENTER_X, 260),
     )
     PLAY_BUTTONS.draw(screen, {**LABELS, **labels})
+    draw_text(
+        screen, font(MENU_SMALL_FONT_SIZE + 2), f"Rekor: {best_height} m", RECORD_COLOR,
+        center=(CENTER_X, PLAY_RECORD_Y),
+    )
     small = font(MENU_SMALL_FONT_SIZE)
     draw_text(screen, small, "Bölümler: her zorlukta 20 bölüm, yıldız topla", HINT_COLOR, center=(CENTER_X, 560))
     draw_text(screen, small, f"Sonsuz Oyun: rekor için tırman ({mode_name})", HINT_COLOR, center=(CENTER_X, 586))

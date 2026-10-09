@@ -173,7 +173,7 @@
   ve "back" düğmeleri; ↑↓ seçer, ←→ çubuğu ayarlar; `handle_event` → "music"/"effects"/"sound"/"back"),
   her ekranın `Buttons`'ı (`MAIN_BUTTONS` play/difficulty/howto/records/sound_menu, `BACK_BUTTON`,
   `PAUSE_BUTTONS` resume/sound/menu, `GAME_OVER_BUTTONS` again/menu, `PLAY_BUTTONS` stages/endless/back, `STAGE_GRID`,
-  `CLEAR_BUTTONS` next/again/stages, `LAST_CLEAR_BUTTONS`), bölüm ekranları: `draw_play_select`, `draw_stages`,
+  `CLEAR_BUTTONS` next/again/stages, `LAST_CLEAR_BUTTONS`), bölüm ekranları: `draw_play_select` (Sonsuz Oyun düğmesinin altında seçili zorluğun "Rekor: N m"si), `draw_stages`,
   ekran fonksiyonları `mode` alır (`STAGE_SETS[mode]`), `stage_title(mode, index)`;
   `draw_stage_intro` (bölüm başında ad + intro + hedef), `draw_stage_clear(screen, mode, index, result, shown, ready)` (yıldızlar
   sırayla, 3 şart: bayrak / altın ≥ `stars_needed(total)` (`STAR_COIN_SHARE`) / hiç can kaybetmeden), `draw_stage_failed`, `LABELS` sabit yazılar (değişenleri main
