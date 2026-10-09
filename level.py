@@ -367,14 +367,19 @@ class Level:
                 elif cell == "E":
                     # Yürüyen düşman yeri: altındaki platformun kenarları arasında yürür.
                     # Türü rastgele; sümüğün zıplayacak yeri (platformun iki üstü boş) olmalı
+                    # Topçu kıpırdamaz ve karakter onun tepesine bir alt platformdan zıplayamaz (topçu + 3 blok,
+                    # zıplamadan yüksek): platformun kenarında durursa oraya inilemez, yol kapanır. Bu yüzden hep
+                    # platformun iç karelerinden birinde durur; platform dar ise topçu gelmez
                     left, right = platform_run(rows, row_index, col_index)
                     roof = rows[row_index - 1][left : right + 1]
-                    kind = self.pick_enemy(self.walker_kinds, t, ("slime",) if any(c in SOLID for c in roof) else ())
+                    cannon_col = self.cannon_spot(rows[row_index], left, right, col_index)
+                    banned = (("slime",) if any(c in SOLID for c in roof) else ()) + (() if cannon_col is not None else ("cannon",))
+                    kind = self.pick_enemy(self.walker_kinds, t, banned)
                     feet = (x + TILE_SIZE // 2, y + TILE_SIZE)
                     if kind is None:  # bölümde buraya uyan tür yok
                         continue
                     if kind == "cannon":
-                        enemy = Cannon(*feet, self.shots)
+                        enemy = Cannon(cannon_col * TILE_SIZE + TILE_SIZE // 2, feet[1], self.shots)
                     else:
                         walker = {"walker": Enemy, "slime": Slime, "spiky": Spiky}[kind]
                         speed = blend(mode["enemy_speed"], mode["enemy_speed_max"], t)
@@ -452,6 +457,11 @@ class Level:
             return None
         weights = [blend(*kinds[kind], t) for kind in options]
         return self.random.choices(options, weights)[0]
+
+    def cannon_spot(self, row, left, right, col):
+        # Topçunun durabileceği sütun: platformun (left-right) kenarı olmayan, col'a en yakın boş kare; yoksa None
+        inside = [c for c in range(left + 1, right) if c == col or row[c] == "."]
+        return min(inside, key=lambda c: abs(c - col)) if inside else None
 
     def bee_spot(self, rows, top, row, col):
         # Arının uçabileceği yer: bu satırda col'a en yakın, aşağı-yukarı uçacak yeri olan boş sütun.

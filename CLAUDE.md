@@ -134,7 +134,7 @@
   ilk hâli ~1,35-1,47 (kullanıcı fazla buldu) → şimdi ~0,83-0,86 (arası, eskiye yakın — kullanıcı isteği).
   DÜŞMAN TÜRLERİ: her E/F yeri `pick_enemy(kinds, t, banned)` ile settings `WALKER_KINDS` (walker/slime/spiky/cannon) /
   `FLYER_KINDS` (bat/bee) ağırlıklarıyla (başta, en zorda) bir türe dönüşür. KULLANICI KARARI: düşman ORANI (sayısı) böyle
-  kalsın — yeni tür eklenince sayı artmaz, var olan yerlerin türü değişir. Sümük: platformun iki üstünde katı varsa gelmez.
+  kalsın — yeni tür eklenince sayı artmaz, var olan yerlerin türü değişir. Sümük: platformun iki üstünde katı varsa gelmez. TOPÇU platformun KENARINA konmaz (`Level.cannon_spot`: iç karelerden E'ye en yakını; yoksa gelmez) — kıpırdamadığı ve boyu + 3 blok zıplamadan yüksek olduğu için kenarda dururken alttan gelen o platforma inemiyordu (Ultra 5. bölüm 31 m, kullanıcı geçemedi).
   Arı: `bee_path(rows, top, row, col)` (chunks `column_span` + `BEE_RANGE`; alttaki platformda (2 satıra kadar) duran
   karakterin kafasına inmesin diye `PLAYER_HEIGHT` kadar kısaltılır; `BEE_MIN_PATH` bloktan kısaysa None → yarasa). Tile/Platform/Coin resimleri `level.image()`
   ile bir kere hazırlanıp paylaşılır; `Coin.update()` dönme animasyonu., `bottom` = en alttaki parçanın altı, `width` piksel.
