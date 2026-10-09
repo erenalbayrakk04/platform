@@ -484,6 +484,12 @@ class Level:
             if rows[below][col] in SOLID:
                 low = min(low, top + below * TILE_SIZE - PLAYER_HEIGHT - 4)
                 break
+        # Bir platformun kenarında, tam onun hizasına kadar inen arı oraya çıkmanın tek yolunu kapatır
+        # (Ultra 13. bölüm 36 m: geçilemiyordu) — bu sütuna arı gelmez, bee_spot yandaki sütunları dener
+        if rows[last + 1][col] not in SOLID:
+            for side in (col - 1, col + 1):
+                if 0 <= side < len(rows[row]) and rows[last + 1][side] in SOLID:
+                    return None
         if low - high < BEE_MIN_PATH * TILE_SIZE:
             return None
         return high, low

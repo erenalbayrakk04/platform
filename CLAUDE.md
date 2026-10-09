@@ -90,7 +90,10 @@
   `allowed_chunks(stage, entry)`, `focused`, `check_stages()` (açılışta). Bölüm değişince bir betikle her bölümü
   üretip bak (Level kur, plan bitene kadar `update` → bayrak yüksekliği, çıkan düşman/yapı/eşya, aynı seed aynı harita).
   ARI: `Level.bee_spot` aynı satırda aşağı-yukarı uçacak yeri olan en yakın sütunu arar (uçan düşman yerleri çoğu zaman
-  platformun hemen üstünde, orada yer yok; eskiden hep yarasaya dönüyordu).
+  platformun hemen üstünde, orada yer yok; eskiden hep yarasaya dönüyordu). `bee_path` ayrıca arıyı bir platformun
+  KENARINA, tam o platformun hizasına inecek sütuna koymaz (None → yan sütun): orada çıkışın tek yolunu kapatıyordu
+  (Ultra 13. bölüm 36 m: dokunmadan geçmek imkânsızdı; ancak 45 karenin 4'ünde, kusursuz tuşlamayla arıya basılabiliyordu).
+  Bir yerin geçilebilirliğini ölçmek için: arının her evresi × zıplama yeri için gerçek fizikle BFS (karakter + arı kopyalanır).
 - `enemy.py` — ortak `Patrol` (`patrol()`: `start`-`end` piksel arasında gidip gelir, `vertical` ise dikeyde; ondalıklı `pos`,
   `old_top` = önceki karedeki üst kenar, `spiky` = üstüne basılamaz); resimler `frames(tür)` ile bir kere hazırlanır.
   Hepsinin `update(target)`'ı karakterin kutusunu alır (`level.enemies.update(player.rect)`; sadece topçu kullanır).
