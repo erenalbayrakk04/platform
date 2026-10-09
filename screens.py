@@ -1,5 +1,5 @@
 # Ekranlar: ana menü, oyun seçimi (bölümler / sonsuz), bölüm seçme, ses ayarları, nasıl oynanır, rekorlar,
-# durdu, "Kaybettin" ve "Bölüm bitti". Oyunun üstüne karanlık bir perde
+# durdu, "Devam Et?", "Kaybettin" ve "Bölüm bitti". Oyunun üstüne karanlık bir perde
 # serilip yazılar ve düğmeler (ui.py) ortalanır. Hangi düğmeye basıldığına main.py bakar.
 import math
 
@@ -25,6 +25,9 @@ from settings import (
     VOLUME_STEPS,
     DIFFICULTY_NAMES,
     STAR_COIN_SHARE,
+    BUTTON_WIDTH,
+    SLIDER_TRACK_COLOR,
+    REVIVE_GEMS,
 )
 from score import draw_text
 from stages import STAGE_SETS, STAGE_COUNT
@@ -40,6 +43,7 @@ MAIN_BUTTONS = Buttons(["play", "skins", "difficulty", "howto", "records", "soun
 BACK_BUTTON = Buttons(["back"], top=655)
 PAUSE_BUTTONS = Buttons(["resume", "sound", "menu"], top=330)
 GAME_OVER_BUTTONS = Buttons(["again", "menu"], top=505)
+REVIVE_BUTTONS = Buttons(["revive", "give_up"], top=470)
 PLAY_BUTTONS = Buttons(["stages", "endless", "back"], top=322, gap=84)  # aralık geniş: Sonsuz Oyun'un altında rekor yazar
 PLAY_RECORD_Y = 448  # "Sonsuz Oyun" düğmesinin altındaki rekor yazısı
 STAGE_GRID = StageGrid(STAGE_COUNT, list(DIFFICULTY_NAMES), back_top=655)
@@ -60,6 +64,8 @@ LABELS = {
     "stages": "Bölümler",
     "endless": "Sonsuz Oyun",
     "next": "Sonraki Bölüm",
+    "revive": f"Devam Et: {REVIVE_GEMS}",
+    "give_up": "Hayır",
 }
 
 # Yazı tipleri, perde ve resimler ilk kullanımda bir kere hazırlanır (pygame.init()'ten sonra olmalı)
@@ -300,6 +306,42 @@ def draw_game_over(screen, score, mode_name, best_height, high_score, new_record
         draw_slow_hint(screen)
 
 
+def draw_revive(screen, score, gems, time_left):
+    # Canlar bitti: oyun başına bir kez elmasla kaldığın yerden devam (main.py "revive"). gems = cüzdandaki elmas,
+    # time_left = geri sayım çubuğu (1 → 0); None = düğmeler henüz çıkmadı
+    draw_overlay(screen)
+    draw_title(screen, "Devam Et?", 185)
+    small = font(MENU_SMALL_FONT_SIZE)
+    draw_text(screen, small, "Kaldığın yerden 1 canla", HINT_COLOR, center=(CENTER_X, 230))
+    height = f"{score.height} / {score.goal} m" if score.goal else f"{score.height} m"
+    draw_text(screen, font(TITLE_FONT_SIZE), height, center=(CENTER_X, 290))
+    # Neyi kaçıracağı: bayrağa / rekora ne kadar kaldı (ilk oyunda rekor yok)
+    note = None
+    if score.goal:
+        note = f"Bayrağa {max(0, score.goal - score.height)} m kaldı!"
+    elif score.record > 0:
+        note = "YENİ REKOR!" if score.new_record else f"Rekora {score.record - score.height} m kaldı!"
+    if note:
+        draw_text(screen, font(MENU_FONT_SIZE), note, RECORD_COLOR, center=(CENTER_X, 340))
+    icon = gem_icon()
+    if time_left is not None:
+        bar = pygame.Rect(0, 0, BUTTON_WIDTH, 10)
+        bar.center = (CENTER_X, 400)
+        pygame.draw.rect(screen, SLIDER_TRACK_COLOR, bar, border_radius=5)
+        fill = bar.copy()
+        fill.width = round(bar.width * time_left)
+        if fill.width > 0:
+            pygame.draw.rect(screen, GEM_COLOR, fill, border_radius=5)
+        REVIVE_BUTTONS.draw(screen, LABELS)
+        rect = REVIVE_BUTTONS.rects[0]
+        screen.blit(icon, icon.get_rect(midright=(rect.right - 14, rect.centery)))
+    # Cüzdandaki elmas
+    text = f"Cüzdan: {gems}"
+    left = CENTER_X - (icon.get_width() + 6 + small.size(text)[0]) // 2
+    screen.blit(icon, icon.get_rect(midleft=(left, 600)))
+    draw_text(screen, small, text, art.tint(GEM_COLOR, 0.3), midleft=(left + icon.get_width() + 6, 601))
+
+
 # Oyun sonu ekranlarında görevi yeni tamamlanan efsanevi skinlerin yazısının yüksekliği (y)
 NEW_SKIN_Y = {"game_over": 130, "stage_clear": 96}
 
@@ -338,13 +380,17 @@ def gems_text(found, bonus, reason):
     return f"+{found + bonus} elmas: {found} toplandı + {bonus} {reason} ödülü"
 
 
+def gem_icon():
+    if "gem" not in _cache:
+        _cache["gem"] = art.gem_frames()[0]
+    return _cache["gem"]
+
+
 def draw_gems_earned(screen, found, bonus, reason, y):
     # Bu oyunda kazanılan elmas: elmas resmi + nereden geldiği (haritada toplanan, rekor / yeni yıldız ödülü)
     if found + bonus <= 0:
         return
-    if "gem" not in _cache:
-        _cache["gem"] = art.gem_frames()[0]
-    icon = _cache["gem"]
+    icon = gem_icon()
     text = gems_text(found, bonus, reason)
     small = font(MENU_SMALL_FONT_SIZE + 4)
     if icon.get_width() + 8 + small.size(text)[0] > SCREEN_WIDTH - 24:

@@ -601,15 +601,21 @@ class Wardrobe:
             return self.goal_met(skin, progress)
         return skin["currency"] is None
 
+    def spend(self, currency, amount):
+        # Cüzdandan para harca (skin, Devam Et) ve kaydet. Yetmezse hiçbir şey olmaz; harcandıysa True
+        if self.balance(currency) < amount:
+            return False
+        setattr(self, currency, self.balance(currency) - amount)
+        self.save()
+        return True
+
     def buy(self, skin):
         # Parası (altın ya da elmas) yetiyorsa satın al ve hemen giy. Alındıysa True
         if skin["goal"] or skin["id"] in self.owned or not self.can_afford(skin):
             return False
-        setattr(self, skin["currency"], self.balance(skin["currency"]) - skin["price"])
         self.owned.append(skin["id"])
         self.selected = skin["id"]
-        self.save()
-        return True
+        return self.spend(skin["currency"], skin["price"])  # kaydeder
 
     def select(self, skin_id):
         self.selected = skin_id

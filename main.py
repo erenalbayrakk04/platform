@@ -16,6 +16,9 @@ from settings import (
     LOW_FPS_LIMIT,
     STOMP_BOUNCE,
     GAME_OVER_DELAY,
+    REVIVE_GEMS,
+    REVIVE_TIME,
+    REVIVE_INVINCIBLE,
     MUTE_KEY,
     COIN_COLOR,
     LIFE_COLOR,
@@ -328,7 +331,8 @@ class Game:
     # Oyunun bütün durumu: hangi ekrandayız, rekorlar, seçenekler ve şu an oynanan bölüm.
     # Ekranlar (state): "title" (giriş ekranı, oyun bununla açılır), "menu" (ana menü), "play_select" (bölümler mi
     # sonsuz mu), "stages" (bölüm seçme), "skins" (karakterler), "sound" (ses ayarları), "howto" (nasıl oynanır),
-    # "records" (rekorlar), "playing" (oyun), "paused" (durdu), "game_over" (kaybettin), "stage_clear" (bölüm bitti)
+    # "records" (rekorlar), "playing" (oyun), "paused" (durdu), "revive" (canlar bitti: elmasla devam teklifi),
+    # "game_over" (kaybettin), "stage_clear" (bölüm bitti)
     def __init__(self, sounds):
         self.sounds = sounds
         # Rekorlar her zorluk modunun ayrı: asıl hedef en yüksek tırmanış (blok), ayrıca en yüksek puan
@@ -366,6 +370,8 @@ class Game:
         self.state = "title"
         self.title = TitleScreen(WEB, self.wardrobe.selected)  # menüye geçiş bitince silinir
         self.game_over_timer = 0  # kaybettin ekranında düğmeler çıkana kadar kalan kare
+        self.revived = False  # bu oyunda Devam Et kullanıldı mı (oyun başına bir kez)
+        self.revive_timer = 0  # Devam Et teklifinin bitmesine kalan kare (düğmeler çıkana kadarki bekleme dahil)
         self.new_record = False
         self.pause_button = PauseButton()
         self.reset()
@@ -480,6 +486,7 @@ class Game:
         self.stage = stage
         self.reset()
         self.state = "playing"
+        self.revived = False
         self.new_skins = []
         self.gems_found = self.gems_bonus = 0
         self.intro = STAGE_INTRO_TIME if stage is not None else 0
@@ -540,6 +547,40 @@ class Game:
         for goal in self.level.goals:
             burst(self.level.effects, goal.rect.center, COIN_COLOR)
         self.finish(gem_bonus=new_stars * GEMS_PER_STAR)
+
+    def lose(self):
+        # Canlar bitti: oyun başına bir kez "Devam Et?" teklifi (cüzdanda elmas yetiyorsa), yoksa hemen kaybettin
+        self.sounds.stop_music()
+        if self.revived or self.wardrobe.balance("gems") < REVIVE_GEMS:
+            self.game_over()
+            return
+        self.state = "revive"
+        self.revive_timer = REVIVE_TIME + GAME_OVER_DELAY  # düğmeler GAME_OVER_DELAY kare sonra çıkar
+        screens.REVIVE_BUTTONS.focus = 0
+
+    def revive(self):
+        # Devam Et: elmas cüzdandan düşer; karakter son durduğu güvenli yerde 1 canla, bir süre dokunulmaz devam
+        # eder, lav aşağı çekilir
+        if not self.wardrobe.spend("gems", REVIVE_GEMS):
+            return
+        self.revived = True
+        player = self.player
+        player.lives = 1
+        player.respawn()
+        player.invincible = REVIVE_INVINCIBLE
+        self.level.lava.push_back(player.rect.bottom)
+        burst(self.level.effects, player.rect.center, GEM_COLOR)
+        self.state = "playing"
+        self.sounds.play("powerup")
+        self.sounds.start_music()
+
+    def game_over(self):
+        # Kaybettin ekranı; oyun burada kaydedilir (rekor, toplamlar, cüzdan)
+        self.state = "game_over"
+        self.game_over_timer = GAME_OVER_DELAY
+        screens.GAME_OVER_BUTTONS.focus = 0
+        self.sounds.play("game_over")
+        self.finish()
 
     def finish(self, ended=True, gem_bonus=0):
         # Oyun bitti (kaybetti, bölümü bitirdi ya da yarıda menüye döndü): bu modun rekorlarını ve toplamları
@@ -665,6 +706,13 @@ class Game:
                 self.finish(ended=False)
                 self.to_menu()
 
+        elif self.state == "revive" and self.revive_timer <= REVIVE_TIME:  # düğmeler çıktıysa
+            action = screens.REVIVE_BUTTONS.handle_event(event)
+            if action == "revive":
+                self.revive()
+            elif action == "give_up" or key in PAUSE_KEYS:
+                self.game_over()
+
         elif self.state == "game_over" and self.game_over_timer == 0:
             action = screens.GAME_OVER_BUTTONS.handle_event(event)
             if action == "again":
@@ -697,15 +745,17 @@ class Game:
                 if pygame.sprite.spritecollideany(self.player, self.level.goals):
                     self.clear_stage()
                     break
-                # Can bitti → kaybettin ekranı; rekor kırıldıysa hemen kaydet
+                # Can bitti → Devam Et teklifi ya da kaybettin ekranı
                 if self.player.lives <= 0:
-                    self.state = "game_over"
-                    self.game_over_timer = GAME_OVER_DELAY
-                    screens.GAME_OVER_BUTTONS.focus = 0
-                    self.sounds.stop_music()
-                    self.sounds.play("game_over")
-                    self.finish()
+                    self.lose()
                     break
+        elif self.state == "revive":
+            # Teklif süresi biter → kaybettin; bu arada ölünce saçılan parçacıklar uçmaya devam eder
+            self.revive_timer = max(0, self.revive_timer - steps)
+            for _ in range(steps):
+                self.level.effects.update()
+            if self.revive_timer == 0:
+                self.game_over()
         elif self.state == "game_over":
             self.game_over_timer = max(0, self.game_over_timer - steps)
         elif self.state == "skins":
@@ -768,6 +818,9 @@ class Game:
                     screens.draw_stage_intro(screen, self.mode, self.stage, self.score.goal)
             elif self.state == "paused":
                 screens.draw_pause(screen, self.labels())
+            elif self.state == "revive":
+                time_left = self.revive_timer / REVIVE_TIME if self.revive_timer <= REVIVE_TIME else None
+                screens.draw_revive(screen, self.score, self.wardrobe.balance("gems"), time_left)
             elif self.state == "stage_clear":
                 screens.draw_stage_clear(
                     screen, self.mode, self.stage, self.clear_result, self.stars_shown, self.clear_timer == 0

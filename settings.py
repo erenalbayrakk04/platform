@@ -295,6 +295,11 @@ RECORD_COLOR = (255, 210, 40)  # "Yeni rekor!" yazısı
 HINT_COLOR = (180, 180, 200)  # soluk bilgi yazıları
 SLOW_HINT_COLOR = (255, 210, 40)  # "Düşük Güç Modu'nu kapat" ipucu (sarı, dikkat çeksin)
 GAME_OVER_DELAY = 60  # kaybettin ekranında tuşların kaç kare sonra çalışacağı (yanlışlıkla geçilmesin)
+# Devam Et: canlar bitince oyun başına bir kez, elmasla kaldığın yerden devam (main.py "revive" durumu).
+# Düğmeler de GAME_OVER_DELAY kare sonra çıkar (ölürken basılan zıplama tuşu elması harcamasın)
+REVIVE_GEMS = 3  # kaç elmas (cüzdanda bu kadar yoksa teklif hiç çıkmaz)
+REVIVE_TIME = 480  # düğmeler çıktıktan sonra teklif kaç kare durur (60 kare = 1 saniye); bitince "Kaybettin"
+REVIVE_INVINCIBLE = 150  # devam edince kaç kare dokunulmaz (normal can kaybında INVINCIBLE_TIME)
 
 # Oyunun adı (logo): giriş ekranında ve ana menüde aynı yerde, kalın piksel harflerle (art.py, LOGO_FONT)
 LOGO_PIXEL = 3  # harflerin her ince karesi kaç piksel (büyürse logo büyür)

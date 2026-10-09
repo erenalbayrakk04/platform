@@ -223,8 +223,13 @@
   "spring" sesi, geçiş bitince "menu" ve `title = None`; geçişte menü çizilip üstüne `title.draw_fading`) →
   "menu" (ana menü) ↔ "sound"/"howto"/"records" (Geri/ESC);
   ses çubuğu oynayınca `change_volume` (ses kapalıysa açar, kaydeder, efektte örnek "coin" sesi çalar); menü "play" →
-  `start()` → "playing" ↔ "paused" (⏸ düğmesi, ESC veya P; durunca Devam/Ses/Ana Menü); can biter → "game_over"
-  (`GAME_OVER_DELAY` kare düğme yok) → Tekrar Oyna (`start()`) / Ana Menü (`to_menu()`). `finish()` oyun bitince
+  `start()` → "playing" ↔ "paused" (⏸ düğmesi, ESC veya P; durunca Devam/Ses/Ana Menü); can biter → `lose()`:
+  DEVAM ET (oyun başına bir kez — `revived`, cüzdanda `REVIVE_GEMS` elmas varsa; sonsuz ve bölüm) → "revive" durumu:
+  oyun donar, `screens.draw_revive` (yükseklik, "Rekora / Bayrağa N m kaldı!", geri sayım çubuğu, `REVIVE_BUTTONS`
+  Devam Et / Hayır — `GAME_OVER_DELAY` kare sonra çıkar, ölürken basılan tuş elması harcamasın; cüzdan). Devam Et →
+  `revive()`: `wardrobe.spend("gems", ...)`, 1 can, `respawn()`, `REVIVE_INVINCIBLE`, lav `push_back`, müzik baştan.
+  Hayır / ESC / `REVIVE_TIME` bitince → `game_over()` → "game_over"
+  (`GAME_OVER_DELAY` kare düğme yok; `finish()` burada) → Tekrar Oyna (`start()`) / Ana Menü (`to_menu()`). `finish()` oyun bitince
   (kaybedince VE durdurup ana menüye dönünce) rekorları + istatistikleri kaydeder. `handle_event`, `update(steps, touch)`,
   `draw(...)`. M tuşu her yerde `toggle_sound()` (kaydedilir).
   BÖLÜM AKIŞI: menü "play" → "play_select" (Bölümler / Sonsuz Oyun / Geri) → "stages" (`open_stages()`; arkada sonsuz harita)
@@ -306,8 +311,8 @@
   `frames(id)` resimleri bir kere hazırlar; `get(id)`, `in_group(g)`. `Wardrobe(lifetime_coins)`: kayıt (storage
   "skins"): `coins` = cüzdandaki altın (ilk açılışta şimdiye kadar toplanan altınlarla başlar — eski oyunlar da sayılsın),
   `gems` = elmas (0'dan başlar), `owned`, `selected`, `known` (görevi tamamlandığı söylenmiş efsaneviler);
-  `balance(currency)`, `can_afford(skin)`, `owns(skin, progress)` (`UNLOCK_ALL_SKINS` deneme için hepsi), `buy` (doğru
-  paradan düşer, giyer de), `select`, `add_money(coins, gems)`, `new_unlocks(progress)`. Eskiden altınla alınmış
+  `balance(currency)`, `can_afford(skin)`, `owns(skin, progress)` (`UNLOCK_ALL_SKINS` deneme için hepsi), `spend(currency,
+  n)` (yetmezse False; kaydeder — Devam Et de kullanır), `buy` (doğru paradan düşer, giyer de), `select`, `add_money(coins, gems)`, `new_unlocks(progress)`. Eskiden altınla alınmış
   karakterler `owned`'da kalır (kullanıcı kararı: alınanlar kalsın). `check_skins()` açılışta (boy, harf
   renkleri, fiyat/görev). Yeni skin eklerken önizleme betiğiyle büyütülmüş resmine bak (koyu gökte okunuyor mu).
 - `skin_menu.py` — KARAKTERLER EKRANI `SKIN_MENU` (`SkinMenu`): üstte grup sekmeleri, ortada koyu panoda önizlenen skin
@@ -404,3 +409,12 @@ Açık depoda çalışma durumu girişsiz bakılabilir: https://api.github.com/r
   (ilk 100 m ~0,7, yükseklerde ~1) çıkar; oyuncu hepsini toplayamaz. Ucuz gelmesinin bir sebebi: cüzdan ilk açılışta
   eski oyunların bütün altınıyla dolmuştu. Elmas yeşil (Türkçe oyunlarda elmas çoğu zaman yeşil; mavi kalkanla
   karışıyordu).
+- PARA KAZANMA HAZIRLIĞI (2026-10-09; kullanıcı: "para kazanabileceğim bir sistem"). Oyun hakkı/enerji sistemi YOK
+  (oyuncuyu kaçırır; kullanıcı kabul etti). Kullanıcı kararları: platform (CrazyGames web portalı önerildi / Google Play)
+  SONRA, önce oyun hazır olsun; oyuncunun SEÇEREK izlediği 3 ödüllü reklama hazırlık ("reklam izle devam et", "elmasları
+  2 kat", "bedava elmas"); oyun arası (zorunlu) reklam istenmedi; İngilizce eklenecek. Plan: 1) Devam Et elmasla —
+  YAPILDI; 2) reklam yeri (`ads.py`, şimdilik görünmez, `#reklam` ile deneme reklamı); 3) İngilizce (`lang.py`).
+  CrazyGames kuralları (koda uyulacak): ödülün reklamsız yolu da olsun (elmas), oyun sırasında reklam yok, can her
+  gidişte teklif yok, reklam düğmesi Hayır'la aynı boy ve reklam olduğu belli, reklam yoksa düğme görünmesin, reklamda
+  ses kısılır. Ayrıca: Basic Launch'ta reklam kapalı (~2 hafta), oyuncular severse Full Launch'ta SDK + reklam + Data
+  modülü. Hesaplar (18 yaş, kimlik, banka) ve vergi (mali müşavir) kullanıcının işi.
