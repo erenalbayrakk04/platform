@@ -460,3 +460,9 @@ Açık depoda çalışma durumu girişsiz bakılabilir: https://api.github.com/r
   gidişte teklif yok, reklam düğmesi Hayır'la aynı boy ve reklam olduğu belli, reklam yoksa düğme görünmesin, reklamda
   ses kısılır. Ayrıca: Basic Launch'ta reklam kapalı (~2 hafta), oyuncular severse Full Launch'ta SDK + reklam + Data
   modülü. Hesaplar (18 yaş, kimlik, banka) ve vergi (mali müşavir) kullanıcının işi.
+- OYUNCU KAYITLARI (2026-10-09, kullanıcı kararı: şimdilik böyle kalsın): her şey sadece oyuncunun cihazında
+  (web: localStorage, bilgisayar: dosya), sunucu yok → kişisel veri toplanmıyor. Sorunlar: cihaz değişince / tarayıcı
+  verisi silinince kayıt gider (iPhone Safari uzun süre girilmeyen sitenin verisini silebilir), elmas elle
+  değiştirilebilir (sıralama/satış olmadığı için şimdilik zararsız). Platform seçilince bulut kaydı platformun kendi
+  sistemiyle bağlanacak (CrazyGames SDK Data modülü / Google Play Saved Games); kendi sunucumuz önerilmedi. Değişecek
+  yer sadece `storage.py` `load_text`/`save_text` (bütün kayıtlar oradan geçiyor).
