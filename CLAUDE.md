@@ -1,4 +1,4 @@
-# Platform Oyunu — Proje Hafızası
+# Platformin — Proje Hafızası
 
 ## Proje
 - Python + pygame-ce ile 2D platform (zıplama) oyunu.
@@ -10,7 +10,7 @@
   EKLEYİNCE `lang.EN`'e İngilizcesini de yaz ve `python check_lang.py` çalıştır (eksik çeviri varsa yayına çıkmaz).
 - Çalıştırma: `python main.py` (ESC veya pencereyi kapatmak oyundan çıkar).
 - Web sürümü (pygbag 0.9.3, tarayıcıda Python 3.12 çalışır): `python -m pygbag --width 400 --height 720
-  --title "Platform Oyunu" --template web.tmpl .` → derler ve http://localhost:8000'de test sunucusu açar
+  --title "Platformin" --template web.tmpl .` → derler ve http://localhost:8000'de test sunucusu açar
   (`--build` = sadece derle; çıktı `build/web`, git dışı). Windows'ta başına `PYTHONUTF8=1` koy (yoksa pygbag
   web.tmpl'i cp1254 ile okuyup ▶ ■ gibi karakterlerde çöküyor). Yerel `--build` çıktısı pygame'i localhost:8000'deki
   pygbag sunucusundan ister → tarayıcı testi pygbag'in kendi sunucusuyla (başka sunucuyla "Hazırlanıyor"da takılır).
@@ -173,7 +173,7 @@
   `t("Rekor: {} m").format(n)` (f-string ÇEVRİLEMEZ); değişkende saklanıp sonra çizilen yazı `mark("...")` (sadece
   check_lang bulsun diye). Bölüm (stage) İngilizcede "Level". `LANGUAGES` (tr, en), `set_language`, `language()`,
   `device_language(web)` (web: `navigator.language`, bilgisayar: `locale.getlocale()` "Turkish_Türkiye"/"tr_TR"; Türkçe
-  değilse İngilizce). Logo iki dilde de "PLATFORM OYUNU" (yeni ad yayından önce seçilecek → `LOGO_FONT` harfleri).
+  değilse İngilizce). OYUNUN ADI "Platformin" (iki dilde aynı; kullanıcı seçti, 2026-10-09 — "Lava Leap" çok kalabalıktı, "Platform Up!"/"Hopcano" istenmedi). Logo tek satır, tamamen altın, harfler bitişik (`LOGO_SPACING` 1).
 - `check_lang.py` — çeviri testi (`python check_lang.py`, GitHub'da yayından önce de çalışır): kodda `t`/`mark` ve
   `draw_text`/`draw_title`/`draw_note`/`show_note`'a verilen yazılar + bölüm adı/tanıtımı, skin adı, zorluk adı listeleri →
   her birinin `EN`'de olması, `{}` yer tutucularının aynı olması; bu fonksiyonlara f-string verilmesi HATA. Yeni bir yazı
@@ -324,8 +324,8 @@
   (sağlam, çatlak, silik), `magnet_image()`, `shield_image()`, `shield_bubble(r)`, `coin_frames()` (dönme), `tile_image()`,
   `platform_image()`, `heart_images()`, `Background` (`SKY_THEMES` gökleri, her `SKY_CHANGE_HEIGHT` px tırmanışta sıradakine
   `SKY_BLEND_HEIGHT` boyunca saydamlıkla geçer, döngüsel; + `STAR_PARALLAX` ile kayan yıldızlar), `island_image()`
-  (giriş ekranındaki uçan adacık), logo: `LOGO_FONT` (kalın piksel harfler, çizgi 2 kare; şimdilik sadece "PLATFORM
-  OYUNU"nun harfleri — `TITLE` değişirse eksik harf eklenmeli, yoksa açılışta hata) + `logo_letters(text, üst, alt)`
+  (giriş ekranındaki uçan adacık), logo: `LOGO_FONT` (kalın piksel harfler, çizgi 2 kare; "PLATFORMIN" ve eski ad
+  "PLATFORM OYUNU"nun harfleri — `TITLE` değişirse eksik harf eklenmeli, yoksa açılışta hata) + `logo_letters(text, üst, alt)`
   (her kare 2x2 "ince kareye" bölünür, ince kare `LOGO_PIXEL` px: koyu kenar 1, alttaki 3B kalınlık `LOGO_DEPTH` ince
   kare; içi renk geçişli, çizgilerin üst kenarı parlak; harf başına (resim, parıltı, x)).
 - `skins.py` — SKİNLER (karakter görünüşleri; SADECE GÖRÜNÜŞ: hitbox/hız/zıplama aynı, rekorlar adil). `SKINS` listesi,
@@ -455,7 +455,7 @@ Açık depoda çalışma durumu girişsiz bakılabilir: https://api.github.com/r
   2 kat", "bedava elmas"); oyun arası (zorunlu) reklam istenmedi; İngilizce eklenecek. Plan: 1) Devam Et elmasla —
   YAPILDI; 2) reklam yeri (`ads.py`, şimdilik görünmez, `#reklam` ile deneme reklamı) — YAPILDI; 3) İngilizce (`lang.py`)
   — YAPILDI (306 yazı; görünmez Chrome'da en-US tarayıcıda İngilizce, tr-TR'de Türkçe açıldığı doğrulandı). Sırada
-  (kullanıcıyla konuşulacak): oyunun yeni (İngilizce de olan) adı, platform seçimi.
+  (kullanıcıyla konuşulacak): platform seçimi. (Oyunun adı seçildi: Platformin.) localStorage anahtarları eski adla ("platform-oyunu-...") kalır — değiştirilirse kayıtlar kaybolur.
   CrazyGames kuralları (koda uyulacak): ödülün reklamsız yolu da olsun (elmas), oyun sırasında reklam yok, can her
   gidişte teklif yok, reklam düğmesi Hayır'la aynı boy ve reklam olduğu belli, reklam yoksa düğme görünmesin, reklamda
   ses kısılır. Ayrıca: Basic Launch'ta reklam kapalı (~2 hafta), oyuncular severse Full Launch'ta SDK + reklam + Data

@@ -73,7 +73,8 @@ SHINE_SLANT = 0.5
 
 
 class Logo:
-    # Oyunun adı iki satır ("PLATFORM" / "OYUNU"), her harf ayrı resim (art.logo_letters): harfler sırayla
+    # Oyunun adı ("PLATFORMIN"; adda boşluk olsaydı her kelime ayrı satır olurdu, ikinci satır lav renginde),
+    # her harf ayrı resim (art.logo_letters): harfler sırayla
     # aşağı yukarı dalgalanır, arada bir üstlerinden çapraz bir parıltı geçer
     def __init__(self):
         self.letters = []  # [(resim, parıltı, x, y)] — ekrandaki yerleri (dalgalanmadan)

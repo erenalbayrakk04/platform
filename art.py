@@ -752,6 +752,7 @@ class Background:
 LOGO_FONT = {
     "A": [".####.", "######", "##..##", "##..##", "######", "######", "##..##", "##..##"],
     "F": ["######", "######", "##....", "#####.", "#####.", "##....", "##....", "##...."],
+    "I": ["##", "##", "##", "##", "##", "##", "##", "##"],
     "L": ["##....", "##....", "##....", "##....", "##....", "##....", "######", "######"],
     "M": ["##...##", "###.###", "#######", "##.#.##", "##...##", "##...##", "##...##", "##...##"],
     "N": ["##...##", "###..##", "####.##", "##.####", "##..###", "##...##", "##...##", "##...##"],
@@ -763,7 +764,8 @@ LOGO_FONT = {
     "Y": ["##..##", "##..##", "##..##", "######", ".####.", "..##..", "..##..", "..##.."],
 }
 LOGO_DEPTH = 2  # harflerin altındaki kalınlık (3B görünüm), ince kare
-LOGO_SPACING = 2  # harfler arası boşluk, ince kare (harflerin koyu kenarları tam birbirine değer)
+LOGO_SPACING = 1  # harfler arası boşluk, ince kare (1 = komşu harflerin koyu kenarları üst üste biner, harfler
+# bitişik görünür; "PLATFORMIN" ancak böyle ekrana sığıyor: 381 piksel, 2 olsa 408)
 
 
 def logo_letters(text, top_color, bottom_color):

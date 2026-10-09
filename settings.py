@@ -7,7 +7,7 @@ WEB = sys.platform == "emscripten"
 # Pencere — telefon gibi dikey ekran (oyun yukarı doğru ilerler)
 SCREEN_WIDTH = 400
 SCREEN_HEIGHT = 720
-TITLE = "Platform Oyunu"
+TITLE = "Platformin"
 FPS = 60  # oyun saniyede kaç adım ilerler — telefon daha az kare gösterse de oyun hep bu hızda akar
 # Telefon bir an takılırsa bir karede en fazla kaç adım telafi edilir. Fazlası atlanır: oyun bir an
 # yavaşlar ama karakter ışınlanmaz (ör. sekme değiştirip dönünce)
@@ -316,7 +316,7 @@ AD_COLOR = (255, 210, 40)  # reklam düğmelerindeki ▶ işareti
 
 # Oyunun adı (logo): giriş ekranında ve ana menüde aynı yerde, kalın piksel harflerle (art.py, LOGO_FONT)
 LOGO_PIXEL = 3  # harflerin her ince karesi kaç piksel (büyürse logo büyür)
-LOGO_TOP = 84  # logonun üst kenarı (y)
+LOGO_TOP = 140  # logonun üst kenarı (y)
 LOGO_LINE_GAP = 10  # iki satır arası (piksel)
 LOGO_COLORS = [  # her satırın (üst rengi, alt rengi): ilk satır altın, ikinci satır lav gibi
     ((255, 240, 150), (250, 160, 30)),

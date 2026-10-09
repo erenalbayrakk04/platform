@@ -40,7 +40,7 @@ jobs:
       - name: Tarayıcı sürümünü derle (pygbag)
         run: |
           pip install pygbag==0.9.3
-          python -m pygbag --build --width 400 --height 720 --title "Platform Oyunu" --template web.tmpl .
+          python -m pygbag --build --width 400 --height 720 --title "Platformin" --template web.tmpl .
 
       - uses: actions/upload-pages-artifact@v5
         with:
