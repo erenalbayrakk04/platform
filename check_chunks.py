@@ -18,7 +18,7 @@ os.environ.setdefault("PYGAME_HIDE_SUPPORT_PROMPT", "1")
 
 import pygame
 
-from chunks import START_CHUNK, CHUNKS, FINISH_CHUNKS, WIDTH, SOLID, moving_platforms
+from chunks import START_CHUNK, CHUNKS, FINISH_CHUNKS, ARENA_CHUNKS, WIDTH, SOLID, moving_platforms, arena_rows
 from controls import Controls
 from level import Tile, Platform, Spring, MovingPlatform, CrumblingPlatform
 from player import Player
@@ -156,10 +156,45 @@ def test_join(pair):
     # Alttaki parçanın çıkışından üstteki parçanın girişine geçilebiliyor mu?
     lower, upper = pair
     lower_rows = (START_CHUNK if lower < 0 else CHUNKS[lower])["rows"]
-    upper_rows = TESTED[upper]["rows"]
+    return join_reachable(lower_rows, TESTED[upper]["rows"])
+
+
+def join_reachable(lower_rows, upper_rows):
     # Üst parçanın alt 5 satırı + alt parçanın üst 4 satırı yeter (zıplama 3 satırdan fazla ulaşmaz)
     rows = upper_rows[-5:] + lower_rows[:4]
     return reachable(rows, row_starts(rows, 5), 3 * TILE_SIZE)
+
+
+def test_arena(case):
+    # Boss arenası (chunks.ARENA_CHUNKS): ("enter", taraf) = girişten zemine (delik açık, basamak yok);
+    # ("leave", taraf) = golem yenilince zeminden çıkışa (delik kapalı, basamaklar var);
+    # ("below", taraf, i) = CHUNKS[i]'nin çıkışından arenanın girişine; ("above", taraf, i) = arenadan CHUNKS[i]'ye
+    kind, side, *index = case
+    chunk = ARENA_CHUNKS[side]
+    floor = chunk["floor_row"]
+    if kind == "enter":
+        rows = arena_rows(chunk, False)
+        return reachable(rows, row_starts(rows, len(rows) - 2), floor * TILE_SIZE)
+    if kind == "leave":
+        rows = arena_rows(chunk, True)
+        return reachable(rows, row_starts(rows, floor), 0)
+    other = CHUNKS[index[0]]["rows"]
+    if kind == "below":
+        return join_reachable(other, arena_rows(chunk, False))
+    return join_reachable(arena_rows(chunk, True), other)
+
+
+def arena_cases():
+    # Denenecek arena durumları: içi (iki hâli) ve oyunun koyabileceği her birleşme
+    cases = []
+    for side, chunk in ARENA_CHUNKS.items():
+        cases += [("enter", side), ("leave", side)]
+        for i, other in enumerate(CHUNKS):
+            if other["exit"] != side:  # girişi side olan arenanın altına çıkışı öbür tarafta olan parça gelir
+                cases.append(("below", side, i))
+            if other["entry"] != chunk["exit"]:
+                cases.append(("above", side, i))
+    return cases
 
 
 def main():
@@ -172,9 +207,11 @@ def main():
             if chunk["entry"] != exit_side:  # oyun sadece böyle dizer (level.pick_chunk)
                 pairs.append((lower, upper))
 
+    arenas = arena_cases()
     with Pool() as pool:
         inside = pool.map(test_inside, indexes)
         joins = pool.map(test_join, pairs)
+        arena_ok = pool.map(test_arena, arenas)
 
     def describe(i):
         if i < 0:
@@ -189,7 +226,21 @@ def main():
         for (a, b), ok in zip(pairs, joins)
         if not ok
     ]
-    print(f"{len(indexes)} parça ve {len(pairs)} birleşme denendi ({time.time() - start:.0f} sn).")
+    arena_texts = {
+        "enter": "boss arenası: girişten zemine çıkılamıyor",
+        "leave": "boss arenası: golemden sonra zeminden çıkışa çıkılamıyor",
+        "below": "boss arenası: altındaki parçadan girilemiyor",
+        "above": "boss arenası: üstündeki parçaya geçilemiyor",
+    }
+    problems += [
+        f"{arena_texts[case[0]]} (giriş {case[1]}" + (f", CHUNKS[{case[2]}])" if len(case) > 2 else ")")
+        for case, ok in zip(arenas, arena_ok)
+        if not ok
+    ]
+    print(
+        f"{len(indexes)} parça, {len(pairs)} birleşme ve {len(arenas)} boss arenası durumu denendi "
+        f"({time.time() - start:.0f} sn)."
+    )
     if problems:
         print("\n".join(problems))
         sys.exit(1)

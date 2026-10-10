@@ -35,6 +35,7 @@ from stages import STAGE_SETS, STAGE_COUNT
 from title import draw_logo
 from ui import Buttons, Slider, StageGrid, draw_box, take_click, ACTIVATE_KEYS, UP_KEYS, DOWN_KEYS
 import art
+import boss
 import skins
 import theme
 
@@ -252,6 +253,7 @@ def howto_icons():
             "cannon": fit(art.cannon_frames()[1][1]),
             "bat": fit(art.flyer_frames()[0]),
             "bee": fit(art.bee_frames()[0][1]),
+            "golem": fit(boss.frames("golem")["stand"][0]),
             "crumble": fit(art.crumble_frames()[1]),
             "lava": fit(art.lava_frames()[0].subsurface((0, 0, 36, 32))),
             "flag": fit(art.flag_frames()[0]),
@@ -275,12 +277,13 @@ HOWTO_ROWS = (  # {points} = altının puanı
     ("cannon", mark("Topçu: ateş atar, üstüne zıpla")),
     ("bat", mark("Yarasa: onun da üstüne zıpla")),
     ("bee", mark("Arı: aşağı yukarı uçar")),
+    ("golem", mark("Golem: alevi sönünce kafasına bas")),
     ("lava", mark("Lav: yükseliyor, acele et!")),
 )
 HOWTO_WARN_ROWS = ("spiky", "lava")  # yazısı uyarı renginde olanlar
 HOWTO_ICON = 30  # resimlerin en fazla boyu (piksel)
-HOWTO_TOP = 198  # ilk satırın ortası (y)
-HOWTO_GAP = 29  # satırlar arası (piksel) — 15 satır Geri düğmesinin üstünde bitsin
+HOWTO_TOP = 196  # ilk satırın ortası (y)
+HOWTO_GAP = 27  # satırlar arası (piksel) — 16 satır Geri düğmesinin üstünde bitsin
 
 
 def draw_howto(screen):

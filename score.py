@@ -22,6 +22,7 @@ from settings import (
     RECORD_COLOR,
     POWERUP_WARN_TIME,
     PROGRESS_EMPTY_COLOR,
+    BOSS_BAR_COLOR,
 )
 
 
@@ -35,7 +36,8 @@ class Score:
         self.coins = 0  # toplanan altın sayısı
         self.gems = 0  # haritada toplanan elmas sayısı
         self.enemies = 0  # üstüne basılıp yenilen düşman sayısı
-        self.bonus = 0  # diğer puanlar (ör. canın doluyken alınan kalp)
+        self.bosses = 0  # yenilen boss (Lav Golemi) sayısı
+        self.bonus = 0  # diğer puanlar (ör. canın doluyken alınan kalp, boss)
         self.toast = 0  # "YENİ REKOR!" yazısının kalan süresi
         # None = pygame'in kendi yazı tipi
         self.font = pygame.font.Font(None, SCORE_FONT_SIZE)
@@ -91,9 +93,10 @@ class Score:
     def add_bonus(self, points):
         self.bonus += points
 
-    def draw(self, screen):
+    def draw(self, screen, toast_y=120):
         # Büyük yazı yükseklik (asıl hedef); puan ve altın altında küçük.
-        # Rekor kırıldıysa yükseklik rekor renginde. Bölümde: "37 / 62 m", altın ve bayrağa ilerleme çubuğu
+        # Rekor kırıldıysa yükseklik rekor renginde. Bölümde: "37 / 62 m", altın ve bayrağa ilerleme çubuğu.
+        # toast_y = "YENİ REKOR!" yazısının yeri (boss'un can çubuğu varken daha aşağıda)
         if self.goal:
             draw_text(screen, self.font, f"{self.height} / {self.goal} m", topleft=(12, 10))
             draw_text(screen, self.small_font, self.loot_text(), topleft=(12, 44))
@@ -109,7 +112,7 @@ class Score:
         draw_text(screen, self.font, f"{self.height} m", color, topleft=(12, 10))
         draw_text(screen, self.small_font, t("Puan: {}").format(self.total) + "   " + self.loot_text(), topleft=(12, 44))
         if self.toast and (self.toast // 10) % 2 == 0:  # yanıp söner
-            draw_text(screen, self.font, "YENİ REKOR!", RECORD_COLOR, center=(SCREEN_WIDTH // 2, 120))
+            draw_text(screen, self.font, "YENİ REKOR!", RECORD_COLOR, center=(SCREEN_WIDTH // 2, toast_y))
 
     def draw_record_line(self, screen, camera):
         # Haritada rekor yüksekliğinde kesikli çizgi + "Rekor" yazısı (rekor kırılınca kaybolur)
@@ -162,6 +165,43 @@ def draw_lives(screen, lives, max_lives):
     for i in range(max_lives):
         image = hearts["full" if i < lives else "empty"]
         screen.blit(image, (right - (max_lives - i) * width, 14))
+
+
+BOSS_FONTS = {}
+BOSS_BAR = pygame.Rect(0, 108, 220, 10)  # boss'un can çubuğu (ekranın ortasında; y ve boy)
+
+
+def boss_font(size):
+    if size not in BOSS_FONTS:
+        BOSS_FONTS[size] = pygame.font.Font(None, size)
+    return BOSS_FONTS[size]
+
+
+def draw_boss(screen, arena):
+    # Boss arenasında (boss.py): dövüş sürerken ekranın üstünde golemin adı ve can çubuğu (her vuruş bir dilim);
+    # arena kapanınca ve golem yenilince ortada büyük yazı
+    if arena is None:
+        return
+    golem = arena.golem
+    if arena.fighting:
+        center = SCREEN_WIDTH // 2
+        draw_text(screen, boss_font(SCORE_SMALL_FONT_SIZE), t("Lav Golemi") + arena.suffix, BOSS_BAR_COLOR, center=(center, 94))
+        bar = BOSS_BAR.copy()
+        bar.centerx = center
+        radius = 4 if theme.modern() else 0
+        pygame.draw.rect(screen, SCORE_SHADOW_COLOR, bar.move(2, 2), border_radius=radius)
+        pygame.draw.rect(screen, PROGRESS_EMPTY_COLOR, bar, border_radius=radius)
+        width = bar.width * max(0, golem.health) // golem.max_health
+        if width:
+            pygame.draw.rect(screen, BOSS_BAR_COLOR, (bar.left, bar.top, width, bar.height), border_radius=radius)
+        for i in range(1, golem.max_health):  # dilimler: her vuruş bir tane
+            x = bar.left + bar.width * i // golem.max_health
+            screen.fill(SCORE_SHADOW_COLOR, (x - 1, bar.top, 2, bar.height))
+    if arena.banner_time and (arena.banner_time > 20 or arena.banner_time % 6 < 3):  # sonunda yanıp söner
+        title, hint = arena.banner
+        title = t(title) + (arena.suffix if arena.fighting else "")
+        draw_text(screen, boss_font(SCORE_FONT_SIZE + 12), title, BOSS_BAR_COLOR, center=(SCREEN_WIDTH // 2, 210))
+        draw_text(screen, boss_font(SCORE_SMALL_FONT_SIZE + 2), hint, center=(SCREEN_WIDTH // 2, 246))
 
 
 POWER_ICONS = {}

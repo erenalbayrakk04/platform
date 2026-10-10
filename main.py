@@ -16,6 +16,7 @@ from settings import (
     SHOW_FPS,
     LOW_FPS_LIMIT,
     STOMP_BOUNCE,
+    BOSS_STOMP_BOUNCE,
     GAME_OVER_DELAY,
     REVIVE_GEMS,
     REVIVE_TIME,
@@ -52,7 +53,7 @@ from level import Level
 from stages import STAGE_SETS, STAGE_COUNT, stage_mode
 from lava import Lava
 from camera import Camera
-from score import Score, draw_lives, draw_powers, draw_text
+from score import Score, draw_lives, draw_powers, draw_boss, draw_text
 from storage import load_record, save_record, load_dict, save_dict
 import screens
 from title import TitleScreen
@@ -65,6 +66,7 @@ import theme
 from art import Background, shield_bubble
 from controls import TouchButtons, read_controls
 from effects import burst
+import boss
 import sound
 
 # Toplanınca saçılan parçacıkların rengi
@@ -73,7 +75,7 @@ PICKUP_COLORS = {"heart": LIFE_COLOR, "magnet": MAGNET_COLOR, "shield": SHIELD_C
 SHIELD_BUBBLE = {}
 
 # Saklanan istatistikler ve seçenekler (storage.py), ilk açılıştaki değerleriyle
-STATS_DEFAULTS = {"games": 0, "climbed": 0, "coins": 0, "enemies": 0}
+STATS_DEFAULTS = {"games": 0, "climbed": 0, "coins": 0, "enemies": 0, "bosses": 0}
 OPTIONS_DEFAULTS = {
     "muted": False,
     "difficulty": DEFAULT_DIFFICULTY,
@@ -263,6 +265,8 @@ def update_game(level, player, camera, score, controls, sounds):
     if len(level.shots) > shots_before:
         sounds.play("shoot")
     for enemy in pygame.sprite.spritecollide(player, level.enemies, False):
+        if enemy.harmless:  # golemden yeni fırlamış lav sümüğü (yere inene kadar)
+            continue
         stomped = player.old_bottom <= enemy.old_top  # önceki karede tamamen düşmanın üstündeydi
         if (stomped and not enemy.spiky) or player.powers["shield"]:
             enemy.kill()
@@ -272,6 +276,23 @@ def update_game(level, player, camera, score, controls, sounds):
             sounds.play("stomp")
             burst(level.effects, enemy.rect.center, enemy.color)
         elif not player.invincible:
+            player.hurt()
+            sounds.play("hurt")
+            burst(level.effects, player.rect.center, player.color)
+    # Boss arenası (boss.py): karakter zemine çıkınca kapanır, golem saldırır (alev dalgaları, lav taşları ateş
+    # topları gibi level.shots'ta). Yorgun golemin kafasına basınca golemin bir canı gider; alevi yanarken değen yanar
+    # (kalkan korur)
+    arena = level.arena
+    if arena:
+        for name in arena.update(player, level, score):
+            sounds.play(name)
+        touched = arena.touch(player, level)
+        if touched == "hit":
+            player.bounce(BOSS_STOMP_BOUNCE)
+            sounds.play("boss_hit")
+        elif touched == "bounce":
+            player.bounce(STOMP_BOUNCE)
+        elif touched == "hurt" and not player.powers["shield"] and not player.invincible:
             player.hurt()
             sounds.play("hurt")
             burst(level.effects, player.rect.center, player.color)
@@ -360,7 +381,7 @@ def draw_glows(screen, level, player, camera):
             glow = theme.cached(DEPTH, ("glow", color), lambda: modern.glow_image(color, 22))
             glow.set_alpha(pulse)
             screen.blit(glow, glow.get_rect(center=center))
-    feet = [enemy for enemy in level.enemies if enemy.grounded]
+    feet = [enemy for enemy in (*level.enemies, *level.bosses) if enemy.grounded]
     if player.on_ground and player.visible:
         feet.append(player)
     for sprite in feet:
@@ -374,14 +395,18 @@ def draw_world(screen, background, level, player, camera, score):
     # Önce gökyüzü, sonra her şeyi kameraya göre kaydırarak çiz
     background.draw(screen, camera.top)
     score.draw_record_line(screen, camera)  # rekor yüksekliği (platformların arkasında)
-    # Kırık platformlar geri gelmeden az önce silik görünür
+    # Kırık platformlar geri gelmeden az önce silik görünür; boss arenasının basamakları da golem yenilene kadar
     ghosts = [crumbler for crumbler in level.crumblers if crumbler.ghost]
+    if level.arena:
+        ghosts += level.arena.ghosts()
     if theme.modern():
         draw_shadows(screen, level, camera)
     draw_sprites(screen, [*level.goals, *level.tiles, *ghosts], camera)
     if theme.modern():
         draw_glows(screen, level, player, camera)
-    sprites = [*level.springs, *level.coins, *level.pickups, *level.enemies, *level.shots, *level.effects]
+    sprites = [
+        *level.springs, *level.coins, *level.pickups, *level.bosses, *level.enemies, *level.shots, *level.effects
+    ]
     draw_sprites(screen, sprites, camera)
     # Efsanevi skinin izi karakterin arkasında
     if player.trail:
@@ -590,6 +615,8 @@ class Game:
     def start(self, stage=None):
         # Yeni oyuna başla: stage = bölümün sırası, None = sonsuz oyun
         self.stage = stage
+        if stage is None and "boss" in DIFFICULTIES[self.mode]:
+            boss.prepare()  # golemin resimleri şimdi hazırlansın: arenaya gelince oyun takılmasın
         self.reset()
         self.state = "playing"
         self.revived = False
@@ -782,6 +809,7 @@ class Game:
         self.stats["climbed"] += score.height
         self.stats["coins"] += score.coins
         self.stats["enemies"] += score.enemies
+        self.stats["bosses"] += score.bosses
         save_dict("stats", self.stats)
         self.gems_found, self.gems_bonus = score.gems, gem_bonus
         self.gems_reason = "rekor" if endless else "yıldız"
@@ -993,6 +1021,9 @@ class Game:
             return
         # Oyun dünyası diğer her ekranda arkada görünür
         draw_world(screen, background, self.level, self.player, self.camera, self.score)
+        arena = self.level.arena
+        if arena and arena.shake and self.state == "playing":  # golem yere çakıldı: ekran sallanır
+            screen.scroll(0, 3 if arena.shake % 4 < 2 else -3)
         if self.state in ("menu", "title"):
             screens.draw_main_menu(screen, self.best_height, self.labels(), WEB)
             if self.state == "title":
@@ -1015,10 +1046,12 @@ class Game:
                 screen, self.best_heights, self.high_scores, self.stats, self.mode, self.all_stars()
             )
         else:
-            # Puan ve canlar kameradan bağımsız: hep ekranın üst köşelerinde
-            self.score.draw(screen)
+            # Puan ve canlar kameradan bağımsız: hep ekranın üst köşelerinde; boss'un can çubuğu üstte ortada
+            fighting = arena is not None and arena.fighting
+            self.score.draw(screen, 150 if fighting else 120)
             draw_lives(screen, self.player.lives, self.player.max_lives)
             draw_powers(screen, self.player)
+            draw_boss(screen, arena)
             if self.state == "playing":
                 touch.draw(screen)
                 self.pause_button.draw(screen)

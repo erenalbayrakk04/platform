@@ -2,6 +2,7 @@
 #   Enemy (kırmızı), Slime (zıplayan sümük), Spiky (dikenli kirpi — üstüne basılmaz),
 #   Cannon (topçu: yerinde durur, ateş topu atar → Fireball), FlyingEnemy (yarasa, yatay uçar),
 #   Bee (arı, dikey uçar). Hangi yere hangisinin geleceğini level.py seçer.
+#   MagmaSlime (lav sümüğü) haritada çıkmaz: boss (boss.py) vurulunca saçar.
 import math
 
 import pygame
@@ -29,6 +30,7 @@ from settings import (
     CANNON_RANGE,
     FIREBALL_SPEED,
     BEE_SPEED,
+    MAGMA_COLOR,
 )
 import art
 import theme
@@ -38,6 +40,7 @@ MAKE_FRAMES = {
     "enemy": art.enemy_frames,
     "flyer": art.flyer_frames,
     "slime": art.slime_frames,
+    "magma": lambda: art.slime_frames(MAGMA_COLOR),
     "spiky": art.spiky_frames,
     "cannon": art.cannon_frames,
     "fireball": art.fireball_frames,
@@ -55,6 +58,7 @@ class Patrol(pygame.sprite.Sprite):
     # ya da vertical ise dikeyde (üst-alt)
     spiky = False  # True ise üstüne basınca düşman değil karakter yanar (main.py)
     grounded = False  # şu an bir platformun üstünde mi (Modern temada ayağının altına gölge çizilir)
+    harmless = False  # True iken karaktere değmez (golemden fırlayan lav sümüğü yere inene kadar)
 
     def __init__(self, image, start, end, speed, vertical=False, **position):
         super().__init__()
@@ -122,9 +126,10 @@ class Slime(Patrol):
     # Zıplayan sümük: yürür; SLIME_JUMP_TIME karede bir durup SLIME_SQUASH_TIME kare basılır
     # (uyarı), sonra zıplar. Havadayken de yürümeye devam eder
     color = SLIME_COLOR
+    kind = "slime"  # resimleri (frames)
 
     def __init__(self, center_x, bottom, left, right, speed):
-        self.frames = frames("slime")
+        self.frames = frames(self.kind)
         super().__init__(
             self.frames["walk1"][1], left, right, speed * SLIME_SPEED, midbottom=(center_x, bottom)
         )
@@ -161,6 +166,36 @@ class Slime(Patrol):
                 self.airborne = True
                 self.velocity_y = -SLIME_JUMP_POWER
         self.image = self.frames[name][self.direction]
+
+
+class MagmaSlime(Slime):
+    # Lav sümüğü: boss (Lav Golemi, boss.py) vurulunca saçılır; turuncu sümük, aynı davranış
+    color = MAGMA_COLOR
+    kind = "magma"
+    FLING_SPEED = 4  # fırlarken yana hızı (golemin dibine değil, biraz uzağa düşsün)
+    walk_speed = None  # fırlarken asıl yürüme hızı (inince geri gelir)
+
+    @property
+    def harmless(self):
+        # Fırlarken zararsız: golemin kafasına basan karakterin içinden çıkıp onu yakmasın
+        return self.walk_speed is not None
+
+    def throw(self, center_x, bottom, direction, power):
+        # Golemin içinden fırlar: havada direction yönüne uçar, yere (ground) inince yürümeye başlar
+        self.rect.midbottom = (center_x, bottom)
+        self.pos = float(self.rect.x)
+        self.bottom_y = float(bottom)
+        self.old_top = self.rect.top
+        self.direction = direction
+        self.airborne = True
+        self.velocity_y = -power
+        self.walk_speed, self.speed = self.speed, self.FLING_SPEED
+
+    def update(self, target):
+        flying = self.airborne
+        super().update(target)
+        if flying and not self.airborne and self.walk_speed:
+            self.speed, self.walk_speed = self.walk_speed, None  # indi: kendi hızında yürür
 
 
 class Cannon(Patrol):

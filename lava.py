@@ -43,12 +43,13 @@ class Lava:
         # y = lavın yüzeyi (bölümdeki konum; yukarı çıktıkça eksiye iner). Başta zeminin altında
         self.y = float(ground_y + LAVA_START_GAP)
         self.wait = mode["lava_delay"]  # yükselmeye başlamasına kaç kare kaldı
+        self.paused = False  # boss arenasında golemle dövüşürken durur (boss.py)
         self.time = 0  # dalga animasyonu için
 
     def update(self, camera_bottom):
         # Her karede bir kere: yüksekte daha hızlı yükselir; ekranın çok altında da kalmaz
         self.time += 1
-        if not self.active:
+        if not self.active or self.paused:
             return
         if self.wait > 0:
             self.wait -= 1

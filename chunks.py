@@ -624,6 +624,40 @@ FINISH_CHUNK = {
 }
 FINISH_CHUNKS = {"L": FINISH_CHUNK, "R": mirror(FINISH_CHUNK)}  # giriş tarafı → bitiş parçası
 
+# Boss arenası (boss.py): sonsuz oyunda Zor ve Ultra Zor'da her birkaç yüz m'de bir, sıradaki parçanın yerine gelir.
+# Karakter alttaki girişten zemindeki delikten (X) yukarı çıkar; zemine basınca delik kapanır (X'ler blok olur), golem
+# (B) uyanır, lav durur. Golem yenilince basamaklar (Y) belirir, çıkışa onlarla tırmanılır. H = kesin bir kalp
+# (Ultra'da tek canla boss'a girilmesin). Birleşme kuralları diğer parçalarla aynı
+ARENA_CHUNK = {
+    "entry": "L", "exit": "L", "difficulty": 3,
+    "floor_row": 9,  # golemin zemini
+    "rows": [
+        "-----.....",
+        "..........",
+        "..........",
+        "......YYY.",
+        "..........",
+        "..........",
+        ".YYY......",
+        "..........",
+        ".......B..",
+        "XXXX######",
+        "..........",
+        "...H......",
+        "-----.....",
+        "..........",
+    ],
+}
+ARENA_CHUNKS = {"L": ARENA_CHUNK, "R": mirror(ARENA_CHUNK)}  # giriş tarafı → arena
+
+
+def arena_rows(chunk, fighting):
+    # Arenanın satırları, X ve Y'ler o anki hâliyle: fighting = False → girerken (delik açık, basamak yok),
+    # True → boss'tan sonra (delik kapalı, basamaklar var). check_chunks.py böyle dener
+    gate, stair = ("#", "-") if fighting else (".", ".")
+    table = str.maketrans({"X": gate, "Y": stair, "B": ".", "H": "."})
+    return [row.translate(table) for row in chunk["rows"]]
+
 WIDTH = 10
 # Her taraf için hangi sütunlar ona ait ve hangi sütun mutlaka dolu olmalı
 SIDE_COLUMNS = {"L": range(0, 5), "R": range(5, 10)}
@@ -739,7 +773,8 @@ def check_chunk(chunk, is_start=False):
     # Parça kurallara uymuyorsa oyun açılırken hata ver (yanlış parça fark edilmeden kalmasın)
     rows = chunk["rows"]
     finish = chunk.get("exit", "") is None  # bitiş parçası: çıkışı yok, bayrak (G) var
-    allowed = "#-.CESMKF" + ("P" if is_start else "") + ("G" if finish else "")
+    arena = "floor_row" in chunk  # boss arenası
+    allowed = "#-.CESMKF" + ("P" if is_start else "") + ("G" if finish else "") + ("XYBH" if arena else "")
     problem = None
     if any(len(row) != WIDTH for row in rows):
         problem = "her satır 10 karakter olmalı"
@@ -747,6 +782,10 @@ def check_chunk(chunk, is_start=False):
         problem = f"sadece şu işaretler kullanılabilir: {allowed}"
     elif finish and sum(row.count("G") for row in rows) != 1:
         problem = "bitiş parçasında tek bayrak (G) olmalı"
+    elif arena and (sum(row.count("B") for row in rows) != 1 or "B" not in rows[chunk["floor_row"] - 1]):
+        problem = "arenada tek golem (B) olmalı, zeminin (floor_row) hemen üstünde"
+    elif arena and any("X" in row for i, row in enumerate(rows) if i != chunk["floor_row"]):
+        problem = "kapı (X) sadece zeminde olur"
     elif not finish and not check_side_row(rows[0], chunk["exit"], "#-"):
         problem = "en üst satır (çıkış) kurala uymuyor"
     elif not is_start and rows[-1] != "." * WIDTH:
@@ -756,7 +795,7 @@ def check_chunk(chunk, is_start=False):
     # Altın, yay ve düşman havada olmasın; düşmanın platformu yeterince geniş olsun
     for r, row in enumerate(rows):
         for c, cell in enumerate(row):
-            if problem or cell not in "CESG":
+            if problem or cell not in "CESGBH":
                 continue
             if r + 1 >= len(rows) or rows[r + 1][c] not in SOLID:
                 problem = f"{r}. satır {c}. sütundaki '{cell}' havada (altı katı değil)"
@@ -791,7 +830,7 @@ def check_chunk(chunk, is_start=False):
 
 
 check_chunk(START_CHUNK, is_start=True)
-for _chunk in CHUNKS + list(FINISH_CHUNKS.values()):
+for _chunk in CHUNKS + list(FINISH_CHUNKS.values()) + list(ARENA_CHUNKS.values()):
     check_chunk(_chunk)
 # Her iki giriş tarafı için de en az bir kolay parça olmalı, yoksa oyun takılır
 for _side in "LR":

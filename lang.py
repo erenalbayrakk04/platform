@@ -144,6 +144,12 @@ EN = {
     "Yarasa: onun da üstüne zıpla": "Bat: jump on it too",
     "Arı: aşağı yukarı uçar": "Bee: flies up and down",
     "Lav: yükseliyor, acele et!": "Lava: it's rising, hurry!",
+    "Golem: alevi sönünce kafasına bas": "Golem: stomp it when its fire is out",
+    # Boss (Lav Golemi)
+    "Lav Golemi": "Lava Golem",
+    "Alevi sönünce kafasına bas!": "Stomp its head when the fire goes out!",
+    "Golem yenildi!": "Golem defeated!",
+    "Basamaklardan tırman!": "Climb the stairs!",
     # Rekorlar
     "Tırmanış": "Climb",
     "Puan": "Score",

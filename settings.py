@@ -60,6 +60,7 @@ HARD_CHUNK_BIAS = 3  # en zorda zor parçalar ne kadar sık gelsin (0 = hepsi e�
 # İsteğe bağlı (yazılmazsa aşağıdaki genel ayarlar geçerli; bölümlerde hep genel ayar):
 #   walker_kinds / flyer_kinds   düşman türlerinin ağırlıkları (WALKER_KINDS / FLYER_KINDS gibi)
 #   cannon_fire_time             topçu kaç karede bir ateş eder (CANNON_FIRE_TIME gibi)
+#   boss                         sonsuz oyunda boss (Lav Golemi) gelir; sayıları aşağıda "Boss" kısmında anlatılıyor
 DIFFICULTY_NAMES = {"easy": "Kolay", "normal": "Orta", "hard": "Zor", "ultra": "Ultra Zor"}
 DEFAULT_DIFFICULTY = "normal"
 DIFFICULTIES = {
@@ -92,6 +93,11 @@ DIFFICULTIES = {
         "extra_enemy_chance": 0.11, "extra_enemy_chance_max": 0.19,
         "extra_flyer_chance": 0.035, "extra_flyer_chance_max": 0.09,
         "heart_chance": 0.03, "heart_chance_min": 0.012,
+        # Zor'un boss'u Ultra'nınkinden biraz kolay (kullanıcı kararı): seyrek gelir, yavaş, uzun süre yorgun kalır
+        "boss": {
+            "every": 350, "health": (3, 5), "crouch": (55, 40), "air": (50, 44), "wave_speed": (3.5, 4.5),
+            "tired": (140, 100), "rocks": (0, 1), "minions": (1, 1), "minion_limit": (2, 2), "gems": (5, 8),
+        },
     },
     # Baştan en zor: Orta'nın en zor hâliyle başlar, oradan da zorlaşır. Tek can, kalp nadir, lav beklemez.
     # Sonsuz oyunda Zor'dan belirgin zor (kullanıcı: "Ultra, Zor gibi"): lav ~%35 hızlı, düşman ~2 kat, çoğu
@@ -108,8 +114,43 @@ DIFFICULTIES = {
         "walker_kinds": {"walker": (2, 1), "slime": (3, 3), "spiky": (2, 3), "cannon": (2, 3)},
         "flyer_kinds": {"bat": (1, 1), "bee": (1, 1)},
         "cannon_fire_time": 100,
+        # Ultra'nın boss'u gerçekten zor: sık gelir, hızlı, lav taşı fırlatır, vurulunca daha çok sümük saçar
+        "boss": {
+            "every": 200, "health": (4, 7), "crouch": (40, 28), "air": (42, 36), "wave_speed": (5, 6.5),
+            "tired": (90, 65), "rocks": (1, 3), "minions": (2, 2), "minion_limit": (3, 4), "gems": (8, 12),
+        },
     },
 }
+
+# Boss: Lav Golemi (boss.py) — sonsuz oyunda Zor ve Ultra Zor'da her "every" m'de bir boss arenası gelir.
+# Arenaya girince alttaki kapı kapanır ve lav durur; golem yenilince yukarı çıkan basamaklar belirir, lav yine
+# yükselir. Golem karaktere doğru zıplar, yere çakılınca iki yana alev dalgası yayılır (üstünden atla). İndikten
+# sonra alevi söner ve yorulur: o zaman kafasına basılır. Alevi yanarken dokunan yanar. Vurulunca lav sümükleri
+# saçar. Moddaki "boss" sayıları (ilk boss, en güçlü boss): sonraki her boss biraz daha güçlü, BOSS_HARDEST'ten
+# sonra hep en güçlüsü. Sayıların anlamı:
+#   every          kaç m'de bir boss gelir          health        kaç kez kafasına basılmalı
+#   crouch         zıplamadan önce kaç kare çömelir (uyarı)       air           zıplayınca kaç kare havada kalır
+#   wave_speed     alev dalgası her karede kaç piksel gider        tired         indikten sonra kaç kare yorgun kalır
+#   rocks          zıplamadan önce kaç lav taşı fırlatır          minions       her vuruşta kaç lav sümüğü saçar
+#   minion_limit   arenada aynı anda en fazla kaç lav sümüğü olur  gems          yenilince kaç elmas düşürür
+BOSS_HARDEST = 3  # kaçıncı boss'ta en güçlü hâline ulaşır (0 = ilk boss; 3 = dördüncüsü)
+BOSS_GRAVITY = 0.9  # golemin düşüşü (karakterinki 0.8; ağır olduğu için biraz daha hızlı düşer)
+BOSS_WAKE_TIME = 100  # arenaya girince golem kaç kare kükrer (bu arada saldırmaz)
+BOSS_ROCK_GAP = 28  # lav taşları arasında kaç kare
+BOSS_ROCK_FLIGHT = 52  # lav taşı kaç karede yere iner (karakterin taş atıldığı andaki yerine)
+BOSS_HIT_TIME = 50  # kafasına basılınca kaç kare yanıp söner (bu arada zararsızdır, kenara kayar)
+BOSS_HIT_SLIDE = 6  # vurulunca karakterden uzağa ne hızla kayar (piksel/kare; giderek yavaşlar)
+BOSS_DEATH_TIME = 90  # yenilince kaç kare titreyip patlar
+BOSS_RAGE = 0.85  # her vuruşta çömelme süresi bununla çarpılır (sinirlendikçe hızlanır)
+BOSS_MIN_CROUCH = 20  # çömelme en az kaç kare (sinirlense de zıplayacağı görülsün)
+BOSS_STOMP_BOUNCE = 13  # kafasına basınca karakter ne kadar sıçrar
+BOSS_LAVA_GRACE = 240  # golem yenilince lav kaç kare bekler (60 kare = 1 saniye)
+BOSS_POINTS = 100  # golemi yenmek kaç puan
+BOSS_SHAKE = 14  # golem yere çakılınca ekran kaç kare sallanır
+BOSS_BANNER_TIME = 150  # "Lav Golemi" / "Golem yenildi!" yazısı kaç kare görünür
+BOSS_ROCK_COLOR = (90, 76, 84)  # golemin taşı (bazalt)
+MAGMA_COLOR = (240, 110, 40)  # golemin saçtığı lav sümükleri (turuncu)
+BOSS_BAR_COLOR = (240, 90, 40)  # ekranın üstündeki can çubuğu
 
 # Bölümler — "Oyna → Bölümler"; her bölümün haritası, düşmanları, lavı stages.py'de. Bir bölüm bitince
 # (en az 1 yıldız) sıradakinin kilidi açılır. Yıldızlar: bitirdin / altınların çoğu / hiç can kaybetmeden

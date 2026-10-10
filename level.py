@@ -36,6 +36,7 @@ from chunks import (
     START_CHUNK,
     CHUNKS,
     FINISH_CHUNKS,
+    ARENA_CHUNKS,
     platform_run,
     moving_platforms,
     free_span,
@@ -46,6 +47,7 @@ from chunks import (
 )
 from stages import allowed_chunks, focused
 from enemy import Enemy, Slime, Spiky, Cannon, FlyingEnemy, Bee
+from boss import Golem, Arena, boss_numbers
 import art
 import theme
 
@@ -106,6 +108,25 @@ class Platform(pygame.sprite.Sprite):
         self.ends = ends
         self.image = image("platform", ends)
         self.rect = self.image.get_rect(topleft=(x, y))
+
+
+def ghost_image(solid):
+    # Silik hâli (boss arenasının basamakları golem yenilene kadar böyle görünür)
+    ghost = solid.copy()
+    ghost.set_alpha(70)
+    return ghost
+
+
+class Stair(Platform):
+    # Boss arenasının basamağı (haritada 'Y'): golem yenilene kadar silik ve katı değil (level.tiles'ta yok);
+    # yenilince belirir (boss.Arena.win)
+    def __init__(self, x, y, ends=(True, True)):
+        super().__init__(x, y, ends)
+        self.solid_image = self.image
+        self.image = theme.cached(IMAGES, ("stair ghost", ends), lambda: ghost_image(self.solid_image))
+
+    def appear(self):
+        self.image = self.solid_image
 
 
 class MovingPlatform(pygame.sprite.Sprite):
@@ -301,6 +322,13 @@ class Level:
         self.shots = pygame.sprite.Group()
         # Bölümün sonundaki bayrak (sonsuz oyunda boş)
         self.goals = pygame.sprite.Group()
+        # Boss (boss.py): sonsuz oyunda modun "boss" sayıları varsa her boss_every m'de bir arena gelir.
+        # bosses = golem (çizim için), arena = en son konan arena (yoksa None)
+        self.bosses = pygame.sprite.Group()
+        self.arena = None
+        self.boss_config = mode.get("boss") if stage is None else None
+        self.boss_count = 0  # şimdiye kadar konan arena
+        self.next_boss = self.boss_config["every"] if self.boss_config else None  # sıradaki arenanın yüksekliği (m)
         self.coins_total = 0  # haritaya konan altın sayısı (bölümde yıldız için)
         self.width = len(START_CHUNK["rows"][0]) * TILE_SIZE
         self.player_start = (TILE_SIZE, 0)
@@ -343,7 +371,9 @@ class Level:
         top = self.top - len(rows) * TILE_SIZE
         mode = self.mode
         t = hardness(-top, mode)  # yükseklerdeki parçada düşmanlar hızlı ve çok, kalpler seyrek
-        if chunk is not START_CHUNK:
+        arena = "floor_row" in chunk  # boss arenası: fazladan düşman yok, kendi işaretleri var (X, Y, B, H)
+        numbers = boss_numbers(self.boss_config, self.boss_count) if arena else None  # bu golemin sayıları
+        if chunk is not START_CHUNK and not arena:
             rows = self.add_extra_enemies(rows, t)
         # Bölümde olmayan düşman türlerinin yerleri boş kalır (parça yine çıkılabilir; düşmanlar katı değil)
         if not self.walker_kinds:
@@ -351,11 +381,23 @@ class Level:
         if not self.flyer_kinds:
             rows = [row.replace("F", ".") for row in rows]
         sprites = []
+        gates, stairs, golem = [], [], None  # arenanın kapısı, basamakları ve golemi (katı değiller, tiles'a sonra girer)
         for row_index, row in enumerate(rows):
             for col_index, cell in enumerate(row):
                 x = col_index * TILE_SIZE
                 y = top + row_index * TILE_SIZE
-                if cell == "#":
+                if cell in "#X" and arena:  # kapı kapanınca zemin tek parça görünsün
+                    block = Tile(x, y, run_ends(row.replace("X", "#"), col_index))
+                    (gates if cell == "X" else sprites).append(block)
+                elif cell == "Y":
+                    stairs.append(Stair(x, y, run_ends(row, col_index)))
+                elif cell == "B":  # golem: ayakları altındaki zeminde, bütün arenada zıplar
+                    golem = Golem(x + TILE_SIZE // 2, y + TILE_SIZE, 0, self.width, numbers)
+                elif cell == "H":  # arenadan önce kesin bir kalp
+                    item = Pickup(x, y, "heart")
+                    sprites.append(item)
+                    self.pickups.add(item)
+                elif cell == "#":
                     sprites.append(Tile(x, y, run_ends(row, col_index)))
                 elif cell == "-":
                     sprites.append(Platform(x, y, run_ends(row, col_index)))
@@ -442,9 +484,30 @@ class Level:
             sprites.append(mover)
             self.movers.add(mover)
         self.tiles.add([s for s in sprites if isinstance(s, (Tile, Platform, MovingPlatform, CrumblingPlatform))])
+        if arena:
+            sprites += gates + stairs + [golem]
+            self.bosses.add(golem)
+            self.arena = Arena(golem, gates, stairs, golem.floor, sprites, numbers, self.boss_count)
+            self.boss_count += 1
+            self.next_boss += self.boss_config["every"]
         self.chunks.append((top, self.top, sprites))
         self.top = top
         self.exit_side = chunk["exit"]
+
+    def arena_due(self):
+        # Sıradaki parça boss arenası mı: arenanın zemini sıradaki boss'un yüksekliğine (next_boss m) ulaşıyorsa
+        # o arena (girişi alttaki parçanın çıkışının karşısında), değilse None
+        if not self.boss_config or (self.arena and self.arena.state != "won"):
+            return None  # önceki golem yenilmeden yeni arena kurulmaz (level.arena hep en son arena)
+        arena = ARENA_CHUNKS["R" if self.exit_side == "L" else "L"]
+        floor_height = (self.player_start[1] - self.top) // TILE_SIZE + len(arena["rows"]) - arena["floor_row"]
+        return arena if floor_height >= self.next_boss else None
+
+    def drop_item(self, x, y, kind, sprites):
+        # Haritaya sonradan toplanacak bir şey koy (golem yenilince düşen elmaslar); sprites = ait olduğu parçanın listesi
+        item = Pickup(x, y, kind)
+        sprites.append(item)
+        self.pickups.add(item)
 
     def add_extra_enemies(self, rows, t):
         # Elle çizilenlere ek, rastgele düşmanlar: düşmansız geniş her platforma extra_enemy_chance
@@ -560,11 +623,14 @@ class Level:
                 if not self.plan:
                     break
                 self.add_chunk(self.plan.pop(0))
-            else:
-                self.add_chunk(self.pick_chunk(self.top, self.exit_side))
+            else:  # sonsuz oyun: sırası geldiyse boss arenası, yoksa rastgele parça
+                self.add_chunk(self.arena_due() or self.pick_chunk(self.top, self.exit_side))
         # Ekranın çok altında kalan parçaları unut (bellekten sil)
         while len(self.chunks) > 1 and self.chunks[0][0] > view_bottom + REMOVE_BELOW:
             _, _, sprites = self.chunks.pop(0)
+            if self.arena and self.arena.sprites is sprites:
+                self.arena = None
+            self.bosses.remove(sprites)
             self.tiles.remove(sprites)
             self.coins.remove(sprites)  # toplanmamış altınlar, kalpler ve düşmanlar da gitsin
             self.pickups.remove(sprites)

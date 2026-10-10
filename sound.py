@@ -142,6 +142,10 @@ class Sounds:
         game_over = []
         for midi, length in ((67, 0.2), (64, 0.2), (60, 0.2), (55, 0.6)):
             game_over += t(freq(midi), freq(midi) * 0.98, length, "triangle", 0.8)
+        # Boss (Lav Golemi): yere çakılınca gümbürtü, uyanınca kükreme, kafasına basılınca kalın "tank" sesi
+        slam = [a + b for a, b in zip(t(0, 0, 0.35, "noise", 0.55), t(110, 35, 0.35, "triangle", 0.9))]
+        roar = [a + b for a, b in zip(t(0, 0, 0.7, "noise", 0.3), t(95, 55, 0.7, "square", 0.35))]
+        boss_hit = t(330, 90, 0.12, "square", 0.5) + t(520, 160, 0.2, "square", 0.45)
         sounds = {
             "jump": jump,
             "coin": coin,
@@ -158,6 +162,9 @@ class Sounds:
             "powerdown": powerdown,
             "buy": buy,
             "gem": gem,
+            "slam": slam,
+            "roar": roar,
+            "boss_hit": boss_hit,
         }
         self.effects = {name: self.to_sound(s, SOUND_VOLUME) for name, s in sounds.items()}
 

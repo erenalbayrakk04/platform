@@ -36,6 +36,7 @@ from settings import (
     CANNON_COLOR,
     FIREBALL_COLOR,
     BEE_COLOR,
+    BOSS_ROCK_COLOR,
     LIFE_COLOR,
     SPRING_COLOR,
     MOVING_PLATFORM_COLOR,
@@ -263,12 +264,13 @@ SLIME_ROWS = {
 }
 
 
-def slime_frames():
+def slime_frames(color=SLIME_COLOR):
+    # color = gövdesi (yeşil sümük; golemin saçtığı lav sümüğü turuncu)
     palette = {
-        "K": shade(SLIME_COLOR, 0.3),
-        "G": SLIME_COLOR,
-        "g": shade(SLIME_COLOR, 0.75),
-        "h": tint(SLIME_COLOR, 0.6),
+        "K": shade(color, 0.3),
+        "G": color,
+        "g": shade(color, 0.75),
+        "h": tint(color, 0.6),
         "W": WHITE,
         "E": EYE_DARK,
     }
@@ -371,6 +373,114 @@ def bee_frames():
         "w": (225, 240, 255),  # saydamımsı kanatlar
     }
     return [facing_pair(render(wings + BEE_BODY, palette)) for wings in BEE_WINGS]
+
+
+# --- Boss: Lav Golemi (önden). Sadece sol yarısı çizili, sağ yarısı aynası (symmetric). Başında alev yanarken
+# dokunan yanar; yorulunca alevi söner, gözleri ve ağzı kararır. Taş gövdede lav çatlakları ---
+def symmetric(rows):
+    return [row + row[::-1] for row in rows]
+
+
+GOLEM_FLAMES = [  # iki resim sırayla: alev titrer
+    ["..........f..", ".......f..fF.", ".......FfFFof", "......fFoFooF"],
+    ["........f...f", "........Ff.fF", "......fFFfFoF", "......FoFooFo"],
+]
+GOLEM_BODY = [
+    "......KKKKKKK",
+    ".....KhhhhhhR",
+    ".....KhRRRRRR",
+    "..KKKKRRRRRRR",
+    ".KhhhKRKKRRRR",
+    "KhhRRKRRKKKRR",
+    "KhRRRKRREEEKR",
+    "KRRLRKRRrEErR",
+    "KRLYLKRRRrrRR",
+    "KRRLRKRRKKKKK",
+    "KhRRRKRKYMYMY",
+    "KRRRrKRRKYKYK",
+    "KrRRRKrRRKKKK",
+    "KRRLrKrRRRRRR",
+    "KrLYLKrRRRLRR",
+    "KrRLrKrrRLYLR",
+    "KrrrrKrrrRLRR",
+    ".KKKKKrrrrrrr",
+    ".....KrrrrKKK",
+    "....KKKKKK...",
+]
+GOLEM_AIR_LEGS = ["....KrrrK....", "...KKKKK....."]  # havadayken bacaklar iki yana açılır (son 2 satırın yerine)
+GOLEM_CROUCH_DROP = (2, 8, 13, 16)  # çömelince gövdeden çıkan satırlar (kısalır)
+GOLEM_TIRED_DROP = (2, 7, 8, 13, 14, 16)  # yorulunca daha da çöker, gözleri yarı kapanır
+GOLEM_FLAME_HEIGHT = 4 * PIXEL_SCALE  # alevlerin yüksekliği (piksel; çarpışma kutusuna girmez)
+
+
+def whiten(image, amount):
+    # Resmin renklerini beyaza yaklaştır (amount 0-1, tint gibi); saydamlık aynı kalır
+    image = image.copy()
+    keep = round(255 * (1 - amount))
+    image.fill((keep, keep, keep), special_flags=pygame.BLEND_RGB_MULT)
+    image.fill((255 - keep,) * 3, special_flags=pygame.BLEND_RGB_ADD)
+    return image
+
+
+def golem_frames():
+    # {"sleep"/"tired": çökmüş, alevi sönük; "stand"/"crouch"/"air": [iki alev resmi]; "flash": vurulunca beyaz}.
+    # Alevler ayrı çizilip gövdenin üstüne konur, uyurken yorgun hâli kullanılır: Modern temada her resim pahalı
+    rock = BOSS_ROCK_COLOR
+    awake = {
+        "K": (30, 20, 28), "R": rock, "r": shade(rock, 0.72), "h": tint(rock, 0.3), "L": LAVA_COLOR,
+        "E": (255, 236, 140), "M": LAVA_COLOR, "Y": LAVA_TOP_COLOR,
+        "F": FIREBALL_COLOR, "f": (255, 236, 140), "o": (230, 60, 20),
+    }
+    tired = {**awake, "E": (130, 50, 30), "M": (110, 40, 30), "Y": (170, 70, 30), "L": (120, 50, 35)}
+    body = symmetric(GOLEM_BODY)
+
+    def drop(rows, removed):
+        return [row for i, row in enumerate(rows) if i not in removed]
+
+    flames = [render(symmetric(rows), awake) for rows in GOLEM_FLAMES]
+
+    def burning(rows):
+        # Gövde + üstünde iki alev resmi (Modern'de alevler başa biraz biner, arada çizgi kalmasın)
+        figure = render(rows, awake)
+        pictures = []
+        for fire in flames:
+            image = pygame.Surface((figure.get_width(), GOLEM_FLAME_HEIGHT + figure.get_height()), pygame.SRCALPHA)
+            image.blit(figure, (0, GOLEM_FLAME_HEIGHT))
+            image.blit(fire, (0, 2 if theme.modern() else 0))
+            pictures.append(image)
+        return pictures
+
+    slumped = render(drop(body, GOLEM_TIRED_DROP), tired)
+    return {
+        "sleep": slumped,
+        "stand": burning(body),
+        "crouch": burning(drop(body, GOLEM_CROUCH_DROP)),
+        "air": burning(body[:-2] + symmetric(GOLEM_AIR_LEGS)),
+        "tired": slumped,
+        "flash": whiten(slumped, 0.75),
+    }
+
+
+# Golem yere çakılınca iki yana yayılan alev dalgası (sağa giden; sola gideni aynası) ve fırlattığı lav taşı
+WAVE_ROWS = [
+    ["....ff..", "...fFFf.", "..fFooF.", ".fFoooFf", "fFoooooF", "FooooooF"],
+    ["...f.f..", "..fFfFf.", ".fFooFF.", "fFooooFf", "FoooooFF", "FooooooF"],
+]
+ROCK_ROWS = [
+    [".KKKK.", "KRRLRK", "KRLYLK", "KLYLRK", "KRLRRK", ".KKKK."],
+    [".KKKK.", "KRLRRK", "KLYLRK", "KRLYLK", "KRRLRK", ".KKKK."],
+]
+
+
+def wave_frames():
+    # [iki resim] — her biri {1: sağa, -1: sola}
+    palette = {"F": FIREBALL_COLOR, "f": (255, 236, 140), "o": LAVA_COLOR}
+    return [facing_pair(render(rows, palette)) for rows in WAVE_ROWS]
+
+
+def rock_frames():
+    palette = {"K": (30, 20, 28), "R": BOSS_ROCK_COLOR, "L": LAVA_COLOR, "Y": LAVA_TOP_COLOR}
+    return [render(rows, palette) for rows in ROCK_ROWS]
 
 
 # --- Altın: dönüyormuş gibi daralıp genişler ---

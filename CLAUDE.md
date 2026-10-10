@@ -85,7 +85,32 @@
   sol olanın üstüne girişi sağ olan gelir → birleşmede 2 satır fark, üst üste binme yok.
   `check_chunk` yanlış parçada oyun açılırken hata verir. Yeni parça eklerken her iki giriş
   tarafı için her zorlukta parça olsun. `FINISH_CHUNKS` = {giriş tarafı: bitiş parçası} (bölüm modu; çıkışı `None`,
-  `goal_row` = zirve satırı, `G` = bayrak; `mirror` çıkışsızı da aynalar).
+  `goal_row` = zirve satırı, `G` = bayrak; `mirror` çıkışsızı da aynalar). `ARENA_CHUNKS` = {giriş tarafı: boss
+  arenası} (bkz. boss.py; `floor_row` = golemin zemini; `X` kapı = zemindeki giriş deliği, karakter zemine basınca blok
+  olur; `Y` basamak = golem yenilince belirir; `B` golem; `H` kesin kalp). `arena_rows(chunk, fighting)` X/Y'leri o anki
+  hâliyle verir (check_chunks böyle dener).
+- `boss.py` — BOSS: LAV GOLEMİ (kullanıcı kararı, 2026-10-10: "Kral Sümük gibi olsun ama lav golemi olsun", yenmek
+  ZORUNLU, sadece SONSUZ oyunda: Ultra'da her 200 m, Zor'da her 350 m, her seferinde güçlenir; Zor'unki "bi tık daha
+  kolay", Ultra'nınki "gerçekten zor"). Level `arena_due()` sıradaki parçanın yerine `ARENA_CHUNKS`'ı koyar (zemini
+  `next_boss` m'ye ulaşınca; bölümlerde hiç yok). `Arena` (level.arena): "waiting" → karakter zemine basınca `start`:
+  kapı (`gates`) kapanır, `lava.paused`, golem uyanır, ortada "Lav Golemi" yazısı → "fight" → golem ölünce `win`:
+  basamaklar (level.`Stair`, o zamana kadar silik — `ghosts()`) belirir, lav sümükleri patlar, `gems` elmas (Pickup)
+  düşer, lav `BOSS_LAVA_GRACE` bekleyip yine yükselir, `BOSS_POINTS` + `score.bosses` (stats "bosses") → "won".
+  `update(player, level, score)` → çalınacak sesler; `touch(player, level)` → "hit"/"hurt"/"bounce"/None (main işler).
+  `Golem` durumları: sleep → wake (kükrer) → [throw: `rocks` lav taşı] → crouch (titrer: zıplayacak) → air (karakterin
+  o anki yerine, `air` kare) → land: iki yana `Shockwave` (zeminde gider, üstünden atlanır) + ekran sallanır (`shake`)
+  → tired (`tired` kare: ALEVİ SÖNER = zararsız, kafasına basılır) → ... Alevi yanarken (`flaming`) değen yanar
+  (kalkan korur). Kafasına basınca `stomp`: can −1, karakter `BOSS_STOMP_BOUNCE` sıçrar, golem "hit" (yanıp söner,
+  zararsız, karakterden uzağa kayar), çömelme süresi `BOSS_RAGE` ile kısalır (en az `BOSS_MIN_CROUCH`), iki yanından
+  `minions` lav sümüğü (`enemy.MagmaSlime`, en fazla `minion_limit`; fırlarken `harmless`) çıkar. Sayılar settings
+  `DIFFICULTIES[mod]["boss"]` (ilk boss, en güçlü boss) → `boss_numbers(config, index)` (`BOSS_HARDEST`. bossta en güçlü).
+  `LavaRock` kavisle karakterin atıldığı andaki yerine iner (kaçmak için yürümek yeter). Resimler `boss.frames()`
+  (art `golem_frames`: alevler ayrı çizilip gövdeye konur, uyurken = yorgun hâli; `wave_frames`, `rock_frames`);
+  Modern'de pahalı (~100 ms) → sonsuz oyun başlarken `boss.prepare()`. HUD: score `draw_boss` (üstte ad + dilimli can
+  çubuğu, "YENİ REKOR!" o zaman aşağı kayar; ortada büyük yazı). Ölçüm (gerçek fizikle ileriye bakan robot, 1 sn ileri
+  görür; scratchpad'deki fight_plan.py gibi: durum kaydedilip her plan denenir): Zor'un bütün bossları ve Ultra'nın ilk
+  üçü hiç can kaybetmeden yenildi; ikinci deneme sonucu için aşağıdaki "Sıradaki adım"a bak. Basit robot köşede
+  sıkışıyordu: golem köşeye zıplarken ALTINDAN karşıya koşmak gerekir (havadayken başının üstünde geçer).
 - `stages.py` — BÖLÜM MODU (kullanıcı kararı: sonsuz oyun da kalır; bölümler mevcut parçalardan, 3 yıldız, lav bazı
   bölümlerde). HER ZORLUĞUN KENDİ 20 BÖLÜMÜ (kullanıcı kararı: "tamamen farklı bölümler", hepsi baştan açık, seçim
   bölümler ekranındaki sekmelerden = ana menüdeki zorluk ayarıyla aynı): `STAGE_SETS` = {"easy": EASY_STAGES, "normal":
@@ -116,6 +141,9 @@
   /kenara gelince söner. Uçanlar (F yeri): `FlyingEnemy(center_x, center_y, left, right, speed)` yarasa: `FLYER_BOB` kadar
   süzülür; `Bee(center_x, center_y, top, bottom, speed, facing)` arı: dikey `Patrol`, ekranın ortasına bakar.
   Hızları level.py moda göre verir. Hepsi `level.enemies`'te; tile'larla çarpışma yok (sınırlar parçadan hesaplanır).
+  `MagmaSlime` lav sümüğü (turuncu `Slime`, resmi `frames("magma")` = `art.slime_frames(MAGMA_COLOR)`): sadece boss
+  saçar; `throw(...)` ile golemin yanından `FLING_SPEED` hızla fırlar, yere inene kadar `harmless` (main'in düşman
+  döngüsü `harmless` olanı atlar — eskiden golemin kafasına basan karakterin içinden çıkıp onu yakıyordu).
 - `level.py` — `Tile`, `Platform`, `Coin`, `Pickup`, `Spring` (`level.springs`; `Spring.squash()` basık resim), `MovingPlatform` (`level.movers` VE
   `level.tiles`; `move()` kaydığı pikseli döndürür; `unsafe = True`), `CrumblingPlatform` (`level.crumblers`;
   sağlamken `level.tiles`'ta da; `step(player, tiles)` her karede: basılınca `CRUMBLE_DELAY` kare titrer
@@ -225,7 +253,7 @@
   sırayla, 3 şart: bayrak / altın ≥ `stars_needed(total)` (`STAR_COIN_SHARE`) / hiç can kaybetmeden), `draw_stage_failed`, `LABELS` sabit yazılar (değişenleri main
   verir); `draw_main_menu` (logo = `title.draw_logo`, "Rekor: N m", düğmeler, web'de HEP `draw_slow_hint` — kullanıcı isteği),
   `draw_howto` (kontroller + `HOWTO_ROWS`: oyundaki resimlerle her şeyin açıklaması — yeni öğe eklenince buraya da
-  ekle; 15 satır `HOWTO_TOP` (198) / `HOWTO_GAP` (29) ile sığıyor, daha fazlası için aralık daralt; `HOWTO_WARN_ROWS` sarı yazı), `draw_records(best_heights, high_scores, stats, current)` (her modun tırmanış + puan rekoru, seçili mod sarı; altında
+  ekle; 16 satır (golem dahil) `HOWTO_TOP` (196) / `HOWTO_GAP` (27) ile sığıyor, daha fazlası için aralık daralt; `HOWTO_WARN_ROWS` sarı yazı), `draw_records(best_heights, high_scores, stats, current)` (her modun tırmanış + puan rekoru, seçili mod sarı; altında
   tüm modların toplamları), `draw_pause`, `draw_game_over(screen, score, mode_name, ...)` (başlık altında "Zorluk: ...";
   düğmeleri main çizer: `draw_end_buttons`). `draw_new_skins(screen, skinler, y)`: oyun sonu ekranlarında (`NEW_SKIN_Y` = durum → y)
   görevi yeni tamamlanan efsanevinin küçük resmi + "Yeni karakter: Ejderha!". `draw_gems_earned(screen, found, bonus,
@@ -313,7 +341,10 @@
   `LAVA_PUSHBACK` aşağı çekilir). Kalkan varsa (kullanıcı isteği) can gitmez: `bounce(SHIELD_LAVA_BOUNCE)` ile
   lavdan fırlar, kalkan kırılır (bir kez kurtarır), lav yine `push_back`. `draw(screen, camera)` her şeyin önünde (`art.lava_frames()` dalga şeridi + düz dolgu);
   ekranın altındayken `LAVA_WARN_DISTANCE` içinde `art.lava_glow()` kızıllık. check_chunks lavı hesaba katmaz.
-- `check_chunks.py` — çıkılabilirlik testi: `python check_chunks.py` (~20 sn, çok çekirdekli).
+  `paused` = boss arenasında golemle dövüşürken durur (boss.py; bitince `wait` = `BOSS_LAVA_GRACE`).
+- `check_chunks.py` — çıkılabilirlik testi: `python check_chunks.py` (~20 sn, çok çekirdekli). Boss arenasını da dener
+  (`test_arena`): girişten zemine (kapı açık), golemden sonra zeminden çıkışa (kapı kapalı, basamaklar var) ve oyunun
+  koyabileceği her alt/üst parçayla birleşme.
   Gerçek `Player` fiziğiyle (sahte `Controls`) BFS: her parçanın (bitiş parçaları dahil, onlarda zirveye) girişinden (başlangıçta P) tepesine
   ve her geçerli birleşmede (alt parçanın üst 4 satırı + üst parçanın alt 5 satırı) girişe
   ulaşılabiliyor mu. Düşmanları hesaba katmaz. Yayları gerçek fizikle dener; hareketli
@@ -429,7 +460,8 @@
 - `sound.py` — `pre_init()` (pygame.init'ten önce; 22050 Hz mono 16 bit; tampon masaüstünde 512,
   web'de `WEB_AUDIO_BUFFER` = 2048 — tarayıcı 512'de cızırdıyordu; tarayıcı frekansı kendisi seçer, 48000), `Sounds()`: efektler
   (jump, coin, stomp, hurt, start, game_over, win, life, spring, crumble, shoot, powerup, powerdown, buy = skin satın alındı,
-  gem = elmas toplandı) ve 8 ölçülük döngü müzik (`MELODY`/`BASS` nota
+  gem = elmas toplandı; boss: slam = golem yere çakıldı, roar = uyandı, boss_hit = kafasına basıldı) ve 8 ölçülük döngü
+  müzik (`MELODY`/`BASS` nota
   numaraları) `array` ile üretilir (numpy YOK); `play(name)`, `start_music/stop_music`, `toggle_mute`,
   `set_levels(music, effects)` (0-1 çarpan; tam = `MUSIC_VOLUME`/`SOUND_VOLUME`)
   (M). Mixer yoksa/biçim farklıysa `enabled=False`, her şey sessizce çalışır. Stereo da desteklenir.
@@ -511,6 +543,12 @@ Açık depoda çalışma durumu girişsiz bakılabilir: https://api.github.com/r
   olacak; varsayılan şu anki (nostalji), bir de modern eklenecek"). Ayarlar → "Tema: Nostalji / Modern". Modern = aynı
   oyunun yumuşak, renk geçişli, gölgeli/ışıklı hâli (theme.py, modern.py). Kullanıcı deneyip geri bildirim verecek
   (beğenmediği öğe modern.py'de tek tek değiştirilebilir). Müzik/sesler iki temada aynı (yeni müzik önerme).
+- BOSS (LAV GOLEMİ) yapıldı (2026-10-10; kullanıcı: "ultra zor modda 200. metrede büyük ve güçlü bi düşman"). Ayrıntılar
+  yukarıda `boss.py`'de. Kullanıcı kararları: Kral Sümük gibi davranan lav golemi, yenmek zorunlu, Ultra'da her 200 m /
+  Zor'da her 350 m, güçlenerek; Zor'unki biraz kolay, Ultra'nınki gerçekten zor. Claude kararları (kullanıcı itiraz
+  etmedi): dövüşte lav durur, arenadan önce kesin kalp, yenince elmas düşer. Henüz yok (önerildi, kullanıcı karar
+  vermedi): "boss'u yen" görevli efsanevi skin (stats "bosses" sayılıyor, görev eklemek kolay). Kullanıcı oynayıp
+  zorluk için geri bildirim verecek (sayılar settings `DIFFICULTIES[...]["boss"]` ve "Boss" kısmı).
 - OYUNCU KAYITLARI (2026-10-09, kullanıcı kararı: şimdilik böyle kalsın): her şey sadece oyuncunun cihazında
   (web: localStorage, bilgisayar: dosya), sunucu yok → kişisel veri toplanmıyor. Sorunlar: cihaz değişince / tarayıcı
   verisi silinince kayıt gider (iPhone Safari uzun süre girilmeyen sitenin verisini silebilir), elmas elle
