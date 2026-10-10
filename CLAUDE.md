@@ -218,7 +218,8 @@
   (`REVIVE_BUTTONS` revive/give_up, reklam varsa `REVIVE_AD_BUTTONS` revive/revive_ad/give_up), oyun sonu:
   `end_buttons(kind, double)` → `END_BUTTONS[(game_over|clear|last_clear, 2 kat teklifi var mı)]` (2 kat = "double", hep
   en altta); oyun sonu ekran fonksiyonları düğme ÇİZMEZ, main `draw_end_buttons(screen, buttons, stage_failed, double,
-  earned)` ile çizer (`DOUBLE_LABELS`; ▶ = `ad_icon()`, `draw_button_icons`), `draw_note` = alttaki kısa bilgi kutusu), bölüm ekranları: `draw_play_select` (Sonsuz Oyun düğmesinin altında seçili zorluğun "Rekor: N m"si), `draw_stages`,
+  earned)` ile çizer (`DOUBLE_LABELS`; ▶ = `ad_icon()`, `draw_button_icons`), `draw_note` = alttaki kısa bilgi kutusu), bölüm ekranları: `draw_play_select` (Sonsuz Oyun düğmesinin altında seçili zorluğun "Rekor: N m"si), `draw_stages` (seçili bölümün adı + hedefi; KİLİTLİ bölümün de adı asma kilitle yazar
+  ama hedefi gizli — kullanıcı: "merak uyandırsın"),
   ekran fonksiyonları `mode` alır (`STAGE_SETS[mode]`), `stage_title(mode, index)`;
   `draw_stage_intro` (bölüm başında ad + intro + hedef), `draw_stage_clear(screen, mode, index, result, shown)` (yıldızlar
   sırayla, 3 şart: bayrak / altın ≥ `stars_needed(total)` (`STAR_COIN_SHARE`) / hiç can kaybetmeden), `draw_stage_failed`, `LABELS` sabit yazılar (değişenleri main

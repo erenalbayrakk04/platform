@@ -528,8 +528,15 @@ def draw_stages(screen, mode, stars, unlocked):
             if stages[focus]["lava"]:
                 info += "   " + t("Lav var!")
             draw_text(screen, font(MENU_SMALL_FONT_SIZE), info, HINT_COLOR, center=(CENTER_X, 610))
-        else:
-            draw_text(screen, font(MENU_FONT_SIZE), "Kilitli", HINT_COLOR, center=(CENTER_X, 584))
+        else:  # kilitli: adı görünür (merak uyandırsın) ama hedefi gizli; adın solunda asma kilit
+            title = stage_title(mode, focus)
+            lock = theme.cached(_images, "lock", art.lock_image)
+            width = lock.get_width() + 8 + font(MENU_FONT_SIZE).size(title)[0]
+            left = CENTER_X - width // 2
+            screen.blit(lock, lock.get_rect(midleft=(left, 584)))
+            draw_text(
+                screen, font(MENU_FONT_SIZE), title, HINT_COLOR, midleft=(left + lock.get_width() + 8, 584)
+            )
             draw_text(
                 screen, font(MENU_SMALL_FONT_SIZE), "Önceki bölümü bitirince açılır", HINT_COLOR,
                 center=(CENTER_X, 610),
