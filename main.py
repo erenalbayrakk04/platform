@@ -22,6 +22,8 @@ from settings import (
     REVIVE_TIME,
     REVIVE_INVINCIBLE,
     ADS_TEST,
+    BOSS_TEST,
+    BOSS_TEST_HEIGHT,
     ADS_AFTER_GAMES,
     FREE_GEMS,
     NOTE_TIME,
@@ -131,6 +133,20 @@ def fps_wanted():
 def ads_test_wanted():
     # Deneme reklamı (ads.py): settings.py'de ADS_TEST ya da web'de adresin sonunda #reklam
     return ADS_TEST or "reklam" in web_hash()
+
+
+def boss_test_wanted():
+    # Boss denemesi (boss.py): settings.py'de BOSS_TEST ya da web'de adresin sonunda #boss → ilk golem
+    # BOSS_TEST_HEIGHT m'de gelir (Zor ve Ultra Zor'un sonsuz oyununda)
+    return BOSS_TEST or "boss" in web_hash()
+
+
+def game_mode(name, boss_test):
+    # Zorluk modunun sayıları (settings.DIFFICULTIES); boss denemesinde ilk golem BOSS_TEST_HEIGHT m'de
+    mode = DIFFICULTIES[name]
+    if boss_test and "boss" in mode:
+        mode = {**mode, "boss": {**mode["boss"], "first": BOSS_TEST_HEIGHT}}
+    return mode
 
 
 def hide_web_loader():
@@ -476,6 +492,7 @@ class Game:
         self.revive_timer = 0  # Devam Et teklifinin bitmesine kalan kare (düğmeler çıkana kadarki bekleme dahil)
         # Ödüllü reklamlar (ads.py): şimdilik sadece deneme reklamı (#reklam), yoksa hiç teklif edilmez
         self.ads = Ads(ads_test_wanted())
+        self.boss_test = boss_test_wanted()  # #boss: ilk golem erken gelir (denemek için)
         self.session_games = 0  # bu açılışta biten oyun (ADS_AFTER_GAMES: önce biraz oynasın)
         self.revive_ad = None  # Devam Et'te reklam seçeneği: None (yok), "offer", "failed" (reklam gelmedi)
         self.double = None  # oyun sonunda 2 kat elmas (reklamla): None (teklif yok), "offer", "done", "failed"
@@ -519,7 +536,7 @@ class Game:
             self.level, self.player, self.camera, self.score = new_game(0, stage_mode(stage), stage, skin)
         else:
             self.level, self.player, self.camera, self.score = new_game(
-                self.best_height, DIFFICULTIES[self.mode], None, skin
+                self.best_height, game_mode(self.mode, self.boss_test), None, skin
             )
 
     def unlocked(self, index):

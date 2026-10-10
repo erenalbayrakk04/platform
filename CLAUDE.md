@@ -301,7 +301,7 @@
   elmas > 0 ise `double` = "offer" → "2 Kat: +N" → reklam → elmas bir daha ("done", gri "+N elmas alındı!"). Karakterler
   ekranında `free_gems_offer()` → `SKIN_MENU.offer`. `watch_ad(reward)` → "ad" durumu (oyun durur, `ads.draw`; ses
   `quiet_for_ad` ile kısılır) → `end_ad(watched)`: ödül ya da "Şu an reklam yok" (`show_note`, `NOTE_TIME`) + düğme
-  "failed" (gri). `web_hash()` = web adresinin # sonrası (`#fps`, `#reklam`). `finish()` oyun bitince
+  "failed" (gri). `web_hash()` = web adresinin # sonrası (`#fps`, `#reklam`, `#boss` = ilk golem `BOSS_TEST_HEIGHT` m'de — `game_mode(ad, boss_test)` modun "boss"una "first" ekler; settings `BOSS_TEST` de aynı). `finish()` oyun bitince
   (kaybedince VE durdurup ana menüye dönünce) rekorları + istatistikleri kaydeder. `handle_event`, `update(steps, touch)`,
   `draw(...)`. M tuşu her yerde `toggle_sound()` (kaydedilir).
   BÖLÜM AKIŞI: menü "play" → "play_select" (Bölümler / Sonsuz Oyun / Geri) → "stages" (`open_stages()`; arkada sonsuz harita)

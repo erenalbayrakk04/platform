@@ -328,7 +328,8 @@ class Level:
         self.arena = None
         self.boss_config = mode.get("boss") if stage is None else None
         self.boss_count = 0  # şimdiye kadar konan arena
-        self.next_boss = self.boss_config["every"] if self.boss_config else None  # sıradaki arenanın yüksekliği (m)
+        # Sıradaki arenanın yüksekliği (m); "first" = ilk arena başka yerde (main.py #boss denemesi)
+        self.next_boss = self.boss_config.get("first", self.boss_config["every"]) if self.boss_config else None
         self.coins_total = 0  # haritaya konan altın sayısı (bölümde yıldız için)
         self.width = len(START_CHUNK["rows"][0]) * TILE_SIZE
         self.player_start = (TILE_SIZE, 0)

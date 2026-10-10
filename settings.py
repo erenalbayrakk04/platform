@@ -133,6 +133,8 @@ DIFFICULTIES = {
 #   wave_speed     alev dalgası her karede kaç piksel gider        tired         indikten sonra kaç kare yorgun kalır
 #   rocks          zıplamadan önce kaç lav taşı fırlatır          minions       her vuruşta kaç lav sümüğü saçar
 #   minion_limit   arenada aynı anda en fazla kaç lav sümüğü olur  gems          yenilince kaç elmas düşürür
+BOSS_TEST = False  # True = ilk boss BOSS_TEST_HEIGHT m'de gelir (denemek için); web'de adres sonu #boss
+BOSS_TEST_HEIGHT = 20
 BOSS_HARDEST = 3  # kaçıncı boss'ta en güçlü hâline ulaşır (0 = ilk boss; 3 = dördüncüsü)
 BOSS_GRAVITY = 0.9  # golemin düşüşü (karakterinki 0.8; ağır olduğu için biraz daha hızlı düşer)
 BOSS_WAKE_TIME = 100  # arenaya girince golem kaç kare kükrer (bu arada saldırmaz)
