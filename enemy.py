@@ -165,17 +165,18 @@ class Slime(Patrol):
 
 class Cannon(Patrol):
     # Topçu: yerinde durur, karaktere döner. Karakter dikeyde CANNON_RANGE kadar yakındayken
-    # CANNON_FIRE_TIME karede bir ateş topu atar; atmadan CANNON_WARN_TIME kare önce namlusu kızarır.
-    # Attığı ateş topları shots grubuna (level.shots) girer. Üstüne basılınca ölür
+    # fire_time (CANNON_FIRE_TIME; Ultra Zor'da daha sık) karede bir ateş topu atar; atmadan CANNON_WARN_TIME
+    # kare önce namlusu kızarır. Attığı ateş topları shots grubuna (level.shots) girer. Üstüne basılınca ölür
     color = CANNON_COLOR
     grounded = True
 
-    def __init__(self, center_x, bottom, shots):
+    def __init__(self, center_x, bottom, shots, fire_time=CANNON_FIRE_TIME):
         self.frames = frames("cannon")
         super().__init__(self.frames[0][1], center_x, center_x, 0, midbottom=(center_x, bottom))
         self.shots = shots
         self.facing = 1
-        self.timer = CANNON_FIRE_TIME - center_x % 60  # hepsi aynı anda ateş etmesin
+        self.fire_time = fire_time
+        self.timer = fire_time - center_x % 60  # hepsi aynı anda ateş etmesin
 
     def update(self, target):
         self.old_top = self.rect.top
@@ -185,7 +186,7 @@ class Cannon(Patrol):
         if near or self.timer != CANNON_WARN_TIME + 1:
             self.timer -= 1
         if self.timer <= 0:
-            self.timer = CANNON_FIRE_TIME
+            self.timer = self.fire_time
             muzzle_x = self.rect.right if self.facing == 1 else self.rect.left
             self.shots.add(Fireball(muzzle_x, self.rect.top + art.CANNON_MUZZLE_Y, self.facing))
         warning = self.timer <= CANNON_WARN_TIME

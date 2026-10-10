@@ -31,6 +31,7 @@ from settings import (
     ITEM_BOOST,
     MAGNET_CHANCE,
     SHIELD_CHANCE,
+    CANNON_FIRE_TIME,
     WALKER_KINDS,
     FLYER_KINDS,
 )
@@ -246,6 +247,7 @@ def stage_mode(stage):
         heart_chance_min=mode["heart_chance_min"] if "heart" in items else 0,
         magnet_chance=MAGNET_CHANCE if "magnet" in items else 0,
         shield_chance=SHIELD_CHANCE if "shield" in items else 0,
+        cannon_fire_time=CANNON_FIRE_TIME,  # Ultra Zor'un sonsuz oyundaki sık ateşi bölümlere geçmesin
         lava=stage["lava"] is not None,
     )
     boost = stage["boost"]

@@ -110,8 +110,8 @@
   Hepsinin `update(target)`'ı karakterin kutusunu alır (`level.enemies.update(player.rect)`; sadece topçu kullanır).
   Yürüyenler (E yeri): `Enemy(center_x, bottom, left, right, speed)` kırmızı; `Spiky` kirpi (`Enemy` gibi, `SPIKY_SPEED` kat
   yavaş, `spiky = True`); `Slime` sümük (`SLIME_JUMP_TIME`'da bir `SLIME_SQUASH_TIME` basılıp bekler, `SLIME_JUMP_POWER` +
-  `GRAVITY` ile zıplar, havada da yürür); `Cannon(center_x, bottom, shots)` topçu (yürümez, karaktere döner; karakter dikeyde
-  `CANNON_RANGE` içindeyken `CANNON_FIRE_TIME`'da bir `Fireball` atar, önceki `CANNON_WARN_TIME` karede kızarır — kızarma ancak
+  `GRAVITY` ile zıplar, havada da yürür); `Cannon(center_x, bottom, shots, fire_time)` topçu (yürümez, karaktere döner; karakter dikeyde
+  `CANNON_RANGE` içindeyken `fire_time` (mod `cannon_fire_time`, yoksa `CANNON_FIRE_TIME`) karede bir `Fireball` atar, önceki `CANNON_WARN_TIME` karede kızarır — kızarma ancak
   karakter yakındayken başlar). `Fireball(center_x, center_y, direction)`: `level.shots`'ta, `update(tiles, level_width)` katıya
   /kenara gelince söner. Uçanlar (F yeri): `FlyingEnemy(center_x, center_y, left, right, speed)` yarasa: `FLYER_BOB` kadar
   süzülür; `Bee(center_x, center_y, top, bottom, speed, facing)` arı: dikey `Patrol`, ekranın ortasına bakar.
@@ -139,9 +139,17 @@
   ZORLUK MODLARI: settings `DIFFICULTIES` = mod → sayılar sözlüğü ("easy" Kolay, "normal" Orta = eski oyunun
   sayıları, "hard" Zor, "ultra" Ultra Zor; `DIFFICULTY_NAMES` ekrandaki adlar). Anahtarlar: `lives`/`max_lives`,
   `hard_height`, `map_head_start` (harita parçaları baştan o kadar yukarıdaymış gibi), `lava_delay`, `lava_speed(_max)`,
-  `enemy_speed(_max)`, `flyer_speed(_max)`, `extra_enemy_chance(_max)`, `extra_flyer_chance(_max)`, `heart_chance(_min)`. Ultra Zor (kullanıcı kararı): baştan en zor
+  `enemy_speed(_max)`, `flyer_speed(_max)`, `extra_enemy_chance(_max)`, `extra_flyer_chance(_max)`, `heart_chance(_min)`; isteğe bağlı `walker_kinds`/`flyer_kinds` (tür
+  ağırlıkları) ve `cannon_fire_time` — bunları `stage_mode` bölümün kendi değerleriyle/varsayılanla EZER (bölümler etkilenmez;
+  bölümler moddan sadece `enemy_speed`/`flyer_speed`/`heart_chance`'ı alır). Ultra Zor (kullanıcı kararı): baştan en zor
   (sayıları Orta'nın en zor hâlinden başlar, zor parçalar hemen), lav beklemez ve hızlı, 1 canla başlar (kalp nadir,
   en fazla 3), kalkan/mıknatıs normal çıkar. Güçlendirme ihtimalleri modlara göre değişmez.
+  ULTRA SONSUZ SERTLEŞTİ (2026-10-10, kullanıcı: "Ultra Zor, Zor gibi" — ölçünce 150 m'den sonra parça başı düşman Zor
+  1,00 / Ultra 1,03, lav 1,0 / 1,15'ti): lav 1,0→1,35, ek düşman 0,4→0,55 + uçan 0,16→0,22 (parça başı ~1,2-1,5; Zor
+  0,6-1,0), türler çoğu sümük/kirpi/topçu + yarasa/arı yarı yarıya, topçu 100 karede bir ateş. 80 bölümün haritası
+  eskisiyle birebir aynı (git worktree + imza betiği). LAV SINIRI: kusursuz tırmanış (gerçek fizikle Dijkstra, maliyet =
+  kare) ~4,4 px/kare (3 satır ~27 karede), en yavaş parça (zorluk 3, hareketli platformlu) ~1,8 px/kare → lav hızı bunun
+  epey altında kalmalı (oyuncu kusursuz değil; dururken lav ~448 px = 11 blok geride).
   YÜKSELDİKÇE ZORLAŞMA: `hardness(height, mode)` = 0 (başlangıç) → 1 (modun `hard_height` px tırmanınca), `blend(easy, hard, t)`.
   `add_chunk` parçanın yüksekliğinden `t` hesaplar: düşman hızı `enemy_speed`→`enemy_speed_max`,
   `pick_item(t)` kalp ihtimali `heart_chance`→`heart_chance_min`.
@@ -464,7 +472,8 @@ Açık depoda çalışma durumu girişsiz bakılabilir: https://api.github.com/r
   kapat" sabit yazıyor (otomatik ipucu kullanıcının iPhone'unda çıkmamıştı).
 - ZORLUK MODLARI yapıldı: Kolay / Orta / Zor / Ultra Zor (kullanıcı Ultra Zor'u istedi), her modun ayrı rekoru.
   Kullanıcı oynayıp sayılar için geri bildirim verecek (settings `DIFFICULTIES`). Ultra'da kıpırdamayan oyuncuya
-  lav ~2,4 sn'de yetişir (lav beklemez — kullanıcı seçimi; çok sert gelirse `lava_delay` artırılır).
+  lav ~2,2 sn'de yetişir (lav beklemez — kullanıcı seçimi; çok sert gelirse `lava_delay` artırılır).
+  Ultra sonsuz 2026-10-10'da sertleştirildi (yukarıda "ULTRA SONSUZ SERTLEŞTİ"); kullanıcı oynayıp geri bildirim verecek.
 - GİRİŞ EKRANI yapıldı (kullanıcı: "başlamak için ekrana dokun yerine daha güzel bir şey"): oyunun içinde (title.py,
   masaüstünde de var) + web'de yeni yükleme ekranı + ses kilidi (web.tmpl). Ana menünün başlığı da aynı piksel logo oldu.
   Kullanıcı iPhone'da doğruladı: "Dokun ve Başla"ya basınca müzik geliyor (ses kilidi çalışıyor).

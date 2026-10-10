@@ -57,6 +57,9 @@ HARD_CHUNK_BIAS = 3  # en zorda zor parçalar ne kadar sık gelsin (0 = hepsi e�
 #                            (0.25 = %25; "_max" = en zordaki)
 #   extra_flyer_chance       bir platformun hemen üstündeki her boş satıra fazladan yarasa gelme ihtimali
 #   heart_chance             haritadaki her altının kalbe dönüşme ihtimali (0.05 = %5; "_min" = en zordaki)
+# İsteğe bağlı (yazılmazsa aşağıdaki genel ayarlar geçerli; bölümlerde hep genel ayar):
+#   walker_kinds / flyer_kinds   düşman türlerinin ağırlıkları (WALKER_KINDS / FLYER_KINDS gibi)
+#   cannon_fire_time             topçu kaç karede bir ateş eder (CANNON_FIRE_TIME gibi)
 DIFFICULTY_NAMES = {"easy": "Kolay", "normal": "Orta", "hard": "Zor", "ultra": "Ultra Zor"}
 DEFAULT_DIFFICULTY = "normal"
 DIFFICULTIES = {
@@ -90,16 +93,21 @@ DIFFICULTIES = {
         "extra_flyer_chance": 0.035, "extra_flyer_chance_max": 0.09,
         "heart_chance": 0.03, "heart_chance_min": 0.012,
     },
-    # Baştan en zor: Orta'nın en zor hâliyle başlar, oradan da zorlaşır. Tek can, kalp nadir, lav beklemez
+    # Baştan en zor: Orta'nın en zor hâliyle başlar, oradan da zorlaşır. Tek can, kalp nadir, lav beklemez.
+    # Sonsuz oyunda Zor'dan belirgin zor (kullanıcı: "Ultra, Zor gibi"): lav ~%35 hızlı, düşman ~2 kat, çoğu
+    # kirpi/topçu/sümük, topçular sık ateş eder. (Bölümler bu sayılardan sadece düşman hızını ve kalbi alır)
     "ultra": {
         "lives": 1, "max_lives": 3,
         "hard_height": 6000, "map_head_start": 6000,
-        "lava_delay": 0, "lava_speed": 0.9, "lava_speed_max": 1.15,
+        "lava_delay": 0, "lava_speed": 1.0, "lava_speed_max": 1.35,
         "enemy_speed": 3, "enemy_speed_max": 3.6,
         "flyer_speed": 2.6, "flyer_speed_max": 3.2,
-        "extra_enemy_chance": 0.15, "extra_enemy_chance_max": 0.21,
-        "extra_flyer_chance": 0.08, "extra_flyer_chance_max": 0.11,
+        "extra_enemy_chance": 0.4, "extra_enemy_chance_max": 0.55,
+        "extra_flyer_chance": 0.16, "extra_flyer_chance_max": 0.22,
         "heart_chance": 0.015, "heart_chance_min": 0.008,
+        "walker_kinds": {"walker": (2, 1), "slime": (3, 3), "spiky": (2, 3), "cannon": (2, 3)},
+        "flyer_kinds": {"bat": (1, 1), "bee": (1, 1)},
+        "cannon_fire_time": 100,
     },
 }
 

@@ -12,6 +12,7 @@ from settings import (
     FLYER_KINDS,
     BEE_RANGE,
     BEE_MIN_PATH,
+    CANNON_FIRE_TIME,
     COIN_SPIN_SPEED,
     MAGNET_CHANCE,
     SHIELD_CHANCE,
@@ -396,7 +397,8 @@ class Level:
                     if kind is None:  # bölümde buraya uyan tür yok
                         continue
                     if kind == "cannon":
-                        enemy = Cannon(cannon_col * TILE_SIZE + TILE_SIZE // 2, feet[1], self.shots)
+                        fire_time = mode.get("cannon_fire_time", CANNON_FIRE_TIME)
+                        enemy = Cannon(cannon_col * TILE_SIZE + TILE_SIZE // 2, feet[1], self.shots, fire_time)
                     else:
                         walker = {"walker": Enemy, "slime": Slime, "spiky": Spiky}[kind]
                         speed = blend(mode["enemy_speed"], mode["enemy_speed_max"], t)
