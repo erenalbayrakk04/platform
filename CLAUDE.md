@@ -287,7 +287,9 @@
   "menu" (ana menü) ↔ "sound"/"howto"/"records" (Geri/ESC);
   ses çubuğu oynayınca `change_volume` (ses kapalıysa açar, kaydeder, efektte örnek "coin" sesi çalar); menü "play" →
   `start()` → "playing" ↔ "paused" (⏸ düğmesi, ESC veya P; durunca Devam/Ses/Ana Menü); can biter → `lose()`:
-  DEVAM ET (oyun başına bir kez — `revived`, cüzdanda `REVIVE_GEMS` elmas varsa; sonsuz ve bölüm) → "revive" durumu:
+  DEVAM ET (sonsuz ve bölüm; bir oyunda TEKRAR TEKRAR, ama fiyat her seferinde 2 katı — kullanıcı kararı 2026-10-10:
+  `revive_price()` = `REVIVE_GEMS` × 2^`revives` → 3, 6, 12...; cüzdanda o kadar yoksa teklif çıkmaz, 2. seferden
+  itibaren ekranda "Fiyat 2 katına çıktı!"; reklamla devam oyun başına bir kez, sadece ilk ölümde) → "revive" durumu:
   oyun donar, `screens.draw_revive` (yükseklik, "Rekora / Bayrağa N m kaldı!", geri sayım çubuğu, `REVIVE_BUTTONS`
   Devam Et / Hayır — `GAME_OVER_DELAY` kare sonra çıkar, ölürken basılan tuş elması harcamasın; cüzdan). Devam Et →
   `revive()`: `wardrobe.spend("gems", ...)`, 1 can, `respawn()`, `REVIVE_INVINCIBLE`, lav `push_back`, müzik baştan.

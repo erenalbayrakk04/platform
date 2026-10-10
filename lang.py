@@ -103,6 +103,7 @@ EN = {
     "Kaybettin!": "Game Over!",
     "Devam Et?": "Continue?",
     "Kaldığın yerden 1 canla": "Right where you were, with 1 life",
+    "Fiyat 2 katına çıktı!": "The price has doubled!",
     "Bayrağa {} m kaldı!": "{} m to the flag!",
     "Rekora {} m kaldı!": "{} m to your best!",
     "Devam Et: {}": "Continue: {}",

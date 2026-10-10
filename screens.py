@@ -361,15 +361,18 @@ def draw_game_over(screen, score, mode_name, best_height, high_score, new_record
         draw_slow_hint(screen)
 
 
-def draw_revive(screen, score, gems, time_left, ad):
-    # Canlar bitti: oyun başına bir kez elmasla (ya da reklam izleyerek) kaldığın yerden devam (main.py "revive").
+def draw_revive(screen, score, gems, time_left, ad, price):
+    # Canlar bitti: elmasla (ilk seferde reklam izleyerek de) kaldığın yerden devam (main.py "revive").
     # gems = cüzdandaki elmas, time_left = geri sayım çubuğu (1 → 0; None = düğmeler henüz çıkmadı),
-    # ad = reklam seçeneği (None = yok, "offer", "failed" = reklam gelmedi)
+    # ad = reklam seçeneği (None = yok, "offer", "failed" = reklam gelmedi), price = bu sefer kaç elmas
+    # (her Devam Et'te 2 katına çıkar; çıktıysa başlığın altında yazar)
     buttons = revive_buttons(ad)
     draw_overlay(screen)
     draw_title(screen, "Devam Et?", 185)
     small = font(MENU_SMALL_FONT_SIZE)
     draw_text(screen, small, "Kaldığın yerden 1 canla", HINT_COLOR, center=(CENTER_X, 230))
+    if price > REVIVE_GEMS:
+        draw_text(screen, small, "Fiyat 2 katına çıktı!", RECORD_COLOR, center=(CENTER_X, 252))
     height = f"{score.height} / {score.goal} m" if score.goal else f"{score.height} m"
     draw_text(screen, font(TITLE_FONT_SIZE), height, center=(CENTER_X, 290))
     # Neyi kaçıracağı: bayrağa / rekora ne kadar kaldı (ilk oyunda rekor yok)
@@ -389,8 +392,8 @@ def draw_revive(screen, score, gems, time_left, ad):
         fill.width = round(bar.width * time_left)
         if fill.width > 0:
             pygame.draw.rect(screen, GEM_COLOR, fill, border_radius=5)
-        disabled = [name for name, off in (("revive", gems < REVIVE_GEMS), ("revive_ad", ad == "failed")) if off]
-        labels = {**LABELS, "revive": t("Devam Et: {}").format(REVIVE_GEMS)}
+        disabled = [name for name, off in (("revive", gems < price), ("revive_ad", ad == "failed")) if off]
+        labels = {**LABELS, "revive": t("Devam Et: {}").format(price)}
         if ad == "failed":
             labels["revive_ad"] = "Reklam yok"
         buttons.draw(screen, labels, disabled)

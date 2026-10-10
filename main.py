@@ -472,7 +472,7 @@ class Game:
         self.state = "title"
         self.title = TitleScreen(WEB, self.wardrobe.selected)  # menüye geçiş bitince silinir
         self.game_over_timer = 0  # kaybettin ekranında düğmeler çıkana kadar kalan kare
-        self.revived = False  # bu oyunda Devam Et kullanıldı mı (oyun başına bir kez)
+        self.revives = 0  # bu oyunda kaç kez Devam Et kullanıldı (her seferinde fiyat 2 katı: revive_price)
         self.revive_timer = 0  # Devam Et teklifinin bitmesine kalan kare (düğmeler çıkana kadarki bekleme dahil)
         # Ödüllü reklamlar (ads.py): şimdilik sadece deneme reklamı (#reklam), yoksa hiç teklif edilmez
         self.ads = Ads(ads_test_wanted())
@@ -619,7 +619,7 @@ class Game:
             boss.prepare()  # golemin resimleri şimdi hazırlansın: arenaya gelince oyun takılmasın
         self.reset()
         self.state = "playing"
-        self.revived = False
+        self.revives = 0
         self.new_skins = []
         self.gems_found = self.gems_bonus = 0
         self.intro = STAGE_INTRO_TIME if stage is not None else 0
@@ -681,13 +681,17 @@ class Game:
         self.finish(gem_bonus=new_stars * GEMS_PER_STAR)
         self.offer_double()
 
+    def revive_price(self):
+        # Devam Et kaç elmas: ilki REVIVE_GEMS, sonra her seferinde bir öncekinin 2 katı (kullanıcı kararı: 3, 6, 12...)
+        return REVIVE_GEMS * 2 ** self.revives
+
     def lose(self):
-        # Canlar bitti: oyun başına bir kez "Devam Et?" teklifi (cüzdanda elmas yetiyorsa ya da reklam izlenebiliyorsa),
-        # yoksa hemen kaybettin
+        # Canlar bitti: "Devam Et?" teklifi (cüzdanda elmas yetiyorsa; reklamla devam oyun başına bir kez), yoksa hemen
+        # kaybettin
         self.sounds.stop_music()
-        can_pay = self.wardrobe.balance("gems") >= REVIVE_GEMS
-        self.revive_ad = "offer" if self.ads_allowed() else None
-        if self.revived or not (can_pay or self.revive_ad):
+        can_pay = self.wardrobe.balance("gems") >= self.revive_price()
+        self.revive_ad = "offer" if self.ads_allowed() and self.revives == 0 else None
+        if not (can_pay or self.revive_ad):
             self.game_over()
             return
         self.state = "revive"
@@ -696,11 +700,11 @@ class Game:
 
     def revive(self, paid=True):
         # Devam Et: elmas cüzdandan düşer (paid; reklam izlendiyse bedava); karakter son durduğu güvenli yerde 1 canla,
-        # bir süre dokunulmaz devam eder, lav aşağı çekilir
-        if paid and not self.wardrobe.spend("gems", REVIVE_GEMS):
+        # bir süre dokunulmaz devam eder, lav aşağı çekilir. Sonraki Devam Et 2 kat pahalı
+        if paid and not self.wardrobe.spend("gems", self.revive_price()):
             self.sounds.play("powerdown")  # elmas yetmiyor (düğme gri)
             return
-        self.revived = True
+        self.revives += 1
         player = self.player
         player.lives = 1
         player.respawn()
@@ -1061,7 +1065,9 @@ class Game:
                 screens.draw_pause(screen, self.labels())
             elif self.state == "revive":
                 time_left = self.revive_timer / REVIVE_TIME if self.revive_timer <= REVIVE_TIME else None
-                screens.draw_revive(screen, self.score, self.wardrobe.balance("gems"), time_left, self.revive_ad)
+                screens.draw_revive(
+                    screen, self.score, self.wardrobe.balance("gems"), time_left, self.revive_ad, self.revive_price()
+                )
             elif self.state == "stage_clear":
                 screens.draw_stage_clear(screen, self.mode, self.stage, self.clear_result, self.stars_shown)
             elif self.state == "game_over" and self.stage is not None:
