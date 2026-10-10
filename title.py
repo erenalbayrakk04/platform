@@ -10,6 +10,7 @@ import pygame
 
 from settings import (
     SCREEN_WIDTH,
+    SCREEN_HEIGHT,
     TITLE,
     GRAVITY,
     WHITE,
@@ -45,6 +46,7 @@ from settings import (
 )
 import art
 import skins
+import theme
 from score import draw_text
 from lang import mark
 from trail import Trail
@@ -119,14 +121,12 @@ class Logo:
                 screen.blit(shine, (x + area.x, y + area.y), area)
 
 
-_logo = []
+_logo = {}
 
 
 def logo():
-    # Logo ilk kullanımda bir kere hazırlanır (pygame açıldıktan sonra)
-    if not _logo:
-        _logo.append(Logo())
-    return _logo[0]
+    # Logo ilk kullanımda bir kere hazırlanır (pygame açıldıktan sonra; her tema için ayrı)
+    return theme.cached(_logo, "logo", Logo)
 
 
 def draw_logo(screen, drop=None):
@@ -147,12 +147,6 @@ def bounce(p):
     return 7.5625 * p * p + 0.984375
 
 
-def scaled(image):
-    # Giriş ekranında resimler TITLE_SCALE kat büyük (düz büyütme: pikseller keskin kalır)
-    width, height = image.get_size()
-    return pygame.transform.scale(image, (width * TITLE_SCALE, height * TITLE_SCALE))
-
-
 def button_glow(rect):
     # Düğmenin etrafındaki yumuşak altın ışık: içe doğru koyulaşan iç içe yuvarlak kutular
     glow = pygame.Surface(rect.inflate(28, 28).size, pygame.SRCALPHA)
@@ -169,16 +163,21 @@ class TitleScreen:
         self.time = 0  # ekrana geleli kaç adım (kare) oldu
         self.leaving = 0  # dokunulalı kaç adım oldu (0 = henüz dokunulmadı)
         self.rng = random.Random()
-        # Resimler oyundakilerin aynısı (art.py); karakter, adacık ve altınlar büyük, yarasa uzakta (küçük)
-        self.player = {
-            name: {side: scaled(image) for side, image in pair.items()} for name, pair in skins.frames(skin).items()
-        }
+        # Resimler oyundakilerin aynısı (art.py); karakter, adacık ve altınlar TITLE_SCALE kat büyük, yarasa uzakta (küçük)
+        self.player = skins.frames(skin, TITLE_SCALE)
         trail = skins.get(skin)["trail"]
         self.trail = Trail(trail, TITLE_SCALE) if trail else None  # efsanevi skinin izi
-        self.island = scaled(art.island_image())
-        self.coins = [scaled(image) for image in art.coin_frames()]
+        self.island = art.island_image(TITLE_SCALE)
+        self.coins = art.coin_frames(TITLE_SCALE)
         self.bat = art.flyer_frames()
         self.waves = art.lava_frames()
+        self.lava_body = None  # Modern: lavın derine indikçe koyulaşan gövdesi
+        self.twinkle = None  # Modern: parlayan yıldızın yumuşak ışığı
+        if theme.modern():
+            import modern
+
+            self.lava_body = modern.lava_body(SCREEN_HEIGHT - LAVA_Y)
+            self.twinkle = modern.twinkle_image()
         glow = art.lava_glow()
         self.lava_glow = pygame.transform.scale(glow, (glow.get_width(), glow.get_height() * 2))
         self.font = pygame.font.Font(None, MENU_SMALL_FONT_SIZE + 4)
@@ -295,6 +294,10 @@ class TitleScreen:
             light = math.sin(self.time / 30 + phase)
             if light < 0.4:
                 continue
+            if self.twinkle:  # Modern: yumuşak, dört kollu parıltı; parladıkça belirginleşir
+                self.twinkle.set_alpha(round(255 * (light - 0.4) / 0.6))
+                screen.blit(self.twinkle, self.twinkle.get_rect(center=(x + 1, y + 1)))
+                continue
             arm = 4 if light > 0.85 else 2
             color = (255, 250, 210)
             screen.fill(color, (x - arm, y, 2 * arm + 2, 2))
@@ -333,10 +336,16 @@ class TitleScreen:
         wave_top = LAVA_Y - 2 * PIXEL_SCALE
         screen.blit(frame, (0, wave_top))
         body_top = wave_top + frame.get_height()
-        screen.fill(LAVA_COLOR, (0, body_top, SCREEN_WIDTH, screen.get_height() - body_top))
+        if self.lava_body:
+            screen.blit(self.lava_body, (0, body_top))
+        else:
+            screen.fill(LAVA_COLOR, (0, body_top, SCREEN_WIDTH, screen.get_height() - body_top))
         for x, y, _, _, age, life in self.embers:
             old = age / life
             color = art.mix(LAVA_TOP_COLOR, LAVA_COLOR, min(1.0, old * 1.5))
+            if self.lava_body:  # Modern: yuvarlak, sönerken küçülen kıvılcım
+                pygame.draw.circle(screen, color, (round(x) + 2, round(y) + 2), 2.4 if old < 0.5 else 1.4)
+                continue
             size = 4 if old < 0.5 else 2
             screen.fill(color, (round(x), round(y), size, size))
 

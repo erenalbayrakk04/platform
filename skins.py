@@ -14,6 +14,7 @@ from settings import WHITE, PLAYER_COLOR, DIFFICULTY_NAMES, UNLOCK_ALL_SKINS
 from storage import load_dict, save_dict
 from lang import t, mark
 import art
+import theme
 from art import shade, tint
 
 GROUP_NAMES = {"colors": mark("Renkler"), "characters": mark("Karakterler"), "legendary": mark("Efsanevi")}
@@ -545,12 +546,10 @@ def in_group(group):
 _frames = {}
 
 
-def frames(skin_id):
-    # Skinin resimleri (art.player_frames) — her skin için bir kere hazırlanır
+def frames(skin_id, zoom=1):
+    # Skinin resimleri (art.player_frames) — her skin, büyüklük (zoom) ve tema için bir kere hazırlanır
     skin = get(skin_id)
-    if skin["id"] not in _frames:
-        _frames[skin["id"]] = art.player_frames(skin)
-    return _frames[skin["id"]]
+    return theme.cached(_frames, (skin["id"], zoom), lambda: art.player_frames(skin, zoom))
 
 
 def goal_text(goal):

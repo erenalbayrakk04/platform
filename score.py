@@ -5,6 +5,7 @@ import pygame
 
 from art import heart_images, magnet_image, shield_image
 from lang import t
+import theme
 from settings import (
     TILE_SIZE,
     COIN_POINTS,
@@ -97,10 +98,12 @@ class Score:
             draw_text(screen, self.font, f"{self.height} / {self.goal} m", topleft=(12, 10))
             draw_text(screen, self.small_font, self.loot_text(), topleft=(12, 44))
             bar = pygame.Rect(12, 66, 140, 6)
-            screen.fill(SCORE_SHADOW_COLOR, bar.move(2, 2))
-            screen.fill(PROGRESS_EMPTY_COLOR, bar)
+            radius = 3 if theme.modern() else 0  # Modern temada çubuğun uçları yuvarlak
+            pygame.draw.rect(screen, SCORE_SHADOW_COLOR, bar.move(2, 2), border_radius=radius)
+            pygame.draw.rect(screen, PROGRESS_EMPTY_COLOR, bar, border_radius=radius)
             bar.width = round(bar.width * min(1, self.height / self.goal))
-            screen.fill(RECORD_COLOR, bar)
+            if bar.width:
+                pygame.draw.rect(screen, RECORD_COLOR, bar, border_radius=radius)
             return
         color = RECORD_COLOR if self.new_record and self.record > 0 else SCORE_COLOR
         draw_text(screen, self.font, f"{self.height} m", color, topleft=(12, 10))
@@ -128,17 +131,23 @@ TEXT_CACHE = {}
 
 
 def draw_text(screen, font, text, color=SCORE_COLOR, **position):
-    # Gölgeli yazı: önce 2 piksel kaydırılmış gölge, sonra asıl yazı — her zeminde okunsun.
-    # Konum rect gibi verilir: topleft=(x, y) veya center=(x, y) vb. Yazı seçili dile çevrilir (lang.py)
+    # Gölgeli yazı: önce 2 piksel kaydırılmış gölge, sonra asıl yazı — her zeminde okunsun (Modern temada gölge
+    # yumuşak). Konum rect gibi verilir: topleft=(x, y) veya center=(x, y) vb. Yazı seçili dile çevrilir (lang.py)
     text = t(text)
-    key = (font, text, color)
+    key = (font, text, color, theme.current())
     if key not in TEXT_CACHE:
         if len(TEXT_CACHE) > 100:  # eski puan yazıları birikmesin
             TEXT_CACHE.clear()
-        TEXT_CACHE[key] = (font.render(text, True, color), font.render(text, True, SCORE_SHADOW_COLOR))
-    image, shadow = TEXT_CACHE[key]
+        image = font.render(text, True, color)
+        if theme.modern():
+            import modern
+
+            TEXT_CACHE[key] = (modern.fast(image), modern.fast(modern.text_shadow(image)), (-3, -2))
+        else:
+            TEXT_CACHE[key] = (image, font.render(text, True, SCORE_SHADOW_COLOR), (2, 2))
+    image, shadow, offset = TEXT_CACHE[key]
     rect = image.get_rect(**position)
-    screen.blit(shadow, rect.move(2, 2))
+    screen.blit(shadow, rect.move(offset))
     screen.blit(image, rect)
 
 
@@ -147,12 +156,11 @@ HEART_IMAGES = {}
 
 def draw_lives(screen, lives, max_lives):
     # Sağ üstte (durdur düğmesinin solunda) max_lives kadar kalp: kalan canlar dolu, kaybedilenler gri
-    if not HEART_IMAGES:  # ilk çizimde bir kere hazırla
-        HEART_IMAGES.update(heart_images())
-    width = HEART_IMAGES["full"].get_width() + 6
+    hearts = theme.cached(HEART_IMAGES, "hearts", heart_images)  # ilk çizimde bir kere hazırla
+    width = hearts["full"].get_width() + 6
     right = SCREEN_WIDTH - 12 - PAUSE_BUTTON_SIZE - 6
     for i in range(max_lives):
-        image = HEART_IMAGES["full" if i < lives else "empty"]
+        image = hearts["full" if i < lives else "empty"]
         screen.blit(image, (right - (max_lives - i) * width, 14))
 
 
@@ -162,18 +170,19 @@ POWER_ICONS = {}
 def draw_powers(screen, player):
     # Kalplerin altında süren güçlendirmeler: simge + altında kalan süre çubuğu (sağdan sola dizilir).
     # Bitmesine az kalınca simge yanıp söner
-    if not POWER_ICONS:
-        POWER_ICONS.update(magnet=magnet_image(), shield=shield_image())
+    icons = theme.cached(POWER_ICONS, "icons", lambda: {"magnet": magnet_image(), "shield": shield_image()})
     right = SCREEN_WIDTH - 12
     for kind, left in player.powers.items():
         if not left:
             continue
-        icon = POWER_ICONS[kind]
+        icon = icons[kind]
         rect = icon.get_rect(bottomright=(right, 80))  # simgeler alta hizalı, çubuklar aynı hizada
         if left > POWERUP_WARN_TIME or (left // 8) % 2 == 0:
             screen.blit(icon, rect)
         bar = pygame.Rect(rect.left, rect.bottom + 4, rect.width, 4)
-        screen.fill(SCORE_SHADOW_COLOR, bar)  # boş çubuk
+        radius = 2 if theme.modern() else 0  # Modern temada çubuğun uçları yuvarlak
+        pygame.draw.rect(screen, SCORE_SHADOW_COLOR, bar, border_radius=radius)  # boş çubuk
         bar.width = round(bar.width * player.power_fraction(kind))
-        screen.fill(SCORE_COLOR, bar)
+        if bar.width:
+            pygame.draw.rect(screen, SCORE_COLOR, bar, border_radius=radius)
         right = rect.left - 10

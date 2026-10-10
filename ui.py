@@ -27,6 +27,7 @@ from settings import (
 from score import draw_text
 from lang import mark
 import art
+import theme
 
 ACTIVATE_KEYS = (pygame.K_RETURN, pygame.K_KP_ENTER, pygame.K_SPACE)
 UP_KEYS = (pygame.K_UP, pygame.K_w)
@@ -57,6 +58,24 @@ def take_click():
         return False
     _last_click[0] = now
     return True
+
+
+_boxes = {}
+
+
+def draw_box(screen, rect, fill, border, border_width=3, radius=12):
+    # Düğme / kutu / sekme. Nostalji: düz renk + kenar çizgisi. Modern: altında yumuşak gölge, içi renk geçişli,
+    # seçiliyse (altın kenar) etrafı parlar — resmi her boy ve renk için bir kere hazırlanır (modern.box_image)
+    if not theme.modern():
+        pygame.draw.rect(screen, fill, rect, border_radius=radius)
+        pygame.draw.rect(screen, border, rect, border_width, border_radius=radius)
+        return
+    import modern
+
+    glow = border if border == BUTTON_FOCUS_BORDER_COLOR else None
+    key = (rect.size, fill, border, border_width, radius)
+    image = theme.cached(_boxes, key, lambda: modern.box_image(rect.size, fill, border, border_width, radius, glow))
+    screen.blit(image, (rect.x - modern.BOX_SHADOW, rect.y - modern.BOX_SHADOW))
 
 
 class Buttons:
@@ -105,9 +124,8 @@ class Buttons:
             focused = i == self.focus
             off = action in disabled
             fill = LOCKED_COLOR if off else BUTTON_FOCUS_COLOR if focused else BUTTON_COLOR
-            pygame.draw.rect(screen, fill, rect, border_radius=12)
             border = BUTTON_FOCUS_BORDER_COLOR if focused else BUTTON_BORDER_COLOR
-            pygame.draw.rect(screen, border, rect, 3, border_radius=12)
+            draw_box(screen, rect, fill, border)
             draw_text(screen, font, labels.get(action, action), DISABLED_TEXT_COLOR if off else WHITE, center=rect.center)
 
 
@@ -183,14 +201,25 @@ class Slider:
 
     def draw(self, screen, focused=False, muted=False):
         radius = SLIDER_HEIGHT // 2
-        pygame.draw.rect(screen, SLIDER_TRACK_COLOR, self.rect, border_radius=radius)
         knob_x = self.rect.left + self.rect.width * self.value // VOLUME_STEPS
+        border = BUTTON_FOCUS_BORDER_COLOR if focused else BUTTON_BORDER_COLOR
         fill = self.rect.copy()
         fill.width = knob_x - self.rect.left
+        color = SLIDER_MUTED_COLOR if muted else SLIDER_FILL_COLOR
+        if theme.modern():  # gölgeli çubuk, dolu kısmı içinde; yuvarlak düğme resmi (modern.knob_image)
+            import modern
+
+            draw_box(screen, self.rect, SLIDER_TRACK_COLOR, border, 2, radius)
+            if fill.width > 4:
+                pygame.draw.rect(screen, color, fill.inflate(-4, -4).move(2, 0), border_radius=radius - 2)
+            knob = theme.cached(_boxes, ("knob", focused), lambda: modern.knob_image(
+                SLIDER_KNOB_RADIUS, BUTTON_FOCUS_COLOR if focused else BUTTON_COLOR, border if focused else WHITE
+            ))
+            screen.blit(knob, knob.get_rect(center=(knob_x, self.rect.centery + 1)))
+            return
+        pygame.draw.rect(screen, SLIDER_TRACK_COLOR, self.rect, border_radius=radius)
         if fill.width > 0:
-            color = SLIDER_MUTED_COLOR if muted else SLIDER_FILL_COLOR
             pygame.draw.rect(screen, color, fill, border_radius=radius)
-        border = BUTTON_FOCUS_BORDER_COLOR if focused else BUTTON_BORDER_COLOR
         pygame.draw.rect(screen, border, self.rect, 2, border_radius=radius)
         knob = (knob_x, self.rect.centery)
         pygame.draw.circle(screen, BUTTON_FOCUS_COLOR if focused else BUTTON_COLOR, knob, SLIDER_KNOB_RADIUS)
@@ -228,7 +257,6 @@ class StageGrid:
             for i in range(len(modes))
         ]
         self.back = Buttons(["back"], top=back_top)
-        self.images = None
         self.set_focus(0)
 
     def set_focus(self, index):
@@ -291,21 +319,19 @@ class StageGrid:
 
     def draw(self, screen, stars, unlocked, mode):
         # stars[i] = i. bölümün en iyi yıldızı (0-3), mode = seçili zorluk (sekmesi yanar)
-        if self.images is None:
-            for size in (BUTTON_FONT_SIZE + 8, self.TAB_FONT_SIZE):
-                if size not in _fonts:
-                    _fonts[size] = pygame.font.Font(None, size)
-            self.images = {
-                "lock": art.lock_image(),
-                True: art.star_image(True, self.STAR_SIZE),
-                False: art.star_image(False, self.STAR_SIZE),
-            }
+        for size in (BUTTON_FONT_SIZE + 8, self.TAB_FONT_SIZE):
+            if size not in _fonts:
+                _fonts[size] = pygame.font.Font(None, size)
+        images = theme.cached(_boxes, "stage_grid", lambda: {
+            "lock": art.lock_image(),
+            True: art.star_image(True, self.STAR_SIZE),
+            False: art.star_image(False, self.STAR_SIZE),
+        })
         # Zorluk sekmeleri
         for name, rect in zip(self.modes, self.tabs):
             selected = name == mode
-            pygame.draw.rect(screen, BUTTON_FOCUS_COLOR if selected else BUTTON_COLOR, rect, border_radius=10)
             border = BUTTON_FOCUS_BORDER_COLOR if selected and self.focus < 0 else BUTTON_BORDER_COLOR
-            pygame.draw.rect(screen, border, rect, 3 if selected else 2, border_radius=10)
+            draw_box(screen, rect, BUTTON_FOCUS_COLOR if selected else BUTTON_COLOR, border, 3 if selected else 2, 10)
             color = BUTTON_FOCUS_BORDER_COLOR if selected else WHITE
             draw_text(screen, _fonts[self.TAB_FONT_SIZE], DIFFICULTY_NAMES[name], color, center=rect.center)
         font = _fonts[BUTTON_FONT_SIZE + 8]
@@ -313,17 +339,16 @@ class StageGrid:
             focused = i == self.focus
             is_open = unlocked(i)
             fill = (BUTTON_FOCUS_COLOR if focused else BUTTON_COLOR) if is_open else LOCKED_COLOR
-            pygame.draw.rect(screen, fill, rect, border_radius=12)
             border = BUTTON_FOCUS_BORDER_COLOR if focused else BUTTON_BORDER_COLOR
-            pygame.draw.rect(screen, border, rect, 3, border_radius=12)
+            draw_box(screen, rect, fill, border)
             if not is_open:
-                lock = self.images["lock"]
+                lock = images["lock"]
                 screen.blit(lock, lock.get_rect(center=rect.center))
                 continue
             draw_text(screen, font, str(i + 1), center=(rect.centerx, rect.centery - 9))
             # Altta 3 yıldız: kazanılanlar sarı
             for k in range(3):
-                star = self.images[k < stars[i]]
+                star = images[k < stars[i]]
                 x = rect.centerx + (k - 1) * (self.STAR_SIZE + 3)
                 screen.blit(star, star.get_rect(center=(x, rect.bottom - 14)))
         self.back.draw(screen, {"back": mark("Geri")})

@@ -31,8 +31,9 @@ from settings import (
     BEE_SPEED,
 )
 import art
+import theme
 
-# Aynı türdeki düşmanlar aynı resimleri kullanır; o türün ilk düşmanı yaratılınca bir kere hazırlanır
+# Aynı türdeki düşmanlar aynı resimleri kullanır; o türün ilk düşmanı yaratılınca bir kere hazırlanır (her tema için ayrı)
 MAKE_FRAMES = {
     "enemy": art.enemy_frames,
     "flyer": art.flyer_frames,
@@ -46,15 +47,14 @@ FRAMES = {}
 
 
 def frames(kind):
-    if kind not in FRAMES:
-        FRAMES[kind] = MAKE_FRAMES[kind]()
-    return FRAMES[kind]
+    return theme.cached(FRAMES, kind, MAKE_FRAMES[kind])
 
 
 class Patrol(pygame.sprite.Sprite):
     # Bütün düşmanların ortak yanı: start-end piksel arasında gidip gelir — yatayda (sol-sağ)
     # ya da vertical ise dikeyde (üst-alt)
     spiky = False  # True ise üstüne basınca düşman değil karakter yanar (main.py)
+    grounded = False  # şu an bir platformun üstünde mi (Modern temada ayağının altına gölge çizilir)
 
     def __init__(self, image, start, end, speed, vertical=False, **position):
         super().__init__()
@@ -95,6 +95,7 @@ class Enemy(Patrol):
     # kutusu (sadece topçu kullanır, ama hepsine verilir)
     color = ENEMY_COLOR  # ölünce saçılan parçacıkların rengi
     kind = "enemy"  # resimleri (frames)
+    grounded = True
 
     def __init__(self, center_x, bottom, left, right, speed):
         self.frames = frames(self.kind)
@@ -133,6 +134,10 @@ class Slime(Patrol):
         self.airborne = False
         self.timer = SLIME_JUMP_TIME - center_x % 40  # hepsi aynı anda zıplamasın
 
+    @property
+    def grounded(self):
+        return not self.airborne
+
     def update(self, target):
         if self.airborne:
             self.patrol()
@@ -163,6 +168,7 @@ class Cannon(Patrol):
     # CANNON_FIRE_TIME karede bir ateş topu atar; atmadan CANNON_WARN_TIME kare önce namlusu kızarır.
     # Attığı ateş topları shots grubuna (level.shots) girer. Üstüne basılınca ölür
     color = CANNON_COLOR
+    grounded = True
 
     def __init__(self, center_x, bottom, shots):
         self.frames = frames("cannon")

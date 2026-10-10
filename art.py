@@ -1,11 +1,15 @@
 # Piksel sanatı: tüm resimler burada harflerle "çizilir" (chunks.py'deki haritalar gibi).
 # Her harf bir renk, '.' saydam. Her kare ekranda PIXEL_SCALE x PIXEL_SCALE piksel olur.
 # Renkler settings.py'den gelir; açık/koyu tonlar o renklerden otomatik üretilir.
+# Bu Nostalji teması. Modern temada (theme.py) render() harf haritalarını modern.py'de yumuşatarak çizer;
+# @themed işaretli fonksiyonların yerine de modern.py'deki aynı adlı fonksiyonlar çalışır.
+import functools
 import math
 import random
 
 import pygame
 
+import theme
 from settings import (
     AD_COLOR,
     PIXEL_SCALE,
@@ -74,8 +78,37 @@ def mix(color, other, amount):
     return tuple(round(a + (b - a) * amount) for a, b in zip(color, other))
 
 
-def render(rows, palette, size=None):
+def themed(func):
+    # Modern temada bu fonksiyonun yerine modern.py'deki aynı adlı fonksiyon çalışır
+    @functools.wraps(func)
+    def wrapper(*args, **kwargs):
+        if theme.modern():
+            import modern
+
+            return getattr(modern, func.__name__)(*args, **kwargs)
+        return func(*args, **kwargs)
+
+    return wrapper
+
+
+def resize(image, size):
+    # Resmi büyüt / küçült: Nostalji'de pikseller keskin kalır, Modern'de yumuşak
+    size = (round(size[0]), round(size[1]))
+    if theme.modern():
+        return pygame.transform.smoothscale(image, size)
+    return pygame.transform.scale(image, size)
+
+
+def render(rows, palette, size=None, zoom=1):
     # Harf haritasından resim yap. size verilirse resim o boyda olur, çizim alta ve ortaya yaslanır.
+    # zoom = kaç kat büyük (giriş ekranında, Karakterler önizlemesinde). Modern temada yumuşatılarak çizilir
+    if theme.modern():
+        import modern
+
+        return modern.smooth(rows, palette, size, zoom)
+    if zoom != 1:
+        image = render(rows, palette, size)
+        return pygame.transform.scale(image, (image.get_width() * zoom, image.get_height() * zoom))
     width = len(rows[0]) * PIXEL_SCALE
     height = len(rows) * PIXEL_SCALE
     size = size or (width, height)
@@ -109,13 +142,14 @@ PLAYER_LEGS = {
 }
 
 
-def player_frames(skin):
-    # skin = skins.py'deki bir skin. Resimler: "idle" duruyor, "walk1"/"walk2" yürüyor, "jump" havada; {1: sağa, -1: sola}
+def player_frames(skin, zoom=1):
+    # skin = skins.py'deki bir skin. Resimler: "idle" duruyor, "walk1"/"walk2" yürüyor, "jump" havada; {1: sağa, -1: sola}.
+    # zoom = kaç kat büyük
     palette = {"W": WHITE, "E": EYE_DARK, **skin["palette"]}
     palette.setdefault("L", palette["K"])  # bacaklar verilmezse dış çizgi renginde
     size = (PLAYER_WIDTH, PLAYER_HEIGHT)
     return {
-        name: facing_pair(render(skin["body"] + legs, palette, size))
+        name: facing_pair(render(skin["body"] + legs, palette, size, zoom))
         for name, legs in (skin["legs"] or PLAYER_LEGS).items()
     }
 
@@ -304,6 +338,7 @@ FIREBALL_ROWS = [
 ]
 
 
+@themed
 def fireball_frames():
     palette = {
         "Y": tint(FIREBALL_COLOR, 0.7),  # parlak orta
@@ -346,14 +381,15 @@ COIN_ROWS = [
 ]
 
 
-def coin_frames():
+@themed
+def coin_frames(zoom=1):
     palette = {
         "K": COIN_EDGE_COLOR,
         "Y": COIN_COLOR,
         "y": shade(COIN_COLOR, 0.85),
         "h": tint(COIN_COLOR, 0.7),
     }
-    full, half, thin = (render(rows, palette, (COIN_SIZE, COIN_SIZE)) for rows in COIN_ROWS)
+    full, half, thin = (render(rows, palette, (COIN_SIZE, COIN_SIZE), zoom) for rows in COIN_ROWS)
     return [full, half, thin, half]
 
 
@@ -365,6 +401,7 @@ SPRING_ROWS = [
 SPRING_SIZE = (24, 16)
 
 
+@themed
 def spring_frames():
     palette = {
         "G": SPRING_COLOR,
@@ -390,7 +427,9 @@ TILE_ROWS = [
 ]
 
 
-def tile_image():
+@themed
+def tile_image(ends=(True, True)):
+    # ends = (sıranın sol ucu mu, sağ ucu mu): Modern temada uçlar yuvarlak, Nostalji'de hepsi aynı
     palette = {
         "G": TILE_TOP_COLOR,
         "g": shade(TILE_TOP_COLOR, 0.7),
@@ -405,14 +444,15 @@ def tile_image():
 PLATFORM_ROWS = ["hhhhhhhhhh", "WWWwWWWWWk", "kkkkkkkkkk"]
 
 
-def platform_image():
+@themed
+def platform_image(ends=(True, True), zoom=1):
     palette = {
         "h": tint(PLATFORM_COLOR, 0.3),
         "W": PLATFORM_COLOR,
         "w": shade(PLATFORM_COLOR, 0.8),
         "k": shade(PLATFORM_COLOR, 0.5),
     }
-    return render(PLATFORM_ROWS, palette, (TILE_SIZE, PLATFORM_HEIGHT))
+    return render(PLATFORM_ROWS, palette, (TILE_SIZE, PLATFORM_HEIGHT), zoom)
 
 
 # --- Uçan adacık (giriş ekranı): üstü çimen, altı sivrilen toprak (renkleri blokla aynı) ---
@@ -432,7 +472,8 @@ ISLAND_ROWS = [
 ]
 
 
-def island_image():
+@themed
+def island_image(zoom=1):
     palette = {
         "G": TILE_TOP_COLOR,
         "g": shade(TILE_TOP_COLOR, 0.7),
@@ -440,7 +481,7 @@ def island_image():
         "d": shade(TILE_COLOR, 0.7),
         "s": tint(TILE_COLOR, 0.25),
     }
-    return render(ISLAND_ROWS, palette)
+    return render(ISLAND_ROWS, palette, zoom=zoom)
 
 
 # --- Kırılan platform: çatlak taş; ikinci resim kırılmak üzereyken (çatlaklar büyür), üçüncüsü silik ---
@@ -450,6 +491,7 @@ CRUMBLE_ROWS = [
 ]
 
 
+@themed
 def crumble_frames():
     palette = {
         "h": tint(CRUMBLE_COLOR, 0.35),
@@ -466,6 +508,7 @@ def crumble_frames():
 MOVING_PLATFORM_ROWS = ["hhhhhhhhhh", "WkWWWWWWkW", "kkkkkkkkkk"]
 
 
+@themed
 def moving_platform_image(cells):
     palette = {
         "h": tint(MOVING_PLATFORM_COLOR, 0.4),
@@ -487,6 +530,7 @@ HEART_ROWS = [
 ]
 
 
+@themed
 def heart_image(color):
     return render(HEART_ROWS, {"H": color, "h": tint(color, 0.6)})
 
@@ -561,6 +605,7 @@ GEM_ROWS = [
 ]
 
 
+@themed
 def gem_frames():
     palette = {
         "K": shade(GEM_COLOR, 0.4),
@@ -572,6 +617,7 @@ def gem_frames():
     return [render(rows, palette) for rows in GEM_ROWS]
 
 
+@themed
 def shield_bubble(radius):
     # Kalkan sürerken karakterin etrafındaki yarı saydam baloncuk
     image = pygame.Surface((radius * 2, radius * 2), pygame.SRCALPHA)
@@ -588,6 +634,7 @@ FLAG_SIZE = (10, 20)  # bayrağın resmi (kare): direk + bez
 FLAG_CLOTH = 6  # bezin yüksekliği (kare)
 
 
+@themed
 def flag_frames(count=4):
     # Direğin tepesinde altın top, yeşil-beyaz damalı bez dalgalanır (count resim); dipte taş ayak
     palette = {
@@ -627,6 +674,7 @@ STAR_ROWS = [
 ]
 
 
+@themed
 def star_image(filled=True, size=None):
     # Kazanılan (sarı) ya da kazanılmayan (gri) yıldız; size verilirse o boya küçültülür (piksel)
     color = STAR_COLOR if filled else STAR_EMPTY_COLOR
@@ -673,6 +721,7 @@ LAVA_WAVE_ROWS = 8  # dalga şeridinin yüksekliği (piksel sanatı karesi)
 LAVA_WAVE_LENGTH = 25  # bir dalganın genişliği (kare)
 
 
+@themed
 def lava_frames(count=8):
     # Lavın üst kenarı: yana kayan dalgalar. Her resimde dalga biraz ilerler; sırayla gösterilince akar.
     # Tepeler 0-3. satır arasında oynar; altı düz lav rengi (main.py'de altı ayrıca doldurulur)
@@ -715,6 +764,7 @@ def sky_image(top_color, bottom_color):
 # --- Arka plan: yükseldikçe rengi değişen gökyüzü + yavaş kayan yıldızlar ---
 class Background:
     def __init__(self):
+        self.modern = None  # Modern temanın gökyüzü (modern.Background), ilk gerektiğinde hazırlanır
         # Her renk teması için gökyüzü bir kere hazırlanır
         self.skies = [sky_image(top, bottom) for top, bottom in SKY_THEMES]
         # Yıldızlar: hep aynı yerlerde olsun diye sabit sayıyla rastgele
@@ -730,6 +780,13 @@ class Background:
         ]
 
     def draw(self, screen, camera_top):
+        if theme.modern():
+            if self.modern is None:
+                import modern
+
+                self.modern = modern.Background()
+            self.modern.draw(screen, camera_top)
+            return
         # Ne kadar yükseldik → hangi gökyüzü; geçiş bölgesinde sıradaki gökyüzü yavaşça belirir
         height = max(0, -camera_top)
         index = int(height // SKY_CHANGE_HEIGHT)
@@ -768,6 +825,7 @@ LOGO_SPACING = 1  # harfler arası boşluk, ince kare (1 = komşu harflerin koyu
 # bitişik görünür; "PLATFORMIN" ancak böyle ekrana sığıyor: 381 piksel, 2 olsa 408)
 
 
+@themed
 def logo_letters(text, top_color, bottom_color):
     # Yazının her harfi ayrı resim (ekranda tek tek dalgalanabilsinler). Harf haritasındaki her kare 2x2
     # "ince kareye" bölünür (her ince kare LOGO_PIXEL piksel): koyu kenar çizgisi ve alttaki kalınlık harften

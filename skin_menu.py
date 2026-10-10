@@ -33,10 +33,11 @@ from settings import (
 )
 from score import draw_text
 from lang import t, mark
-from ui import Buttons, click_pos, take_click, ACTIVATE_KEYS, UP_KEYS, DOWN_KEYS, LEFT_KEYS, RIGHT_KEYS
+from ui import Buttons, draw_box, click_pos, take_click, ACTIVATE_KEYS, UP_KEYS, DOWN_KEYS, LEFT_KEYS, RIGHT_KEYS
 from trail import Trail
 import skins
 import art
+import theme
 
 CENTER_X = SCREEN_WIDTH // 2
 # Yerleşim (y = yukarıdan piksel)
@@ -67,9 +68,9 @@ SHORT_TEXTS = {
 
 
 def scaled(image, factor):
-    # Düz büyütme/küçültme (pikseller keskin kalır)
+    # Büyütme/küçültme (Nostalji'de pikseller keskin kalır, Modern'de yumuşak)
     width, height = image.get_size()
-    return pygame.transform.scale(image, (round(width * factor), round(height * factor)))
+    return art.resize(image, (width * factor, height * factor))
 
 
 class SkinMenu:
@@ -102,10 +103,9 @@ class SkinMenu:
         ]
         self.action = Buttons(["action"], top=592)
         self.back = Buttons(["back"], top=654)
-        self.images = None  # ilk çizimde hazırlanır (pygame açıldıktan sonra)
-        self.big = {}  # skin → önizleme resimleri (büyütülmüş)
-        self.thumbs = {}  # skin → (kutudaki resim, sönük hâli)
-        self.tags = {}  # (fiyat, alınabilir mi) → fiyat etiketi resmi
+        # Resimler ilk çizimde hazırlanır (pygame açıldıktan sonra; her tema için ayrı: theme.cached)
+        self.cache = {}  # "images" (para resimleri, pano...), ("thumb", skin) → (kutudaki resim, sönük hâli),
+        # ("tag", para, fiyat, alınabilir mi) → fiyat etiketi
         # Önizlemedeki karakter: x = ortası, lift = ayağının platformdan yüksekliği, vy = dikey hız (yukarı +)
         self.time = 0
         self.x = float(CENTER_X)
@@ -321,18 +321,14 @@ class SkinMenu:
         return round(self.x), GROUND_Y - round(self.lift)
 
     def preview_image(self):
-        if self.current not in self.big:
-            self.big[self.current] = {
-                name: {side: scaled(image, PREVIEW_SCALE) for side, image in pair.items()}
-                for name, pair in skins.frames(self.current).items()
-            }
+        # Önizlemedeki karakter PREVIEW_SCALE kat büyük (Modern temada doğrudan o boyda çizilir: keskin)
         if self.lift > 0:
             name = "jump"
         elif self.rest:
             name = "idle"
         else:
             name = "walk1" if (self.time // ANIMATION_SPEED) % 2 == 0 else "walk2"
-        return self.big[self.current][name][self.facing]
+        return skins.frames(self.current, PREVIEW_SCALE)[name][self.facing]
 
     # --- Çizim ---
     def prepare(self):
@@ -340,10 +336,17 @@ class SkinMenu:
                                                                    MENU_SMALL_FONT_SIZE, self.TAB_FONT_SIZE, 20)}
         coin = art.coin_frames()[0]
         gem = art.gem_frames()[0]
-        platform = art.platform_image()
         panel = pygame.Surface(PANEL[2:], pygame.SRCALPHA)
         pygame.draw.rect(panel, (0, 0, 0, PANEL_ALPHA), panel.get_rect(), border_radius=16)
-        self.images = {
+        # Önizlemedeki platform: 4 kare uzunluğunda (Modern temada uçları yuvarlak tek parça)
+        count = 4
+        pieces = [art.platform_image((i == 0, i == count - 1), PREVIEW_SCALE) for i in range(count)]
+        width, height = pieces[0].get_size()
+        platform = pygame.Surface((count * width, height), pygame.SRCALPHA)
+        platform.fill((0, 0, 0, 0))
+        for i, piece in enumerate(pieces):
+            platform.blit(piece, (i * width, 0))
+        return {
             "panel": panel,
             "fonts": fonts,
             "coins": coin,  # para resimleri: adları cüzdandaki paralarla aynı
@@ -352,21 +355,24 @@ class SkinMenu:
             "small_gems": scaled(gem, 0.5),
             "lock": scaled(art.lock_image(), 0.5),
             "ad": scaled(art.ad_image(), 0.75),
-            "platform": scaled(platform, PREVIEW_SCALE),
+            "platform": platform,
         }
+
+    @property
+    def images(self):
+        return theme.cached(self.cache, "images", self.prepare)
 
     def thumb(self, skin_id):
         # Kutudaki küçük resim ve sönük hâli (henüz senin değilse)
-        if skin_id not in self.thumbs:
+        def make():
             image = skins.frames(skin_id)["idle"][1]
             dim = image.copy()
             dim.fill((105, 105, 130), special_flags=pygame.BLEND_RGB_MULT)
-            self.thumbs[skin_id] = (image, dim)
-        return self.thumbs[skin_id]
+            return image, dim
+
+        return theme.cached(self.cache, ("thumb", skin_id), make)
 
     def draw(self, screen, wardrobe, progress):
-        if self.images is None:
-            self.prepare()
         fonts = self.images["fonts"]
         draw_text(screen, fonts[TITLE_FONT_SIZE], "Karakterler", TITLE_COLOR, center=(CENTER_X, TITLE_Y))
         self.draw_tabs(screen, fonts[self.TAB_FONT_SIZE])
@@ -404,19 +410,15 @@ class SkinMenu:
     def draw_tabs(self, screen, font):
         for group, rect in zip(self.groups, self.tabs):
             selected = group == self.group
-            pygame.draw.rect(screen, BUTTON_FOCUS_COLOR if selected else BUTTON_COLOR, rect, border_radius=10)
             border = BUTTON_FOCUS_BORDER_COLOR if selected and self.focus < 0 else BUTTON_BORDER_COLOR
-            pygame.draw.rect(screen, border, rect, 3 if selected else 2, border_radius=10)
+            draw_box(screen, rect, BUTTON_FOCUS_COLOR if selected else BUTTON_COLOR, border, 3 if selected else 2, 10)
             color = BUTTON_FOCUS_BORDER_COLOR if selected else WHITE
             draw_text(screen, font, skins.GROUP_NAMES[group], color, center=rect.center)
 
     def draw_preview(self, screen):
         screen.blit(self.images["panel"], PANEL[:2])
         platform = self.images["platform"]
-        count = 4
-        left = CENTER_X - count * platform.get_width() // 2
-        for i in range(count):
-            screen.blit(platform, (left + i * platform.get_width(), GROUND_Y))
+        screen.blit(platform, (CENTER_X - platform.get_width() // 2, GROUND_Y))
         if self.trail:
             self.trail.draw(screen)
         image = self.preview_image()
@@ -432,9 +434,8 @@ class SkinMenu:
             owned = wardrobe.owns(skin, progress)
             current = skin["id"] == self.current
             fill = BUTTON_FOCUS_COLOR if current else BUTTON_COLOR if owned else LOCKED_COLOR
-            pygame.draw.rect(screen, fill, rect, border_radius=10)
             border = BUTTON_FOCUS_BORDER_COLOR if current else BUTTON_BORDER_COLOR
-            pygame.draw.rect(screen, border, rect, 3 if current else 2, border_radius=10)
+            draw_box(screen, rect, fill, border, 3 if current else 2, 10)
             image, dim = self.thumb(skin["id"])
             screen.blit(image if owned else dim, image.get_rect(midbottom=(rect.centerx, rect.bottom - 6)))
             if not owned and skin["goal"]:
@@ -447,8 +448,7 @@ class SkinMenu:
 
     def draw_price(self, screen, font, skin, rect, affordable):
         # Kutunun altında fiyat etiketi: küçük altın / elmas + sayı (alınabiliyorsa renkli); bir kere hazırlanır
-        key = (skin["currency"], skin["price"], affordable)
-        if key not in self.tags:
+        def make():
             icon = self.images["small_" + skin["currency"]]
             color = CURRENCY_COLORS[skin["currency"]] if affordable else HINT_COLOR
             text = font.render(str(skin["price"]), True, color)
@@ -456,8 +456,9 @@ class SkinMenu:
             pygame.draw.rect(tag, (20, 18, 40), tag.get_rect(), border_radius=6)
             tag.blit(icon, icon.get_rect(midleft=(4, 8)))
             tag.blit(text, text.get_rect(midleft=(7 + icon.get_width(), 9)))
-            self.tags[key] = tag
-        tag = self.tags[key]
+            return tag
+
+        tag = theme.cached(self.cache, ("tag", skin["currency"], skin["price"], affordable), make)
         screen.blit(tag, tag.get_rect(midbottom=(rect.centerx, rect.bottom - 3)))
 
     def draw_check(self, screen, center):
@@ -476,9 +477,8 @@ class SkinMenu:
         self.free_rect.midright = (SCREEN_WIDTH - 18, WALLET_Y)
         rect = self.free_rect
         focused = self.focus == len(self.skins_shown()) + 2
-        pygame.draw.rect(screen, BUTTON_FOCUS_COLOR if focused else BUTTON_COLOR, rect, border_radius=10)
         border = BUTTON_FOCUS_BORDER_COLOR if focused else BUTTON_BORDER_COLOR
-        pygame.draw.rect(screen, border, rect, 3 if focused else 2, border_radius=10)
+        draw_box(screen, rect, BUTTON_FOCUS_COLOR if focused else BUTTON_COLOR, border, 3 if focused else 2, 10)
         x = rect.left + 10
         screen.blit(ad, ad.get_rect(midleft=(x, rect.centery)))
         x += ad.get_width() + 6

@@ -46,6 +46,7 @@ from chunks import (
 from stages import allowed_chunks, focused
 from enemy import Enemy, Slime, Spiky, Cannon, FlyingEnemy, Bee
 import art
+import theme
 
 
 def hardness(height, mode):
@@ -60,39 +61,49 @@ def blend(easy, hard, t):
     # Kolay ve en zor sayı arasında, zorluk (t) kadar ilerlemiş değer
     return easy + (hard - easy) * t
 
-# Resimler bir kere hazırlanır, aynı türdeki her parça aynı resmi kullanır (art.py)
+# Resimler bir kere hazırlanır (her tema için ayrı), aynı türdeki her parça aynı resmi kullanır (art.py).
+# Blok ve platformun resmi sıradaki yerine göre: ("tile", (sol uç mu, sağ uç mu)) — Modern temada uçlar yuvarlak
 IMAGES = {}
+MAKE_IMAGE = {
+    "coin": art.coin_frames,
+    "heart": lambda: art.heart_images()["full"],
+    "magnet": art.magnet_image,
+    "shield": art.shield_image,
+    "gem": art.gem_frames,
+    "spring": art.spring_frames,
+    "crumble": art.crumble_frames,
+    "flag": art.flag_frames,
+}
 
 
-def image(name):
-    if name not in IMAGES:
-        IMAGES.update(
-            tile=art.tile_image(),
-            platform=art.platform_image(),
-            coin=art.coin_frames(),
-            heart=art.heart_images()["full"],
-            magnet=art.magnet_image(),
-            shield=art.shield_image(),
-            gem=art.gem_frames(),
-            spring=art.spring_frames(),
-            crumble=art.crumble_frames(),
-            flag=art.flag_frames(),
-        )
-    return IMAGES[name]
+def image(name, ends=None):
+    if name == "tile":
+        return theme.cached(IMAGES, (name, ends), lambda: art.tile_image(ends))
+    if name == "platform":
+        return theme.cached(IMAGES, (name, ends), lambda: art.platform_image(ends))
+    return theme.cached(IMAGES, name, MAKE_IMAGE[name])
+
+
+def run_ends(row, col):
+    # Satırdaki aynı türden yan yana karelerin (blok / platform sırası) ucunda mı: (sol uç mu, sağ uç mu)
+    cell = row[col]
+    return col == 0 or row[col - 1] != cell, col == len(row) - 1 or row[col + 1] != cell
 
 
 class Tile(pygame.sprite.Sprite):
-    def __init__(self, x, y):
+    def __init__(self, x, y, ends=(True, True)):
         super().__init__()
-        self.image = image("tile")
+        self.ends = ends  # sıranın ucunda mı (Modern temada gölgesi uçta yana doğru silinir)
+        self.image = image("tile", ends)
         self.rect = self.image.get_rect(topleft=(x, y))
 
 
 class Platform(pygame.sprite.Sprite):
     # İnce platform: karenin sadece üst kısmını kaplar, blok gibi katıdır
-    def __init__(self, x, y):
+    def __init__(self, x, y, ends=(True, True)):
         super().__init__()
-        self.image = image("platform")
+        self.ends = ends
+        self.image = image("platform", ends)
         self.rect = self.image.get_rect(topleft=(x, y))
 
 
@@ -100,13 +111,11 @@ class MovingPlatform(pygame.sprite.Sprite):
     # Hareketli platform: left-right piksel arasında gidip gelir; katıdır (level.tiles içinde).
     # Üstünde duran karakteri main.py taşır (Player.carry)
     unsafe = True  # Player bunu görünce burayı "güvenli yer" saymaz
+    ends = (True, True)  # tek parça (iki ucu da açık)
 
     def __init__(self, x, y, cells, left, right):
         super().__init__()
-        key = ("mover", cells)
-        if key not in IMAGES:
-            IMAGES[key] = art.moving_platform_image(cells)
-        self.image = IMAGES[key]
+        self.image = theme.cached(IMAGES, ("mover", cells), lambda: art.moving_platform_image(cells))
         self.rect = self.image.get_rect(topleft=(x, y))
         self.left = left
         self.right = right
@@ -131,6 +140,7 @@ class CrumblingPlatform(pygame.sprite.Sprite):
     # Kırılan platform: üstüne basılınca CRUMBLE_DELAY kare titrer, sonra kırılır (level.tiles'tan
     # çıkar, içinden düşülür). CRUMBLE_RESPAWN kare sonra yerine geri gelir.
     unsafe = True  # Player burayı "güvenli yer" saymaz (yeniden doğunca kırık olabilir)
+    ends = (True, True)  # her kare ayrı taş
     GHOST_TIME = 60  # geri gelmeden son kaç karede silik görünür (nereye geleceği belli olsun)
 
     def __init__(self, x, y):
@@ -345,9 +355,9 @@ class Level:
                 x = col_index * TILE_SIZE
                 y = top + row_index * TILE_SIZE
                 if cell == "#":
-                    sprites.append(Tile(x, y))
+                    sprites.append(Tile(x, y, run_ends(row, col_index)))
                 elif cell == "-":
-                    sprites.append(Platform(x, y))
+                    sprites.append(Platform(x, y, run_ends(row, col_index)))
                 elif cell == "K":
                     crumbler = CrumblingPlatform(x, y)
                     sprites.append(crumbler)

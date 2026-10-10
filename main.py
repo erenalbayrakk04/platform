@@ -1,6 +1,7 @@
 # Oyunu başlatan dosya. Çalıştırmak için terminalde: python main.py
 # Web sürümü de bu dosyadan yapılır (pygbag); bu yüzden oyun döngüsü "async" çalışır.
 import asyncio
+import math
 import sys
 import time
 
@@ -60,6 +61,7 @@ from skin_menu import SKIN_MENU
 from ads import Ads
 from lang import t, mark, LANGUAGES, language, set_language, device_language
 import skins
+import theme
 from art import Background, shield_bubble
 from controls import TouchButtons, read_controls
 from effects import burst
@@ -67,8 +69,8 @@ import sound
 
 # Toplanınca saçılan parçacıkların rengi
 PICKUP_COLORS = {"heart": LIFE_COLOR, "magnet": MAGNET_COLOR, "shield": SHIELD_COLOR, "gem": GEM_COLOR}
-# Kalkan sürerken karakterin etrafındaki baloncuk
-SHIELD_BUBBLE = []
+# Kalkan sürerken karakterin etrafındaki baloncuk (her tema için bir kere hazırlanır)
+SHIELD_BUBBLE = {}
 
 # Saklanan istatistikler ve seçenekler (storage.py), ilk açılıştaki değerleriyle
 STATS_DEFAULTS = {"games": 0, "climbed": 0, "coins": 0, "enemies": 0}
@@ -78,6 +80,7 @@ OPTIONS_DEFAULTS = {
     "music_volume": VOLUME_STEPS,  # ses ekranındaki çubuklar (0..VOLUME_STEPS)
     "effects_volume": VOLUME_STEPS,
     "language": "",  # "tr" / "en"; boş = cihazın dili (ayarlardan seçilince kaydedilir)
+    "theme": theme.DEFAULT_THEME,  # görünüş: "retro" (Nostalji) / "modern" (theme.py)
 }
 # Oyun sırasında durduran tuşlar
 PAUSE_KEYS = (pygame.K_ESCAPE, pygame.K_p)
@@ -136,6 +139,17 @@ def hide_web_loader():
         window.loader_done()
     except Exception:
         pass
+
+
+def web_smoothing():
+    # Web: telefon ekranı oyunu büyütürken Nostalji'de pikseller keskin kalsın, Modern'de yumuşak büyüsün
+    if WEB:
+        try:
+            from platform import window
+
+            window.canvas.style.imageRendering = "auto" if theme.modern() else "pixelated"
+        except Exception:
+            pass
 
 
 class FpsMeter:
@@ -310,22 +324,65 @@ def update_game(level, player, camera, score, controls, sounds):
     level.update(camera.top, camera.bottom)
 
 
-def draw_world(screen, background, level, player, camera, score):
-    # Önce gökyüzü, sonra her şeyi kameraya göre kaydırarak çiz
-    background.draw(screen, camera.top)
-    score.draw_record_line(screen, camera)  # rekor yüksekliği (platformların arkasında)
+def draw_sprites(screen, sprites, camera):
     screen_rect = screen.get_rect()
-    # Kırık platformlar geri gelmeden az önce silik görünür
-    ghosts = [crumbler for crumbler in level.crumblers if crumbler.ghost]
-    sprites = [
-        *level.goals, *level.tiles, *ghosts, *level.springs, *level.coins, *level.pickups, *level.enemies, *level.shots,
-        *level.effects,
-    ]
     for sprite in sprites:
         # draw_rect: çizim yeri çarpışma kutusundan farklı olabilir (ör. titreyen platform)
         screen_pos = camera.apply(getattr(sprite, "draw_rect", sprite.rect))
         if screen_pos.colliderect(screen_rect):  # sadece ekranda görüneni çiz
             screen.blit(sprite.image, screen_pos)
+
+
+# Modern temada derinlik veren resimler (modern.py): platform gölgeleri, toplananların ışığı, ayak gölgesi
+DEPTH = {}
+
+
+def draw_shadows(screen, level, camera):
+    # Modern: platformların ve blokların altına yumuşak gölge düşer
+    import modern
+
+    for tile in level.tiles:
+        rect = camera.apply(tile.rect)
+        if -modern.SHADOW_DEPTH < rect.bottom < SCREEN_HEIGHT:
+            shadow = theme.cached(DEPTH, ("shadow", rect.width, tile.ends), lambda: modern.drop_shadow(rect.width, tile.ends))
+            screen.blit(shadow, (rect.x, rect.bottom))
+
+
+def draw_glows(screen, level, player, camera):
+    # Modern: altınların ve toplananların arkasında hafifçe yanıp sönen ışık; yerde duranların ayağının altında gölge
+    import modern
+
+    pulse = round(190 + 65 * math.sin(pygame.time.get_ticks() / 260))
+    for sprite in (*level.coins, *level.pickups):
+        center = camera.apply(sprite.rect).center
+        if -30 < center[1] < SCREEN_HEIGHT + 30:
+            color = PICKUP_COLORS.get(getattr(sprite, "kind", None), COIN_COLOR)
+            glow = theme.cached(DEPTH, ("glow", color), lambda: modern.glow_image(color, 22))
+            glow.set_alpha(pulse)
+            screen.blit(glow, glow.get_rect(center=center))
+    feet = [enemy for enemy in level.enemies if enemy.grounded]
+    if player.on_ground and player.visible:
+        feet.append(player)
+    for sprite in feet:
+        rect = camera.apply(sprite.rect)
+        if 0 < rect.bottom < SCREEN_HEIGHT + 10:
+            shadow = theme.cached(DEPTH, ("feet", rect.width), lambda: modern.foot_shadow(rect.width - 6))
+            screen.blit(shadow, shadow.get_rect(center=(rect.centerx, rect.bottom)))
+
+
+def draw_world(screen, background, level, player, camera, score):
+    # Önce gökyüzü, sonra her şeyi kameraya göre kaydırarak çiz
+    background.draw(screen, camera.top)
+    score.draw_record_line(screen, camera)  # rekor yüksekliği (platformların arkasında)
+    # Kırık platformlar geri gelmeden az önce silik görünür
+    ghosts = [crumbler for crumbler in level.crumblers if crumbler.ghost]
+    if theme.modern():
+        draw_shadows(screen, level, camera)
+    draw_sprites(screen, [*level.goals, *level.tiles, *ghosts], camera)
+    if theme.modern():
+        draw_glows(screen, level, player, camera)
+    sprites = [*level.springs, *level.coins, *level.pickups, *level.enemies, *level.shots, *level.effects]
+    draw_sprites(screen, sprites, camera)
     # Efsanevi skinin izi karakterin arkasında
     if player.trail:
         player.trail.draw(screen, -round(camera.top))
@@ -336,9 +393,7 @@ def draw_world(screen, background, level, player, camera, score):
     # Kalkan: karakterin etrafında baloncuk; bitmesine az kalınca yanıp söner
     shield = player.powers["shield"]
     if shield and (shield > POWERUP_WARN_TIME or (shield // 8) % 2 == 0):
-        if not SHIELD_BUBBLE:
-            SHIELD_BUBBLE.append(shield_bubble(player.rect.height // 2 + 8))
-        bubble = SHIELD_BUBBLE[0]
+        bubble = theme.cached(SHIELD_BUBBLE, "bubble", lambda: shield_bubble(player.rect.height // 2 + 8))
         screen.blit(bubble, bubble.get_rect(center=camera.apply(player.rect).center))
 
 
@@ -367,6 +422,10 @@ class Game:
         # Dil (lang.py): ayarlardan seçilen, seçilmediyse telefonun / bilgisayarın dili
         chosen = self.options["language"]
         set_language(chosen if chosen in LANGUAGES else device_language(WEB))
+        # Görünüş teması (theme.py): Nostalji ya da Modern — resimler hazırlanmadan önce seçilmeli
+        theme.set_theme(self.options["theme"])
+        self.options["theme"] = theme.current()
+        web_smoothing()
         if self.options["muted"]:
             sounds.toggle_mute()
         # Ses seviyeleri: kayıttaki değer çubuklara ve seslere
@@ -449,6 +508,7 @@ class Game:
             "difficulty": t("Zorluk: {}").format(t(DIFFICULTY_NAMES[self.options["difficulty"]])),
             "menu": mark("Bölümler") if self.stage is not None else mark("Ana Menü"),
             "language": t("Dil: {}").format(LANGUAGES[language()]),
+            "theme": t("Tema: {}").format(t(theme.THEMES[theme.current()])),
         }
 
     def save_options(self):
@@ -478,6 +538,16 @@ class Game:
         self.options["language"] = names[(names.index(language()) + 1) % len(names)]
         set_language(self.options["language"])
         self.save_options()
+
+    def next_theme(self):
+        # Ayarlar ekranındaki Tema düğmesi: Nostalji ↔ Modern, kaydedilir. Menünün arkasındaki harita ve karakter
+        # yeni temanın resimleriyle yeniden kurulur
+        names = list(theme.THEMES)
+        theme.set_theme(names[(names.index(theme.current()) + 1) % len(names)])
+        self.options["theme"] = theme.current()
+        self.save_options()
+        web_smoothing()
+        self.reset()
 
     def toggle_sound(self):
         self.sounds.toggle_mute()
@@ -799,6 +869,8 @@ class Game:
                 self.toggle_sound()
             elif action == "language":
                 self.next_language()
+            elif action == "theme":
+                self.next_theme()
             elif action in ("music", "effects"):
                 self.change_volume(action)
 

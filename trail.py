@@ -8,6 +8,7 @@ import random
 import pygame
 
 from settings import TRAIL_LIMIT
+import theme
 
 FIRE_COLORS = [(255, 245, 170), (255, 205, 70), (250, 125, 35), (215, 55, 25), (120, 30, 25)]
 STAR_COLORS = [(255, 255, 255), (190, 210, 255), (255, 185, 245)]
@@ -17,6 +18,7 @@ SNOW_COLORS = [(255, 255, 255), (195, 235, 255)]
 RAINBOW_COLORS = [(235, 60, 70), (250, 140, 40), (250, 215, 50), (90, 200, 80), (60, 150, 230), (140, 90, 220)]
 SHADOW_COLOR = (150, 40, 80)
 SPARK_COLORS = [(140, 230, 255), (255, 255, 255), (255, 240, 120)]
+SPARKLES = {}  # Modern: parıltı resimleri (renk, kol, büyüklük) → resim
 
 
 class Trail:
@@ -28,6 +30,14 @@ class Trail:
         self.last = None  # karakterin önceki adımdaki yeri (yürüyor/zıplıyor mu anlamak için)
         self.rng = random.Random()
         self.silhouettes = {}  # gölge izi: karakter resmi → aynı şekilde düz renkli resim (bir kere hazırlanır)
+        self.modern = theme.modern()  # Modern temada parçacıklar yuvarlak, parıltılar yumuşak
+
+    def dot(self, screen, color, x, y, size):
+        # Kare (Nostalji) ya da yuvarlak (Modern) parçacık; x, y ortası
+        if self.modern:
+            pygame.draw.circle(screen, color, (round(x), round(y)), size / 2 + 0.5)
+        else:
+            screen.fill(color, (round(x - size / 2), round(y - size / 2), size, size))
 
     def add(self, x, y, life, vx=0.0, vy=0.0, **extra):
         self.parts.append({"x": x, "y": y, "vx": vx, "vy": vy, "age": 0, "life": life, **extra})
@@ -54,9 +64,18 @@ class Trail:
             draw(screen, part, part["x"], part["y"] + dy, part["age"] / part["life"])
 
     def plus(self, screen, color, x, y, arm):
-        # Artı şeklinde parıltı: ortası 2 kare, kolları arm kare (scale kadar büyük)
+        # Artı şeklinde parıltı: ortası 2 kare, kolları arm kare (scale kadar büyük). Modern: yumuşak dört kollu parıltı
         u = 2 * self.scale
         x, y = round(x), round(y)
+        if self.modern:
+            key = (color, arm, self.scale)
+            if key not in SPARKLES:
+                import modern
+
+                SPARKLES[key] = modern.trail_sparkle(color, (arm + 0.6) * u)
+            image = SPARKLES[key]
+            screen.blit(image, image.get_rect(center=(x + u // 2, y + u // 2)))
+            return
         screen.fill(color, (x - arm * u, y, (2 * arm + 1) * u, u))
         screen.fill(color, (x, y - arm * u, u, (2 * arm + 1) * u))
 
@@ -72,7 +91,7 @@ class Trail:
     def draw_fire(self, screen, part, x, y, old):
         color = FIRE_COLORS[min(len(FIRE_COLORS) - 1, int(old * len(FIRE_COLORS)))]
         size = (6 if old < 0.2 else 5 if old < 0.45 else 4 if old < 0.7 else 2) * self.scale
-        screen.fill(color, (round(x - size / 2), round(y - size / 2), size, size))
+        self.dot(screen, color, x, y, size)
 
     # --- Kozmik: etrafında parlayıp sönen yıldız tozu ---
     def spawn_stars(self, rect, image, facing, moved):
@@ -126,6 +145,9 @@ class Trail:
         for i, color in enumerate(RAINBOW_COLORS):
             if old > 0.7 and (i + part["age"]) % 2:  # sönerken seyrekleşir
                 continue
+            if self.modern:  # yuvarlak uçlu şerit
+                pygame.draw.rect(screen, color, (round(x - width / 2), round(y + i * height), width, height), border_radius=height // 2)
+                continue
             screen.fill(color, (round(x - width / 2), round(y + i * height), width, height))
 
     # --- Gölge: arkasında kalan, yavaşça silinen gölgeler ---
@@ -168,6 +190,9 @@ class Trail:
         color = SPARK_COLORS[(part["color"] + part["age"] // 2) % len(SPARK_COLORS)]  # titreşir
         if "points" not in part:  # elektrik tozu
             size = (3 if old < 0.5 else 2) * self.scale
+            if self.modern:
+                self.dot(screen, color, x + size / 2, y + size / 2, size)
+                return
             screen.fill(color, (round(x), round(y), size, size))
             return
         points = [(round(x + px), round(y + py)) for px, py in part["points"]]

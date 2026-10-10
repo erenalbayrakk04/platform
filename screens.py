@@ -33,9 +33,10 @@ from score import draw_text
 from lang import t, mark
 from stages import STAGE_SETS, STAGE_COUNT
 from title import draw_logo
-from ui import Buttons, Slider, StageGrid, take_click, ACTIVATE_KEYS, UP_KEYS, DOWN_KEYS
+from ui import Buttons, Slider, StageGrid, draw_box, take_click, ACTIVATE_KEYS, UP_KEYS, DOWN_KEYS
 import art
 import skins
+import theme
 
 CENTER_X = SCREEN_WIDTH // 2
 
@@ -89,8 +90,10 @@ LABELS = {
     "give_up": mark("Hayır"),
 }
 
-# Yazı tipleri, perde ve resimler ilk kullanımda bir kere hazırlanır (pygame.init()'ten sonra olmalı)
+# Yazı tipleri, perde ve resimler ilk kullanımda bir kere hazırlanır (pygame.init()'ten sonra olmalı; resimler
+# her tema için ayrı: theme.cached)
 _cache = {}
+_images = {}
 
 
 def font(size):
@@ -99,18 +102,23 @@ def font(size):
     return _cache[size]
 
 
+def make_overlay():
+    overlay = pygame.Surface((SCREEN_WIDTH, SCREEN_HEIGHT), pygame.SRCALPHA)
+    overlay.fill((0, 0, 0, OVERLAY_ALPHA))
+    if theme.modern():  # Modern: ortası biraz açık, üstü ve altı koyu (yazılar ortada daha net)
+        import modern
+
+        alpha = OVERLAY_ALPHA
+        overlay = modern.gradient(overlay.get_size(), (8, 6, 22, alpha + 30), (8, 6, 22, alpha - 10), (8, 6, 22, alpha + 30))
+    return overlay
+
+
 def draw_overlay(screen):
-    if "overlay" not in _cache:
-        overlay = pygame.Surface((SCREEN_WIDTH, SCREEN_HEIGHT), pygame.SRCALPHA)
-        overlay.fill((0, 0, 0, OVERLAY_ALPHA))
-        _cache["overlay"] = overlay
-    screen.blit(_cache["overlay"], (0, 0))
+    screen.blit(theme.cached(_images, "overlay", make_overlay), (0, 0))
 
 
 def ad_icon():
-    if "ad" not in _cache:
-        _cache["ad"] = art.ad_image()
-    return _cache["ad"]
+    return theme.cached(_images, "ad", art.ad_image)
 
 
 def draw_button_icons(screen, buttons, action, left=None, right=None):
@@ -128,8 +136,7 @@ def draw_note(screen, text):
     small = font(MENU_SMALL_FONT_SIZE + 2)
     box = pygame.Rect(0, 0, small.size(text)[0] + 28, 32)
     box.center = (CENTER_X, 700)
-    pygame.draw.rect(screen, (20, 18, 40), box, border_radius=10)
-    pygame.draw.rect(screen, HINT_COLOR, box, 2, border_radius=10)
+    draw_box(screen, box, (20, 18, 40), HINT_COLOR, 2, 10)
     draw_text(screen, small, text, center=box.center)
 
 
@@ -158,16 +165,16 @@ def draw_main_menu(screen, best_height, labels, web=False):
 
 
 class SoundMenu:
-    # Ayarlar ekranı: müzik ve efekt seviyesi çubukları + "Ses: Açık/Kapalı", "Dil: Türkçe" ve "Geri" düğmeleri.
-    # Klavyede yukarı/aşağı ile seçilir, çubuk seçiliyken sol/sağ ok ile ayarlanır
+    # Ayarlar ekranı: müzik ve efekt seviyesi çubukları + "Ses: Açık/Kapalı", "Dil: Türkçe", "Tema: Nostalji" ve
+    # "Geri" düğmeleri. Klavyede yukarı/aşağı ile seçilir, çubuk seçiliyken sol/sağ ok ile ayarlanır
     SLIDER_NAMES = ("music", "effects")
     TITLES = {"music": mark("Müzik"), "effects": mark("Efektler")}
     LEFT_KEYS = (pygame.K_LEFT, pygame.K_a)
     RIGHT_KEYS = (pygame.K_RIGHT, pygame.K_d)
 
     def __init__(self):
-        self.sliders = {"music": Slider(255), "effects": Slider(370)}
-        self.buttons = Buttons(["sound", "language", "back"], top=480)
+        self.sliders = {"music": Slider(215), "effects": Slider(320)}
+        self.buttons = Buttons(["sound", "language", "theme", "back"], top=420)
         self.focus = 0  # 0 = müzik, 1 = efektler, 2+ = düğmeler
 
     def open(self):
@@ -180,7 +187,7 @@ class SoundMenu:
         self.buttons.focus = self.focus - count  # çubuk seçiliyse eksi (düğme seçili görünmez)
 
     def handle_event(self, event):
-        # Değişen çubuğun adı ("music"/"effects") veya basılan düğmenin adı ("sound"/"language"/"back"), yoksa None
+        # Değişen çubuğun adı ("music"/"effects") veya basılan düğmenin adı ("sound"/"language"/"theme"/"back"), yoksa None
         count = len(self.SLIDER_NAMES)
         if event.type == pygame.KEYDOWN:
             if event.key in UP_KEYS:
@@ -209,7 +216,7 @@ class SoundMenu:
 
     def draw(self, screen, labels, muted):
         draw_overlay(screen)
-        draw_title(screen, "Ayarlar", 120)
+        draw_title(screen, "Ayarlar", 95)
         for i, name in enumerate(self.SLIDER_NAMES):
             slider = self.sliders[name]
             focused = self.focus == i
@@ -227,14 +234,12 @@ SOUND_MENU = SoundMenu()
 
 def howto_icons():
     # Nasıl oynanır sayfasındaki küçük resimler: oyundaki resimlerin aynısı, en fazla HOWTO_ICON piksel
-    if "howto" not in _cache:
-
+    def make():
         def fit(image, box=HOWTO_ICON):
             scale = min(1, box / image.get_width(), box / image.get_height())
-            size = (round(image.get_width() * scale), round(image.get_height() * scale))
-            return pygame.transform.scale(image, size)
+            return art.resize(image, (image.get_width() * scale, image.get_height() * scale))
 
-        _cache["howto"] = {
+        return {
             "coin": fit(art.coin_frames()[0]),
             "gem": fit(art.gem_frames()[0]),
             "heart": fit(art.heart_images()["full"]),
@@ -251,7 +256,8 @@ def howto_icons():
             "lava": fit(art.lava_frames()[0].subsurface((0, 0, 36, 32))),
             "flag": fit(art.flag_frames()[0]),
         }
-    return _cache["howto"]
+
+    return theme.cached(_images, "howto", make)
 
 
 HOWTO_ROWS = (  # {points} = altının puanı
@@ -421,11 +427,11 @@ def draw_new_skins(screen, new_skins, y):
     small = font(MENU_SMALL_FONT_SIZE + 4)
     if small.size(text)[0] > SCREEN_WIDTH - 70:
         text = t("{} yeni karakter açıldı!").format(len(new_skins))
-    key = ("skin_icon", new_skins[0]["id"])
-    if key not in _cache:
-        image = skins.frames(new_skins[0]["id"])["idle"][1]
-        _cache[key] = pygame.transform.scale(image, (image.get_width() // 2, image.get_height() // 2))
-    icon = _cache[key]
+    image = skins.frames(new_skins[0]["id"])["idle"][1]
+    icon = theme.cached(
+        _images, ("skin_icon", new_skins[0]["id"]),
+        lambda: art.resize(image, (image.get_width() // 2, image.get_height() // 2)),
+    )
     width = icon.get_width() + 8 + small.size(text)[0]
     left = CENTER_X - width // 2
     screen.blit(icon, icon.get_rect(midleft=(left, y)))
@@ -451,9 +457,7 @@ def gems_text(found, bonus, reason):
 
 
 def gem_icon():
-    if "gem" not in _cache:
-        _cache["gem"] = art.gem_frames()[0]
-    return _cache["gem"]
+    return theme.cached(_images, "gem", lambda: art.gem_frames()[0])
 
 
 def draw_gems_earned(screen, found, bonus, reason, y):
@@ -546,16 +550,11 @@ def draw_stage_intro(screen, mode, index, goal):
     draw_text(screen, font(MENU_SMALL_FONT_SIZE), t("Hedef: {} m").format(goal), HINT_COLOR, center=(CENTER_X, 278))
 
 
-STAR_IMAGES = {}
-
-
 def star_images():
-    if not STAR_IMAGES:
-        STAR_IMAGES.update(
-            big=art.star_image(True, 64), big_empty=art.star_image(False, 64),
-            small=art.star_image(True, 22), small_empty=art.star_image(False, 22),
-        )
-    return STAR_IMAGES
+    return theme.cached(_images, "stars", lambda: {
+        "big": art.star_image(True, 64), "big_empty": art.star_image(False, 64),
+        "small": art.star_image(True, 22), "small_empty": art.star_image(False, 22),
+    })
 
 
 def draw_stage_clear(screen, mode, index, result, shown):

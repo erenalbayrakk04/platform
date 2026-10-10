@@ -52,8 +52,8 @@
   Depo: https://github.com/erenalbayrakk04/platform, dal `main`. Commit mesajları Türkçe ve kısa.
 - Ayarlanabilir sayılar (hız, zıplama gücü, renkler) `settings.py` içinde dursun.
 - Görseller ve sesler dosya DEĞİL, kodla üretiliyor (kullanıcı kararı, Aşama 8): piksel sanatı
-  `art.py`'de (skin çizimleri, fiyatları ve görevleri `skins.py`'de), retro sesler/müzik `sound.py`'de. Renkler
-  settings.py'deki ana renklerden gelir.
+  `art.py`'de (skin çizimleri, fiyatları ve görevleri `skins.py`'de), Modern temanın yumuşak çizimleri `modern.py`'de
+  (theme.py), retro sesler/müzik `sound.py`'de. Renkler settings.py'deki ana renklerden gelir.
 
 ## Dosyalar
 - `main.py` — oyun döngüsü (olaylar → güncelleme → çizim)
@@ -190,7 +190,9 @@
   kez bedava elmas alındı). `load_record/save_record` (sayı), `load_dict(kind, defaults)/save_dict`
   (JSON; eksik/bozuk/yanlış tipli değer → default). Dosyalar oyun klasöründe, git ve pygbag dışı; okunamazsa
   default, yazılamazsa sessiz; web'de (`settings.WEB`, `sys.platform == "emscripten"`) `platform.window.localStorage`.
-- `ui.py` — `Buttons(actions, top, gap)`: alt alta ortalı düğmeler; `handle_event(event)` basılan düğmenin adını
+- `ui.py` — `draw_box(screen, rect, fill, border, width, radius)`: düğme/kutu/sekme çizimi (Nostalji düz, Modern
+  `modern.box_image`; düğmeler, bölüm kutuları, sekmeler, skin kutuları, bilgi kutusu hep bununla).
+  `Buttons(actions, top, gap)`: alt alta ortalı düğmeler; `handle_event(event)` basılan düğmenin adını
   döndürür (dokunma `FINGERDOWN`, sol tık, klavye ↑↓/W-S + Enter/Boşluk; `MOUSEMOTION` ile seçili olan değişir;
   `focus` = seçili); `draw(screen, labels, disabled=())` (disabled = gri, basılamaz görünen düğmeler). `take_click()`: `BUTTON_CLICK_GAP` ms içindeki ikinci tıklama sayılmaz
   (telefonda bir dokunuş hem parmak hem fare olayı gelebilir; ör. menüden dönünce alttaki düğmeye de basılıyordu).
@@ -200,8 +202,8 @@
   parmak/fareyle sürükle veya dokun (`handle_event` → değişti mi), `nudge(±1)` klavye için. Düğme renk/boyları settings "Menü düğmeleri".
 - `screens.py` — `SOUND_MENU` (`SoundMenu`: AYARLAR ekranı (eski adı Ses Ayarları; ana menüde "sound_menu" düğmesi
   "Ayarlar"); Müzik + Efektler çubukları, "sound" (Ses: Açık/Kapalı), "language" (Dil: Türkçe / Language: English —
-  main `next_language()`, options `language`, boş = cihaz dili) ve "back" düğmeleri; ↑↓ seçer, ←→ çubuğu ayarlar;
-  `handle_event` → "music"/"effects"/"sound"/"language"/"back"),
+  main `next_language()`, options `language`, boş = cihaz dili), "theme" (Tema: Nostalji / Modern — theme.py) ve "back"
+  düğmeleri; ↑↓ seçer, ←→ çubuğu ayarlar; `handle_event` → "music"/"effects"/"sound"/"language"/"theme"/"back"),
   her ekranın `Buttons`'ı (`MAIN_BUTTONS` play/skins/difficulty/howto/records/sound_menu — 6 düğme, `gap=60`; web'de
   altta "Düşük Güç Modu" yazısı olduğu için daha fazla düğme sığmaz, `BACK_BUTTON`,
   `PAUSE_BUTTONS` resume/sound/menu, `PLAY_BUTTONS` stages/endless/back, `STAGE_GRID`, Devam Et: `revive_buttons(ad)`
@@ -314,7 +316,10 @@
 - Zıplama ~133 px (3 blok = 120 px'e çıkılabilir), yatayda ~4 blok gidilebilir; parça
   tasarlarken basılan yüzeyler arası dikey fark en fazla 3 satır olsun. Platformlar katı olduğu
   için bir üst platform tam tepede olmasın; yana kaydırılmış olsun ki zıplayıp üstüne çıkılabilsin.
-- `art.py` — piksel sanatı: harf haritası + palet → `render(rows, palette, size)` (her harf
+- `art.py` — piksel sanatı (Nostalji teması; modern temada `render` ve `@themed` fonksiyonlar modern.py'ye gider;
+  `render(..., zoom)` / `player_frames(skin, zoom)` / `coin_frames(zoom)` / `island_image(zoom)` /
+  `platform_image(ends, zoom)` büyük çizer — giriş ekranı ve Karakterler önizlemesi böyle; `resize(image, size)`
+  Nostalji'de keskin, Modern'de yumuşak büyütür/küçültür): harf haritası + palet → `render(rows, palette, size)` (her harf
   `PIXEL_SCALE` px, çizim alta-ortaya yaslı; hiç `.` yoksa ve ekran açıksa `convert()` = saydamsız → tarayıcıda
   ~5 kat hızlı çizilir), `shade`/`tint`/`mix` ile tonlar; `player_frames(skin)` (gövde ve renkler skinden,
   bacaklar skinde yoksa `PLAYER_LEGS` — harfi "L", rengi verilmezse "K"; "W"/"E" verilmezse oyunun göz renkleri),
@@ -328,6 +333,38 @@
   "PLATFORM OYUNU"nun harfleri — `TITLE` değişirse eksik harf eklenmeli, yoksa açılışta hata) + `logo_letters(text, üst, alt)`
   (her kare 2x2 "ince kareye" bölünür, ince kare `LOGO_PIXEL` px: koyu kenar 1, alttaki 3B kalınlık `LOGO_DEPTH` ince
   kare; içi renk geçişli, çizgilerin üst kenarı parlak; harf başına (resim, parıltı, x)).
+- `theme.py` — GÖRÜNÜŞ TEMASI (kullanıcı kararı, 2026-10-10: NSS adlı oyundaki gibi eski usul + modern iki görünüş):
+  "retro" = Nostalji (piksel sanatı, VARSAYILAN), "modern" = yumuşak kenarlı, renk geçişli, parlak (modern.py). Ayarlar
+  ekranında "Tema: Nostalji / Modern" (main `next_theme()`, options `theme`, EN "Theme: Retro / Modern"). Sadece görünüş:
+  resim boyları ve oyun aynı. `current()`, `modern()`, `set_theme()`, `cached(store, key, make)` = resmi temaya göre bir
+  kere hazırla — resim saklayan HER yer bunu kullanır (level.IMAGES, enemy.FRAMES, skins.frames, score kalpleri/yazıları,
+  screens._images, ui._boxes, skin_menu.cache, title._logo, lava.IMAGES, main.SHIELD_BUBBLE/DEPTH, effects.IMAGES).
+  Tema değişince `Game.reset()` (arkadaki harita yeni resimlerle kurulur). Web'de `web_smoothing()`: tuvalin büyütülmesi
+  Nostalji'de `pixelated`, Modern'de `auto` (yumuşak). web.tmpl yükleme ekranı da temayı localStorage'dan okur (Modern'de
+  altın yumuşak çizilir).
+- `modern.py` — MODERN TEMANIN ÇİZİMLERİ. art.py'de `@themed` işaretli fonksiyonların yerine buradaki AYNI ADLI fonksiyon
+  çalışır; `art.render()` modern temada `smooth()`'u çağırır → harf haritalı her şey (skinler, düşmanlar, mıknatıs,
+  kalkan, kilit...) kendiliğinden yumuşatılır: her harfin bölgesi büyütülüp hafifçe bulanıklaştırılır, her nokta en
+  baskın harfin rengini alır (köşeler yuvarlanır), üstüne ışık (`add_light`) ve göz bebeklerine (E) parıltı. Kodla
+  çizilenler: blok (üstü dalgalı çimen, sıranın uçları yuvarlak — `Tile/Platform(x, y, ends)`, `level.run_ends`), tahta
+  platform (üst yüzey + yan yüz), hareketli/kırılan platform, yay, altın (dönerken daralır), elmas (yüzeyli), kalp,
+  yıldız (her boyda keskin), bayrak, ateş topu, lav (+ `lava_body` renk geçişi, `lava_light` ışık), kalkan baloncuğu,
+  adacık, gökyüzü (`Background`: bulutsu ışıklar + kenar karartma gökyüzüne işlenir, yuvarlak parlayan yıldızlar, yavaş
+  kayan ışık topları, başlangıçta uzakta tepeler `hills_image`), logo (`logo_letters`: pygame yazı tipiyle, renk geçişi
+  + koyu kenar + 3B kalınlık), menü kutuları (`box_image` → `ui.draw_box`: gölge, renk geçişi, seçiliyse altın ışık),
+  `knob_image`, yazı gölgesi (`text_shadow`, bulanık), parçacıklar (yuvarlak, küçülür), iz parıltıları. Oyunda ayrıca
+  (main `draw_shadows`/`draw_glows`): platformların altında gölge, altın ve toplananların arkasında yanıp sönen ışık,
+  yerde duranların (`enemy.grounded`) ayağının altında gölge. Her şey AA (4) kat büyük çizilip küçültülür; `bleed`
+  saydam kenarların kararmasını önler. KURALLAR: resim boyları Nostalji'dekiyle AYNI olmalı (çarpışma kutuları resimden
+  geliyor; kontrol: iki temada her resmi üretip boyları karşılaştıran betik); yeni bir art.py resmi modern'de otomatik
+  yumuşar, özel çizim istenirse `@themed` + modern.py'de aynı adlı fonksiyon. Nostalji'nin çıktısı eski kodla PİKSEL
+  PİKSEL aynı kaldı (eski commit'i git worktree ile açıp aynı betikle karşılaştırıldı) — Nostalji'ye dokunulmasın.
+  WEB HIZI: tarayıcıda (wasm) yarı saydam çizim piksel başına ~15 ns (400x230'luk resim 1,4 ms!), opak (`convert()`)
+  çizim neredeyse bedava. `fast(image)` = RLE (`set_alpha(255, RLEACCEL)`): tamamen saydam/opak sıralar ayrılır, aynı
+  görüntü 100 kata kadar hızlı (tepeler 1,4 → 0,01 ms) — sabit resimlere uygulanır; her karede `set_alpha` değişen
+  resimlere (yıldızlar, ışıklar) UYGULANMAZ. Ölçüm (görünmez Chrome, oyun sırasında bir kare): Nostalji ~1,0 ms, Modern
+  ~1,9 ms; işlemci 4 kat yavaşken ikisi de 60 kare/sn, 6 katta Nostalji 60 / Modern ~52. İlk kullanımda resim hazırlama
+  (masaüstü): skin başına ~10 ms, gökyüzü ~40 ms, lav ~30 ms.
 - `skins.py` — SKİNLER (karakter görünüşleri; SADECE GÖRÜNÜŞ: hitbox/hız/zıplama aynı, rekorlar adil). `SKINS` listesi,
   her biri `skin(id, ad, grup, gövde, renkler, coins/gems, goal, legs, trail, color)`: gövde 10x10 harf (+2 satır bacak:
   `art.PLAYER_LEGS` ya da kendi `legs`'i, ör. hayalet/ahtapot), harfler art.py gibi. Gruplar (`GROUP_NAMES`, ekranda
@@ -460,6 +497,10 @@ Açık depoda çalışma durumu girişsiz bakılabilir: https://api.github.com/r
   gidişte teklif yok, reklam düğmesi Hayır'la aynı boy ve reklam olduğu belli, reklam yoksa düğme görünmesin, reklamda
   ses kısılır. Ayrıca: Basic Launch'ta reklam kapalı (~2 hafta), oyuncular severse Full Launch'ta SDK + reklam + Data
   modülü. Hesaplar (18 yaş, kimlik, banka) ve vergi (mali müşavir) kullanıcının işi.
+- TEMA yapıldı (2026-10-10; kullanıcı: "NSS diye bir oyunda old school bir de modern görünüm var, bizimki de aynı
+  olacak; varsayılan şu anki (nostalji), bir de modern eklenecek"). Ayarlar → "Tema: Nostalji / Modern". Modern = aynı
+  oyunun yumuşak, renk geçişli, gölgeli/ışıklı hâli (theme.py, modern.py). Kullanıcı deneyip geri bildirim verecek
+  (beğenmediği öğe modern.py'de tek tek değiştirilebilir). Müzik/sesler iki temada aynı (yeni müzik önerme).
 - OYUNCU KAYITLARI (2026-10-09, kullanıcı kararı: şimdilik böyle kalsın): her şey sadece oyuncunun cihazında
   (web: localStorage, bilgisayar: dosya), sunucu yok → kişisel veri toplanmıyor. Sorunlar: cihaz değişince / tarayıcı
   verisi silinince kayıt gider (iPhone Safari uzun süre girilmeyen sitenin verisini silebilir), elmas elle

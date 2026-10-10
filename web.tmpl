@@ -416,16 +416,46 @@ height="{{cookiecutter.height}}px"
         ]
         const coin_colors = { K: "#c88c14", Y: "#ffd228", y: "#d8b222", h: "#fff1be" }
         const coin_frames = [0, 1, 2, 1]
-        const coin = document.getElementById("loader_coin").getContext("2d")
+        const coin_canvas = document.getElementById("loader_coin")
+        const coin = coin_canvas.getContext("2d")
         const text = document.getElementById("loader_text")
         const bar = document.getElementById("loader_bar")
         const fill = document.getElementById("loader_fill")
         // Dil: oyunda secilen (localStorage'daki secenekler, storage.py), yoksa tarayicinin dili (lang.py ile ayni
-        // kural). Turkce harfler HTML koduyla (&#305; = noktasiz i)
+        // kural). Turkce harfler HTML koduyla (&#305; = noktasiz i). Tema da oradan (theme.py): Modern ise altin
+        // yumusak cizilir
         let lang = ""
+        let modern = false
         try {
-            lang = JSON.parse(localStorage.getItem("platform-oyunu-secenekler") || "{}").language || ""
+            const options = JSON.parse(localStorage.getItem("platform-oyunu-secenekler") || "{}")
+            lang = options.language || ""
+            modern = options.theme === "modern"
         } catch (e) {}
+        // Modern temanin altini: kenar halkasi, renk gecisli yuz, ic halka, parlama; donerken daralip genisler
+        const modern_widths = [1, 0.56, 0.18, 0.56]
+        function draw_modern_coin(frame) {
+            const size = 80
+            coin.clearRect(0, 0, size, size)
+            coin.save()
+            coin.translate(size / 2, size / 2)
+            coin.scale(modern_widths[frame], 1)
+            coin.fillStyle = "#c88c14"
+            coin.beginPath(); coin.arc(0, 0, 38, 0, 2 * Math.PI); coin.fill()
+            const face = coin.createLinearGradient(0, -32, 0, 32)
+            face.addColorStop(0, "#fff0aa"); face.addColorStop(0.5, "#ffd228"); face.addColorStop(1, "#dcb424")
+            coin.fillStyle = face
+            coin.beginPath(); coin.arc(0, 0, 32, 0, 2 * Math.PI); coin.fill()
+            coin.strokeStyle = "#cca820"; coin.lineWidth = 5
+            coin.beginPath(); coin.arc(0, 0, 21, 0, 2 * Math.PI); coin.stroke()
+            coin.fillStyle = "rgba(255, 255, 255, 0.65)"
+            coin.beginPath(); coin.ellipse(-12, -15, 9, 6, 0, 0, 2 * Math.PI); coin.fill()
+            coin.restore()
+        }
+        if (modern) {
+            coin_canvas.width = 80
+            coin_canvas.height = 80
+            coin_canvas.style.imageRendering = "auto"
+        }
         if (lang !== "tr" && lang !== "en")
             lang = (navigator.language || "").toLowerCase().startsWith("tr") ? "tr" : "en"
         document.documentElement.lang = lang
@@ -436,15 +466,19 @@ height="{{cookiecutter.height}}px"
         let downloaded = 0
 
         const timer = setInterval(function () {
-            coin.clearRect(0, 0, 5, 5)
-            coin_rows[coin_frames[tick % coin_frames.length]].forEach((row, y) => {
-                for (let x = 0; x < row.length; x++) {
-                    if (row[x] !== ".") {
-                        coin.fillStyle = coin_colors[row[x]]
-                        coin.fillRect(x, y, 1, 1)
+            if (modern) {
+                draw_modern_coin(tick % modern_widths.length)
+            } else {
+                coin.clearRect(0, 0, 5, 5)
+                coin_rows[coin_frames[tick % coin_frames.length]].forEach((row, y) => {
+                    for (let x = 0; x < row.length; x++) {
+                        if (row[x] !== ".") {
+                            coin.fillStyle = coin_colors[row[x]]
+                            coin.fillRect(x, y, 1, 1)
+                        }
                     }
-                }
-            })
+                })
+            }
             // Sonundaki noktalar 0-3 arasi artar (yazi kaymasin diye eksik noktalar gorunmez)
             const dots = Math.floor(tick / 3) % 4
             text.innerHTML = word + ".".repeat(dots) + '<span style="visibility: hidden">' + ".".repeat(3 - dots) + "</span>"
